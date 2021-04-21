@@ -13,3 +13,9 @@ class ASTNode:
 
     def __str__(self):
         return self.to_string()
+
+    def __eq__(self, other):
+        if isinstance(other, ASTNode):
+            return str(self) == str(other)
+        else:
+            return False

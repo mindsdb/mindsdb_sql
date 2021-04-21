@@ -1,19 +1,7 @@
-from dfsql.sql_parser.base import Statement
-
-LOOKUP_ORDER_DIRECTIONS = {
-    0: 'default',
-    1: 'ASC',
-    2: 'DESC'
-}
-
-LOOKUP_NULLS_SORT = {
-    0: 'default',
-    1: 'NULLS FIRST',
-    2: 'NULLS LAST'
-}
+from sql_parser.ast.base import ASTNode
 
 
-class OrderBy(Statement):
+class OrderBy(ASTNode):
     def __init__(self, field, direction='default', nulls='default', *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.field = field

@@ -2,6 +2,7 @@ from sly import Parser
 
 from sql_parser.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation
 from sql_parser.ast.operation import Operation
+from sql_parser.ast.order_by import OrderBy
 from sql_parser.exceptions import ParsingException
 from sql_parser.lexer import SQLLexer
 
@@ -21,44 +22,94 @@ class SQLParser(Parser):
 
     # SELECT
 
-    @_('SELECT expr_list FROM from_table WHERE expr GROUPBY expr_list HAVING expr')
+    @_('select OFFSET constant')
     def select(self, p):
-        targets = list(p.expr_list0)
-        from_table = p.from_table
-        where = p.expr0
-        if not isinstance(where, Operation):
-            raise ParsingException(
-                f"WHERE must contain an operation that evaluates to a boolean, got: {str(where)}")
+        select = p.select
+        if select.offset:
+            raise ParsingException("Only one OFFSET allowed per SELECT")
+        if not isinstance(p.constant.value, int):
+            raise ParsingException(f'OFFSET must be an integer value, got: {p.constant.value}')
 
-        group_by = p.expr_list1
-        if not isinstance(group_by, list):
-            group_by = [group_by]
+        select.offset = p.constant
+        return select
 
-        if not all([isinstance(g, Identifier) for g in group_by]):
-            raise ParsingException(
-                f"GROUP BY must contain a list identifiers, got: {str(group_by)}")
+    @_('select LIMIT constant')
+    def select(self, p):
+        select = p.select
 
-        having = p.expr1
+        if select.offset:
+            raise ParsingException(f'LIMIT must be placed before OFFSET')
+
+        if select.limit:
+            raise ParsingException("Only one LIMIT allowed per SELECT")
+
+        select.limit = p.constant
+        if not isinstance(p.constant.value, int):
+            raise ParsingException(f'LIMIT must be an integer value, got: {p.constant.value}')
+        return select
+
+    @_('select ORDERBY ordering_terms')
+    def select(self, p):
+        select = p.select
+        if not select.from_table:
+            raise ParsingException(f'ORDER BY can only be used if FROM is present')
+
+        if select.order_by:
+            raise ParsingException("Only one ORDER BY allowed per SELECT")
+
+        select.order_by = p.ordering_terms
+        return select
+
+    @_('ordering_terms COMMA ordering_term')
+    def ordering_terms(self, p):
+        terms = p.ordering_terms
+        terms.append(p.ordering_term)
+        return terms
+
+    @_('ordering_term')
+    def ordering_terms(self, p):
+        return [p.ordering_term]
+
+    @_('identifier')
+    def ordering_term(self, p):
+        return OrderBy(field=p.identifier, direction='default')
+
+    @_('identifier DESC')
+    def ordering_term(self, p):
+        return OrderBy(field=p.identifier, direction='DESC')
+
+    @_('identifier ASC')
+    def ordering_term(self, p):
+        return OrderBy(field=p.identifier, direction='ASC')
+
+    @_('select HAVING expr')
+    def select(self, p):
+        select = p.select
+
+        if not select.group_by:
+            raise ParsingException(f"HAVING can only be used if GROUP BY is present")
+
+        if select.having:
+            raise ParsingException("Only one HAVING allowed per SELECT")
+
+        having = p.expr
         if not isinstance(having, Operation):
             raise ParsingException(
                 f"HAVING must contain an operation that evaluates to a boolean, got: {str(having)}")
+        select.having = having
+        return select
 
-        return Select(targets=targets,
-                      from_table=from_table,
-                      where=where,
-                      group_by=group_by,
-                      having=having)
-
-    @_('SELECT expr_list FROM from_table WHERE expr GROUPBY expr_list')
+    @_('select GROUPBY expr_list')
     def select(self, p):
-        targets = list(p.expr_list0)
-        from_table = p.from_table
-        where = p.expr
-        if not isinstance(where, Operation):
-            raise ParsingException(
-                f"WHERE must contain an operation that evaluates to a boolean, got: {str(where)}")
+        select = p.select
 
-        group_by = p.expr_list1
+        if not select.where:
+            raise ParsingException(f"GROUP BY can only be used if WHERE is present")
+
+        if select.group_by:
+            raise ParsingException("Only one GROUP BY allowed per SELECT")
+
+        group_by = p.expr_list
         if not isinstance(group_by, list):
             group_by = [group_by]
 
@@ -66,38 +117,60 @@ class SQLParser(Parser):
             raise ParsingException(
                 f"GROUP BY must contain a list identifiers, got: {str(group_by)}")
 
-        return Select(targets=targets,
-                      from_table=from_table,
-                      where=where,
-                      group_by=group_by)
+        select.group_by = group_by
+        return select
 
-    @_('SELECT expr_list FROM from_table WHERE expr')
+    @_('select WHERE expr')
     def select(self, p):
-        targets = list(p.expr_list)
-        from_table = p.from_table
-        where_expr = p.expr
+        select = p.select
 
+        if not select.from_table:
+            raise ParsingException(f"WHERE can only be used if FROM is present")
+
+        if select.where:
+            raise ParsingException("Only one WHERE allowed per SELECT")
+
+        where_expr = p.expr
         if not isinstance(where_expr, Operation):
             raise ParsingException(f"WHERE must contain an operation that evaluates to a boolean, got: {str(where_expr)}")
+        select.where = where_expr
+        return select
 
-        return Select(targets=targets,
-                      from_table=from_table,
-                      where=where_expr)
-
-    @_('SELECT expr_list FROM from_table')
+    @_('select FROM identifier')
     def select(self, p):
-        targets = list(p.expr_list)
-        from_table = p.from_table
-        return Select(targets=targets, from_table=from_table)
+        select = p.select
+        if select.from_table:
+            raise ParsingException("Only one FROM allowed per SELECT")
+        select.from_table = p.identifier
+        return select
 
-    @_('SELECT expr_list')
+    @_('SELECT result_columns')
     def select(self, p):
-        targets = list(p.expr_list)
+        targets = p.result_columns
         return Select(targets=targets)
 
-    @_('identifier')
-    def from_table(self, p):
-        return p.identifier
+    @_('result_columns COMMA result_column')
+    def result_columns(self, p):
+        p.result_columns.append(p.result_column)
+        return p.result_columns
+
+    @_('result_column')
+    def result_columns(self, p):
+        return [p.result_column]
+
+    @_('result_column AS identifier')
+    def result_column(self, p):
+        col = p.result_column
+        col.alias = p.identifier.value
+        return col
+
+    @_('expr')
+    def result_column(self, p):
+        return p.expr
+
+
+
+    # OPERATIONS
 
     @_('enumeration')
     def expr_list(self, p):
@@ -106,8 +179,6 @@ class SQLParser(Parser):
     @_('expr')
     def expr_list(self, p):
         return [p.expr]
-
-    # OPERATIONS
 
     @_('expr PLUS expr',
         'expr MINUS expr',
@@ -143,11 +214,6 @@ class SQLParser(Parser):
     @_('expr COMMA expr')
     def enumeration(self, p):
         return [p.expr0, p.expr1]
-
-    @_('expr AS identifier')
-    def expr(self, p):
-        p.expr.alias = p.identifier.value
-        return p.expr
 
     @_('identifier')
     def expr(self, p):
