@@ -7,6 +7,42 @@ from sql_parser.exceptions import ParsingException
 from sql_parser.lexer import SQLLexer
 
 
+def ensure_select_keyword_order(select, operation):
+    op_to_attr = {
+        'FROM': select.from_table,
+        'WHERE': select.where,
+        'GROUP BY': select.group_by,
+        'HAVING': select.having,
+        'ORDER BY': select.order_by,
+        'LIMIT': select.limit,
+        'OFFSET': select.offset,
+    }
+
+    requirements = {
+        'WHERE': ['FROM'],
+        'GROUP BY': ['FROM'],
+        'ORDER BY': ['FROM'],
+        'HAVING': ['GROUP BY'],
+    }
+
+    precedence = ['FROM', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY', 'LIMIT', 'OFFSET']
+
+    if op_to_attr[operation]:
+        raise ParsingException(f"Duplicate {operation} clause. Only one {operation} allowed per SELECT.")
+
+    op_requires = requirements.get(operation, [])
+
+    for req in op_requires:
+        if not op_to_attr[req]:
+            raise ParsingException(f"{operation} requires {req}")
+
+    op_precedence_pos = precedence.index(operation)
+
+    for next_op in precedence[op_precedence_pos:]:
+        if op_to_attr[next_op]:
+            raise ParsingException(f"{operation} must go after {next_op}")
+
+
 class SQLParser(Parser):
     tokens = SQLLexer.tokens
 
@@ -25,8 +61,7 @@ class SQLParser(Parser):
     @_('select OFFSET constant')
     def select(self, p):
         select = p.select
-        if select.offset:
-            raise ParsingException("Only one OFFSET allowed per SELECT")
+        ensure_select_keyword_order(select, 'OFFSET')
         if not isinstance(p.constant.value, int):
             raise ParsingException(f'OFFSET must be an integer value, got: {p.constant.value}')
 
@@ -36,27 +71,16 @@ class SQLParser(Parser):
     @_('select LIMIT constant')
     def select(self, p):
         select = p.select
-
-        if select.offset:
-            raise ParsingException(f'LIMIT must be placed before OFFSET')
-
-        if select.limit:
-            raise ParsingException("Only one LIMIT allowed per SELECT")
-
-        select.limit = p.constant
+        ensure_select_keyword_order(select, 'LIMIT')
         if not isinstance(p.constant.value, int):
             raise ParsingException(f'LIMIT must be an integer value, got: {p.constant.value}')
+        select.limit = p.constant
         return select
 
     @_('select ORDERBY ordering_terms')
     def select(self, p):
         select = p.select
-        if not select.from_table:
-            raise ParsingException(f'ORDER BY can only be used if FROM is present')
-
-        if select.order_by:
-            raise ParsingException("Only one ORDER BY allowed per SELECT")
-
+        ensure_select_keyword_order(select, 'ORDER BY')
         select.order_by = p.ordering_terms
         return select
 
@@ -85,13 +109,7 @@ class SQLParser(Parser):
     @_('select HAVING expr')
     def select(self, p):
         select = p.select
-
-        if not select.group_by:
-            raise ParsingException(f"HAVING can only be used if GROUP BY is present")
-
-        if select.having:
-            raise ParsingException("Only one HAVING allowed per SELECT")
-
+        ensure_select_keyword_order(select, 'HAVING')
         having = p.expr
         if not isinstance(having, Operation):
             raise ParsingException(
@@ -102,13 +120,7 @@ class SQLParser(Parser):
     @_('select GROUPBY expr_list')
     def select(self, p):
         select = p.select
-
-        if not select.where:
-            raise ParsingException(f"GROUP BY can only be used if WHERE is present")
-
-        if select.group_by:
-            raise ParsingException("Only one GROUP BY allowed per SELECT")
-
+        ensure_select_keyword_order(select, 'GROUP BY')
         group_by = p.expr_list
         if not isinstance(group_by, list):
             group_by = [group_by]
@@ -123,13 +135,7 @@ class SQLParser(Parser):
     @_('select WHERE expr')
     def select(self, p):
         select = p.select
-
-        if not select.from_table:
-            raise ParsingException(f"WHERE can only be used if FROM is present")
-
-        if select.where:
-            raise ParsingException("Only one WHERE allowed per SELECT")
-
+        ensure_select_keyword_order(select, 'WHERE')
         where_expr = p.expr
         if not isinstance(where_expr, Operation):
             raise ParsingException(f"WHERE must contain an operation that evaluates to a boolean, got: {str(where_expr)}")
@@ -139,8 +145,7 @@ class SQLParser(Parser):
     @_('select FROM identifier')
     def select(self, p):
         select = p.select
-        if select.from_table:
-            raise ParsingException("Only one FROM allowed per SELECT")
+        ensure_select_keyword_order(select, 'FROM')
         select.from_table = p.identifier
         return select
 

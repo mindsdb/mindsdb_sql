@@ -1,3 +1,5 @@
+import itertools
+
 import pytest
 
 from sql_parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation
@@ -377,4 +379,38 @@ class TestParser:
         with pytest.raises(ParsingException):
             ast = SQLParser().parse(tokens)
 
+    def test_limit_raises_before_order_by(self):
+        sql = f'SELECT column FROM table LIMIT 1 ORDER BY column ASC'
+        tokens = SQLLexer().tokenize(sql)
+        with pytest.raises(ParsingException):
+            ast = SQLParser().parse(tokens)
 
+    def test_offset_raises_before_order_by(self):
+        sql = f'SELECT column FROM table OFFSET 1 ORDER BY column ASC'
+        tokens = SQLLexer().tokenize(sql)
+        with pytest.raises(ParsingException):
+            ast = SQLParser().parse(tokens)
+
+    def test_select_order(self):
+        components = ['FROM table',
+                      'WHERE column = 1',
+                      'GROUP BY column',
+                      'HAVING column != 2',
+                      'ORDER BY column ASC',
+                      'LIMIT 1',
+                      'OFFSET 1']
+
+        good_sql = 'SELECT column ' + '\n'.join(components)
+        tokens = SQLLexer().tokenize(good_sql)
+        ast = SQLParser().parse(tokens)
+        assert ast
+
+        for perm in itertools.permutations(components):
+            bad_sql = 'SELECT column ' + '\n'.join(perm)
+            if bad_sql == good_sql:
+                continue
+
+            tokens = SQLLexer().tokenize(bad_sql)
+            with pytest.raises(ParsingException) as excinfo:
+                ast = SQLParser().parse(tokens)
+            assert 'must go after' in str(excinfo.value) or ' requires ' in str(excinfo.value)
