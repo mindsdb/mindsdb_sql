@@ -16,12 +16,12 @@ class Operation(ASTNode):
 
     def to_string(self, *args, **kwargs):
         args_str = ','.join([arg.to_string() for arg in self.args])
-        return self.maybe_add_alias(f'{self.op}({args_str})')
+        return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.op}({args_str})'))
 
 
 class BinaryOperation(Operation):
     def to_string(self, *args, **kwargs):
-        return self.maybe_add_alias(f'{self.args[0].to_string()} {self.op} {self.args[1].to_string()}')
+        return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.args[0].to_string()} {self.op} {self.args[1].to_string()}'))
 
     def assert_arguments(self):
         if len(self.args) != 2:
@@ -30,7 +30,7 @@ class BinaryOperation(Operation):
 
 class UnaryOperation(Operation):
     def to_string(self, *args, **kwargs):
-        return self.maybe_add_alias(f'{self.op} {self.args[0].to_string()}')
+        return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.op} {self.args[0].to_string()}'))
 
     def assert_arguments(self):
         if len(self.args) != 1:
@@ -42,11 +42,13 @@ class UnaryOperation(Operation):
 #         return self.maybe_add_alias(f'{self.args[0].to_string()} {self.op}')
 #
 #
-# class Function(Operation):
-#     def to_string(self, *args, **kwargs):
-#         args_str = ', '.join([arg.to_string() for arg in self.args])
-#         return self.maybe_add_alias(f'{self.op}({args_str})')
-#
+
+
+class Function(Operation):
+    def to_string(self, *args, **kwargs):
+        args_str = ', '.join([arg.to_string() for arg in self.args])
+        return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.op}({args_str})'))
+
 #
 # class AggregateFunction(Function):
 #     pass

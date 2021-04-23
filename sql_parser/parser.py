@@ -1,7 +1,8 @@
 from sly import Parser
 
 from sql_parser.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation
-from sql_parser.ast.operation import Operation
+from sql_parser.ast.base import ASTNode
+from sql_parser.ast.operation import Operation, Function
 from sql_parser.ast.order_by import OrderBy
 from sql_parser.exceptions import ParsingException
 from sql_parser.lexer import SQLLexer
@@ -149,6 +150,11 @@ class SQLParser(Parser):
         select.from_table = p.identifier
         return select
 
+    @_('SELECT DISTINCT result_columns')
+    def select(self, p):
+        targets = p.result_columns
+        return Select(targets=targets, distinct=True)
+
     @_('SELECT result_columns')
     def select(self, p):
         targets = p.result_columns
@@ -177,6 +183,16 @@ class SQLParser(Parser):
 
     # OPERATIONS
 
+    @_('ID LPAREN expr_list RPAREN')
+    def expr(self, p):
+        return Function(op=p.ID, args=p.expr_list)
+
+    @_('LPAREN expr RPAREN')
+    def expr(self, p):
+        if isinstance(p.expr, ASTNode):
+            p.expr.parentheses = True
+        return p.expr
+
     @_('enumeration')
     def expr_list(self, p):
         return p.enumeration
@@ -184,6 +200,10 @@ class SQLParser(Parser):
     @_('expr')
     def expr_list(self, p):
         return [p.expr]
+
+    @_('STAR')
+    def identifier(self, p):
+        return Identifier(value=p.STAR)
 
     @_('expr PLUS expr',
         'expr MINUS expr',
@@ -212,6 +232,7 @@ class SQLParser(Parser):
         return UnaryOperation(op=p[0], args=(p.expr,))
 
     # EXPRESSIONS
+
     @_('enumeration COMMA expr')
     def enumeration(self, p):
         return p.enumeration + [p.expr]
@@ -246,6 +267,6 @@ class SQLParser(Parser):
 
     def error(self, p):
         if p:
-            raise ParsingException(f"Syntax error at token {p.type}")
+            raise ParsingException(f"Syntax error at token {p.type} {p.value}")
         else:
             raise ParsingException("Syntax error at EOF")

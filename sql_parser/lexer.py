@@ -4,7 +4,7 @@ from sly import Lexer
 class SQLLexer(Lexer):
     tokens = {
         # Keywords
-        KEYWORD, SELECT, FROM, WHERE, AS,
+        SELECT, DISTINCT, FROM, WHERE, AS,
         LIMIT, OFFSET, ASC, DESC,
         GROUPBY, HAVING, ORDERBY,
         STAR,
@@ -26,6 +26,7 @@ class SQLLexer(Lexer):
     ASC = r'ASC'
     DESC = r'DESC'
     SELECT = r'SELECT'
+    DISTINCT = r'DISTINCT'
     FROM = r'FROM'
     AS = r'AS'
     WHERE = r'WHERE'

@@ -1,10 +1,17 @@
 class ASTNode:
-    def __init__(self, alias=None):
+    def __init__(self, alias=None, parentheses=False):
         self.alias = alias
+        self.parentheses = parentheses
 
     def maybe_add_alias(self, some_str):
         if self.alias:
             return f'{some_str} AS {self.alias}'
+        else:
+            return some_str
+
+    def maybe_add_parentheses(self, some_str):
+        if self.parentheses:
+            return f'({some_str})'
         else:
             return some_str
 

@@ -3,13 +3,15 @@ import itertools
 import pytest
 
 from sql_parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation
+from sql_parser.ast.operation import Function
 from sql_parser.ast.order_by import OrderBy
 from sql_parser.exceptions import ParsingException
 from sql_parser.lexer import SQLLexer
 from sql_parser.parser import SQLParser
 
 
-class TestParser:
+
+class TestSelectStructure:
     def test_select_constant(self):
         for value in [1, 1.0, 'string']:
             sql = f'SELECT {value}' if not isinstance(value, str) else f"SELECT \"{value}\""
@@ -96,81 +98,6 @@ class TestParser:
         tokens = SQLLexer().tokenize(sql)
         with pytest.raises(ParsingException):
             ast = SQLParser().parse(tokens)
-
-    def test_select_binary_operations(self):
-        for op in ['+', '-', '/', '*', '%', '=', '!=', '>', '<', '>=', '<=',
-                   'IS', 'IS NOT', 'LIKE', 'IN', 'AND', 'OR', ]:
-            sql = f'SELECT column1 {op} column2 FROM table'
-            tokens = SQLLexer().tokenize(sql)
-            ast = SQLParser().parse(tokens)
-
-            assert isinstance(ast, Select)
-            assert len(ast.targets) == 1
-            assert isinstance(ast.targets[0], BinaryOperation)
-            assert ast.targets[0].op == op
-            assert len(ast.targets[0].args) == 2
-            assert isinstance(ast.targets[0].args[0], Identifier)
-            assert ast.targets[0].args[0].value == 'column1'
-            assert isinstance(ast.targets[0].args[1], Identifier)
-            assert ast.targets[0].args[1].value == 'column2'
-
-            assert str(ast) == sql
-
-    def test_operator_precedence_sum_mult(self):
-        sql = f'SELECT column1 + column2 * column3 FROM table'
-        tokens = SQLLexer().tokenize(sql)
-        ast = SQLParser().parse(tokens)
-
-        assert isinstance(ast, Select)
-        assert len(ast.targets) == 1
-        assert isinstance(ast.targets[0], BinaryOperation)
-        assert ast.targets[0].op == '+'
-        assert len(ast.targets[0].args) == 2
-        assert isinstance(ast.targets[0].args[0], Identifier)
-        assert ast.targets[0].args[0].value == 'column1'
-        inner_op = ast.targets[0].args[1]
-        assert isinstance(inner_op, BinaryOperation)
-        assert len(inner_op.args) == 2
-        assert inner_op.op == '*'
-        assert inner_op.args[0].value == 'column2'
-        assert inner_op.args[1].value == 'column3'
-        assert str(ast) == sql
-
-    def test_operator_precedence_or_and(self):
-        sql = f'SELECT column1 OR column2 AND column3 FROM table'
-        tokens = SQLLexer().tokenize(sql)
-        ast = SQLParser().parse(tokens)
-
-        assert isinstance(ast, Select)
-        assert len(ast.targets) == 1
-        assert isinstance(ast.targets[0], BinaryOperation)
-        assert ast.targets[0].op == 'OR'
-        assert len(ast.targets[0].args) == 2
-        assert isinstance(ast.targets[0].args[0], Identifier)
-        assert ast.targets[0].args[0].value == 'column1'
-        inner_op = ast.targets[0].args[1]
-        assert isinstance(inner_op, BinaryOperation)
-        assert len(inner_op.args) == 2
-        assert inner_op.op == 'AND'
-        assert inner_op.args[0].value == 'column2'
-        assert inner_op.args[1].value == 'column3'
-        assert str(ast) == sql
-
-    def test_select_unary_operations(self):
-        for op in ['-', 'NOT']:
-            sql = f'SELECT {op} column FROM table'
-            tokens = SQLLexer().tokenize(sql)
-            ast = SQLParser().parse(tokens)
-
-            assert isinstance(ast, Select)
-            assert len(ast.targets) == 1
-            assert isinstance(ast.targets[0], UnaryOperation)
-            assert ast.targets[0].op == op
-            assert len(ast.targets[0].args) == 1
-            assert isinstance(ast.targets[0].args[0], Identifier)
-            assert ast.targets[0].args[0].value == 'column'
-
-            assert str(ast) == sql
 
     def test_select_where(self):
         sql = f'SELECT column FROM table WHERE column != 1'
