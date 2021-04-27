@@ -5,9 +5,11 @@ class SQLLexer(Lexer):
     tokens = {
         # Keywords
         SELECT, DISTINCT, FROM, WHERE, AS,
-        LIMIT, OFFSET, ASC, DESC,
-        GROUPBY, HAVING, ORDERBY,
+        LIMIT, OFFSET, ASC, DESC, NULLS_FIRST, NULLS_LAST,
+        GROUP_BY, HAVING, ORDER_BY,
         STAR,
+
+        INNER_JOIN, OUTER_JOIN, CROSS_JOIN, LEFT_JOIN, RIGHT_JOIN, FULL_JOIN, ON,
 
         # Symbols
         COMMA, LPAREN, RPAREN,
@@ -23,8 +25,11 @@ class SQLLexer(Lexer):
     ignore = ' \t\n'
 
     # Tokens
+    ON = r'ON'
     ASC = r'ASC'
     DESC = r'DESC'
+    NULLS_FIRST = r'NULLS FIRST'
+    NULLS_LAST = r'NULLS LAST'
     SELECT = r'SELECT'
     DISTINCT = r'DISTINCT'
     FROM = r'FROM'
@@ -32,10 +37,18 @@ class SQLLexer(Lexer):
     WHERE = r'WHERE'
     LIMIT = r'LIMIT'
     OFFSET = r'OFFSET'
-    GROUPBY = r'GROUP BY'
+    GROUP_BY = r'GROUP BY'
     HAVING = r'HAVING'
-    ORDERBY = r'ORDER BY'
+    ORDER_BY = r'ORDER BY'
     STAR = r'\*'
+
+    INNER_JOIN = r'INNER JOIN'
+    OUTER_JOIN = r'OUTER JOIN'
+    CROSS_JOIN = r'CROSS JOIN'
+    LEFT_JOIN = r'LEFT JOIN'
+    RIGHT_JOIN = r'RIGHT JOIN'
+    FULL_JOIN = r'FULL JOIN'
+
 
     COMMA = r','
     LPAREN = r'\('

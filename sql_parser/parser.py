@@ -1,6 +1,6 @@
 from sly import Parser
 
-from sql_parser.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation
+from sql_parser.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join
 from sql_parser.ast.base import ASTNode
 from sql_parser.ast.operation import Operation, Function
 from sql_parser.ast.order_by import OrderBy
@@ -78,7 +78,7 @@ class SQLParser(Parser):
         select.limit = p.constant
         return select
 
-    @_('select ORDERBY ordering_terms')
+    @_('select ORDER_BY ordering_terms')
     def select(self, p):
         select = p.select
         ensure_select_keyword_order(select, 'ORDER BY')
@@ -95,9 +95,15 @@ class SQLParser(Parser):
     def ordering_terms(self, p):
         return [p.ordering_term]
 
-    @_('identifier')
+    @_('ordering_term NULLS_FIRST')
     def ordering_term(self, p):
-        return OrderBy(field=p.identifier, direction='default')
+        p.ordering_term.nulls = p.NULLS_FIRST
+        return p.ordering_term
+
+    @_('ordering_term NULLS_LAST')
+    def ordering_term(self, p):
+        p.ordering_term.nulls = p.NULLS_LAST
+        return p.ordering_term
 
     @_('identifier DESC')
     def ordering_term(self, p):
@@ -106,6 +112,10 @@ class SQLParser(Parser):
     @_('identifier ASC')
     def ordering_term(self, p):
         return OrderBy(field=p.identifier, direction='ASC')
+
+    @_('identifier')
+    def ordering_term(self, p):
+        return OrderBy(field=p.identifier, direction='default')
 
     @_('select HAVING expr')
     def select(self, p):
@@ -118,7 +128,7 @@ class SQLParser(Parser):
         select.having = having
         return select
 
-    @_('select GROUPBY expr_list')
+    @_('select GROUP_BY expr_list')
     def select(self, p):
         select = p.select
         ensure_select_keyword_order(select, 'GROUP BY')
@@ -143,12 +153,47 @@ class SQLParser(Parser):
         select.where = where_expr
         return select
 
-    @_('select FROM identifier')
+    @_('select FROM from_table')
     def select(self, p):
         select = p.select
         ensure_select_keyword_order(select, 'FROM')
-        select.from_table = p.identifier
+        select.from_table = p.from_table
         return select
+
+    @_('table_or_subquery join_clause table_or_subquery')
+    def from_table(self, p):
+        return Join(left=p.table_or_subquery0,
+                    right=p.table_or_subquery1,
+                    join_type=p.join_clause)
+
+    @_('table_or_subquery COMMA table_or_subquery')
+    def from_table(self, p):
+        return Join(left=p.table_or_subquery0,
+                    right=p.table_or_subquery1,
+                    join_type='INNER JOIN',
+                    implicit=True)
+
+    @_('table_or_subquery join_clause table_or_subquery ON expr')
+    def from_table(self, p):
+        return Join(left=p.table_or_subquery0,
+                    right=p.table_or_subquery1,
+                    join_type=p.join_clause,
+                    condition=p.expr)
+
+    @_('table_or_subquery')
+    def from_table(self, p):
+        return p.table_or_subquery
+
+    @_('identifier')
+    def table_or_subquery(self, p):
+        return p.identifier
+
+    @_('LEFT_JOIN')
+    @_('RIGHT_JOIN')
+    @_('INNER_JOIN')
+    @_('FULL_JOIN')
+    def join_clause(self, p):
+        return p[0]
 
     @_('SELECT DISTINCT result_columns')
     def select(self, p):
@@ -267,6 +312,6 @@ class SQLParser(Parser):
 
     def error(self, p):
         if p:
-            raise ParsingException(f"Syntax error at token {p.type} {p.value}")
+            raise ParsingException(f"Syntax error at token {p.type}: \"{p.value}\"")
         else:
             raise ParsingException("Syntax error at EOF")

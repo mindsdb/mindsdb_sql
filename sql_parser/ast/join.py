@@ -1,21 +1,16 @@
-from dfsql.sql_parser.base import Statement
+from sql_parser.ast.base import ASTNode
 
 
-LOOKUP_JOIN_TYPE = {
-    0: 'INNER JOIN',
-    1: 'LEFT JOIN',
-    2: 'FULL JOIN',
-    3: 'RIGHT JOIN'
-}
-
-
-class Join(Statement):
-    def __init__(self, join_type, left, right, condition, *args, **kwargs):
+class Join(ASTNode):
+    def __init__(self, join_type, left, right, condition=None, implicit=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.join_type = join_type
         self.left = left
         self.right = right
         self.condition = condition
+        self.implicit = implicit
 
     def to_string(self, *args, **kwargs):
-        return f'{self.left.to_string()} {self.join_type} {self.right.to_string()} ON {self.condition.to_string()}'
+        join_type_str = f' {self.join_type} ' if not self.implicit else ', '
+        condition_str = f' ON {self.condition.to_string()}' if self.condition else ''
+        return f'{self.left.to_string()}{join_type_str}{self.right.to_string()}{condition_str}'
