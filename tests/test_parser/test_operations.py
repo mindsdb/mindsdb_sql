@@ -1,7 +1,8 @@
 import pytest
 
 from sql_parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation
-from sql_parser.ast.operation import Function
+from sql_parser.ast.operation import Function, Operation
+from sql_parser.ast.tuple import Tuple
 from sql_parser.exceptions import ParsingException
 from sql_parser.lexer import SQLLexer
 from sql_parser.parser import SQLParser
@@ -158,3 +159,19 @@ class TestOperations:
             assert ast.targets[0].args[0].value == 'column1'
             assert isinstance(ast.targets[0].args[1], Identifier)
             assert ast.targets[0].args[1].value == 'column2'
+
+    def test_select_in_operation(self):
+        sql = """SELECT * FROM t1 WHERE col1 IN ("a", "b")"""
+
+        tokens = SQLLexer().tokenize(sql)
+        ast = SQLParser().parse(tokens)
+
+        assert isinstance(ast, Select)
+        assert ast.where
+
+        expected_where = BinaryOperation(op='IN',
+                                         args=[
+                                             Identifier('col1'),
+                                             Tuple(items=[Constant('a'), Constant("b")]),
+                                         ])
+        assert ast.where == expected_where

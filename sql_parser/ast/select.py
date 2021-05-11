@@ -25,15 +25,15 @@ class Select(ASTNode):
         self.limit = limit
         self.offset = offset
 
-    def maybe_add_alias(self, some_str, is_top_select):
+    def maybe_add_alias(self, some_str):
         if self.alias:
-            return f'({some_str}) as {self.alias}'
-        elif is_top_select:
-            return some_str
-        else:
+            return f'({some_str}) AS {self.alias}'
+        elif self.parentheses:
             return f'({some_str})'
+        else:
+            return some_str
 
-    def to_string(self, *args, is_top_select=False, **kwargs):
+    def to_string(self, *args, **kwargs):
         out_str = """SELECT"""
 
         if self.distinct:
@@ -43,8 +43,8 @@ class Select(ASTNode):
         out_str += f' {targets_str}'
 
         if self.from_table is not None:
-            from_list_str = str(self.from_table)
-            out_str += f' FROM {from_list_str}'
+            from_table_str = str(self.from_table)
+            out_str += f' FROM {from_table_str}'
 
         if self.where is not None:
             out_str += f' WHERE {self.where.to_string()}'
@@ -66,7 +66,7 @@ class Select(ASTNode):
 
         if self.offset is not None:
             out_str += f' OFFSET {self.offset.to_string()}'
-        return self.maybe_add_alias(out_str, is_top_select=is_top_select)
+        return self.maybe_add_alias(out_str)
 
     def __str__(self):
-        return self.to_string(is_top_select=True)
+        return self.to_string()

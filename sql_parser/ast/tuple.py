@@ -1,7 +1,7 @@
-from dfsql.sql_parser.base import Statement
+from sql_parser.ast.base import ASTNode
 
 
-class List(Statement):
+class Tuple(ASTNode):
     def __init__(self, items, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.items = items

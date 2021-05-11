@@ -14,14 +14,19 @@ class Operation(ASTNode):
         if not self.args:
             raise ParsingException(f'Expected arguments for operation "{self.op}"')
 
+    def get_arg_strings(self):
+        return [arg.to_string() for arg in self.args]
+
     def to_string(self, *args, **kwargs):
-        args_str = ','.join([arg.to_string() for arg in self.args])
+        arg_strs = self.get_arg_strings()
+        args_str = ','.join(arg_strs)
         return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.op}({args_str})'))
 
 
 class BinaryOperation(Operation):
     def to_string(self, *args, **kwargs):
-        return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.args[0].to_string()} {self.op} {self.args[1].to_string()}'))
+        arg_strs = arg_strs = self.get_arg_strings()
+        return self.maybe_add_alias(self.maybe_add_parentheses(f'{arg_strs[0]} {self.op} {arg_strs[1]}'))
 
     def assert_arguments(self):
         if len(self.args) != 2:

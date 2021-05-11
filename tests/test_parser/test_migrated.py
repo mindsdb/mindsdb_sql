@@ -14,36 +14,7 @@ def parse_sql(sql):
 
 
 class TestMigrated:
-    def test_select_from_subquery(self):
-        query = f"""SELECT * FROM (SELECT column1 FROM t1) as sub"""
-        assert str(parse_sql(query)) == query
-        assert str(parse_sql(query)) == str(Select(targets=[Identifier("*")],
-                                                   from_table=[
-                                                       Select(targets=[Identifier('column1')],
-                                                              from_table=[Identifier('t1')],
-                                                              alias='sub'),
-                                                   ]))
 
-    def test_select_subquery_target(self):
-        query = f"""SELECT *, (SELECT 1) FROM t1"""
-        assert str(parse_sql(query)) == query
-        assert str(parse_sql(query)) == str(Select(targets=[Identifier("*"), Select(targets=[Constant(1)])],
-                                                   from_table=[Identifier('t1')]))
-
-        query = f"""SELECT *, (SELECT 1) as ones FROM t1"""
-        assert str(parse_sql(query)) == query
-        assert str(parse_sql(query)) == str(Select(targets=[Identifier("*"), Select(targets=[Constant(1)], alias='ones')],
-                                                   from_table=[Identifier('t1')]))
-
-    def test_select_subquery_where(self):
-        query = f"""SELECT * WHERE column1 IN (SELECT column2 FROM t2)"""
-        assert str(parse_sql(query)) == query
-        assert str(parse_sql(query)) == str(Select(targets=[Identifier("*")],
-                                                   where=InOperation(args_=(
-                                                       Identifier('column1'),
-                                                       Select(targets=[Identifier('column2')],
-                                                              from_table=[Identifier('t2')])
-                                                   ))))
 
     def test_multiple_selects(self):
         query = f"""SELECT 1; SELECT 2"""

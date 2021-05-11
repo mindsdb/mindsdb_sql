@@ -87,7 +87,7 @@ class SQLLexer(Lexer):
         t.value = int(t.value)
         return t
 
-    @_(r'".*"')
+    @_(r'"[^"]*"')
     def STRING(self, t):
         t.value = t.value.strip('\"')
         return t

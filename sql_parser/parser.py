@@ -4,6 +4,7 @@ from sql_parser.ast import Constant, Identifier, Select, BinaryOperation, UnaryO
 from sql_parser.ast.base import ASTNode
 from sql_parser.ast.operation import Operation, Function
 from sql_parser.ast.order_by import OrderBy
+from sql_parser.ast.tuple import Tuple
 from sql_parser.exceptions import ParsingException
 from sql_parser.lexer import SQLLexer
 
@@ -58,7 +59,6 @@ class SQLParser(Parser):
         self.names = dict()
 
     # SELECT
-
     @_('select OFFSET constant')
     def select(self, p):
         select = p.select
@@ -184,6 +184,18 @@ class SQLParser(Parser):
     def from_table(self, p):
         return p.table_or_subquery
 
+    @_('table_or_subquery AS identifier')
+    def table_or_subquery(self, p):
+        entity = p.table_or_subquery
+        entity.alias = p.identifier.value
+        return entity
+
+    @_('LPAREN select RPAREN')
+    def table_or_subquery(self, p):
+        select = p.select
+        select.parentheses = True
+        return select
+
     @_('identifier')
     def table_or_subquery(self, p):
         return p.identifier
@@ -220,6 +232,12 @@ class SQLParser(Parser):
         col.alias = p.identifier.value
         return col
 
+    @_('LPAREN select RPAREN')
+    def result_column(self, p):
+        select = p.select
+        select.parentheses = True
+        return select
+
     @_('expr')
     def result_column(self, p):
         return p.expr
@@ -228,15 +246,15 @@ class SQLParser(Parser):
 
     # OPERATIONS
 
-    @_('ID LPAREN expr_list RPAREN')
-    def expr(self, p):
-        return Function(op=p.ID, args=p.expr_list)
-
     @_('LPAREN expr RPAREN')
     def expr(self, p):
         if isinstance(p.expr, ASTNode):
             p.expr.parentheses = True
         return p.expr
+
+    @_('ID LPAREN expr_list RPAREN')
+    def expr(self, p):
+        return Function(op=p.ID, args=p.expr_list)
 
     @_('enumeration')
     def expr_list(self, p):
@@ -246,9 +264,19 @@ class SQLParser(Parser):
     def expr_list(self, p):
         return [p.expr]
 
+    @_('LPAREN enumeration RPAREN')
+    def expr(self, p):
+        tup = Tuple(items=p.enumeration)
+        tup.parentheses = True
+        return tup
+
     @_('STAR')
     def identifier(self, p):
         return Identifier(value=p.STAR)
+
+    @_('expr IN select')
+    def expr(self, p):
+        return BinaryOperation(op='IN', args=(p.expr, p.select))
 
     @_('expr PLUS expr',
         'expr MINUS expr',

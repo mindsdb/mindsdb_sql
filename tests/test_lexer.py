@@ -23,6 +23,18 @@ class TestLexer:
             assert tokens[1].type == 'FLOAT'
             assert tokens[1].value == float
 
+    def test_select_strings(self):
+        sql = 'SELECT "a", "b", "c"'
+        tokens = list(SQLLexer().tokenize(sql))
+        assert tokens[0].type == 'SELECT'
+        assert tokens[1].type == 'STRING'
+        assert tokens[1].value == 'a'
+        assert tokens[2].type == 'COMMA'
+        assert tokens[3].type == 'STRING'
+        assert tokens[3].value == 'b'
+        assert tokens[5].type == 'STRING'
+        assert tokens[5].value == 'c'
+
     def test_binary_ops(self):
         for op, expected_type in [
             ('+', 'PLUS'),

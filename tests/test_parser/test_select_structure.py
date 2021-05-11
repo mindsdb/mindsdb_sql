@@ -460,3 +460,50 @@ class TestSelectStructure:
 
             ast = parse_sql(sql)
             assert ast == expected_ast
+
+    def test_select_from_subquery(self):
+        sql = f"""SELECT * FROM (SELECT column1 FROM t1) AS sub"""
+        expected_ast = Select(targets=[Identifier("*")],
+                                                   from_table=Select(targets=[Identifier('column1')],
+                                                              from_table=Identifier('t1'),
+                                                              alias='sub'))
+        ast = parse_sql(sql)
+        assert str(ast) == sql
+        assert ast == expected_ast
+
+        sql = f"""SELECT * FROM (SELECT column1 FROM t1)"""
+        expected_ast = Select(targets=[Identifier("*")],
+                              from_table=Select(targets=[Identifier('column1')],
+                                                from_table=Identifier('t1'),
+                                                parentheses=True))
+        ast = parse_sql(sql)
+        assert str(ast) == sql
+        assert ast == expected_ast
+
+    def test_select_subquery_target(self):
+        sql = f"""SELECT *, (SELECT 1) FROM t1"""
+        ast = parse_sql(sql)
+        expected_ast = Select(targets=[Identifier("*"), Select(targets=[Constant(1)], parentheses=True)],
+                              from_table=Identifier('t1'))
+        assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
+
+        sql = f"""SELECT *, (SELECT 1) AS ones FROM t1"""
+        ast = parse_sql(sql)
+        expected_ast = Select(targets=[Identifier("*"), Select(targets=[Constant(1)], alias='ones', parentheses=True)],
+                              from_table=Identifier('t1'))
+        assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
+
+    def test_select_subquery_where(self):
+        sql = f"""SELECT * WHERE column1 IN (SELECT column2 FROM t2)"""
+        ast = parse_sql(sql)
+        expected_ast = Select(targets=[Identifier("*")],
+                                                   where=BinaryOperation(args=(
+                                                       Identifier('column1'),
+                                                       Select(targets=[Identifier('column2')],
+                                                              from_table=[Identifier('t2')])
+                                                   )))
+        assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
+
