@@ -51,7 +51,7 @@ class TestLexer:
             ('AND', 'AND'),
             ('OR', 'OR'),
             ('IS', 'IS'),
-            ('IS NOT', 'ISNOT'),
+            # ('IS NOT', 'ISNOT'),
             ('LIKE', 'LIKE'),
             ('IN', 'IN'),
         ]:
@@ -68,6 +68,24 @@ class TestLexer:
 
             assert tokens[3].type == 'INTEGER'
             assert tokens[3].value == 2
+
+    def test_binary_ops_not(self):
+        for op, expected_type in [
+            ('IS NOT', 'IS NOT'),
+            ('NOT IN', 'NOT IN'),
+        ]:
+            sql = f'SELECT 1 {op} 2'
+            tokens = list(SQLLexer().tokenize(sql))
+            assert tokens[0].type == 'SELECT'
+            assert tokens[0].value == 'SELECT'
+
+            assert tokens[1].type == 'INTEGER'
+            assert tokens[1].value == 1
+
+            assert tokens[2].type + ' ' + tokens[3].type == expected_type
+
+            assert tokens[4].type == 'INTEGER'
+            assert tokens[4].value == 2
 
     def test_select_from(self):
         sql = f'SELECT column AS other_column FROM db.schema.table'

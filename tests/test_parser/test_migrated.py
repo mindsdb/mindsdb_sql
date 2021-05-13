@@ -14,53 +14,6 @@ def parse_sql(sql):
 
 
 class TestMigrated:
-
-
-    def test_multiple_selects(self):
-        query = f"""SELECT 1; SELECT 2"""
-        with pytest.raises(ParsingException):
-            parse_sql(query)
-
-    def test_unary_operations(self):
-        unary_operations = ['-', 'NOT']
-        for op in unary_operations:
-            query = f"""SELECT {op} column1"""
-            assert str(parse_sql(query)) == query
-            assert str(parse_sql(query)) == str(Select(targets=[UnaryOperation(op=op, args_=(Identifier("column1"), ))],))
-
-    def test_binary_operations(self):
-        unary_operations = ['AND', 'OR', '=', '<>',  '-', '+', '*', '/', '%', '^', '<', '>', '>=', '<=',]
-        for op in unary_operations:
-            query = f"""SELECT column1 {op} column2"""
-            assert str(parse_sql(query)) == query
-            assert str(parse_sql(query)) == str(Select(targets=[BinaryOperation(op=op, args_=(Identifier("column1"), Identifier("column2")))],))
-
-    def test_deep_binary_operation(self):
-        query = f"""SELECT column1 AND column2 AND column3"""
-        assert str(parse_sql(query)) == query
-        assert str(parse_sql(query)) == str(
-            Select(targets=[BinaryOperation(op='AND', args_=(Identifier("column1"),
-                                                             BinaryOperation(op='AND', args_=(
-                                                                Identifier("column2"), Identifier("column3")))
-                                                             ))]))
-
-    def test_operation_priority(self):
-        query = f"""SELECT column1 AND column2 OR column3"""
-        assert str(parse_sql(query)) == query
-        assert str(parse_sql(query)) == str(
-            Select(targets=[BinaryOperation(op='OR', args_=(BinaryOperation(op='AND', args_=(
-                Identifier("column1"), Identifier("column2"))),
-                                                            Identifier("column3"))
-                                            )]))
-
-        query = f"""SELECT column1 AND (column2 OR column3)"""
-        assert str(parse_sql(query)) == str(
-            Select(targets=[BinaryOperation(op='AND', args_=(Identifier("column1"),
-                                                             BinaryOperation(op='OR', args_=(
-                                                                 Identifier("column2"), Identifier("column3"))),
-                                                             )
-                                            )]))
-
     def test_unary_comparison_predicates(self):
         ops = ['IS NULL', 'IS NOT NULL', 'IS TRUE', 'IS FALSE']
         for op in ops:

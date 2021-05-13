@@ -1,6 +1,6 @@
 from sly import Parser
 
-from sql_parser.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join
+from sql_parser.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant
 from sql_parser.ast.base import ASTNode
 from sql_parser.ast.operation import Operation, Function
 from sql_parser.ast.order_by import OrderBy
@@ -278,6 +278,12 @@ class SQLParser(Parser):
     def expr(self, p):
         return BinaryOperation(op='IN', args=(p.expr, p.select))
 
+    @_('expr IS NOT expr',
+       'expr NOT IN expr')
+    def expr(self, p):
+        op = p[1] + ' ' + p[2]
+        return BinaryOperation(op=op, args=(p.expr0, p.expr1))
+
     @_('expr PLUS expr',
         'expr MINUS expr',
         'expr STAR expr',
@@ -292,7 +298,6 @@ class SQLParser(Parser):
         'expr AND expr',
         'expr OR expr',
         'expr NOT expr',
-        'expr ISNOT expr',
         'expr IS expr',
         'expr LIKE expr',
         'expr IN expr')
@@ -321,6 +326,18 @@ class SQLParser(Parser):
     @_('constant')
     def expr(self, p):
         return p.constant
+
+    @_('NULL')
+    def constant(self, p):
+        return NullConstant()
+
+    @_('TRUE')
+    def constant(self, p):
+        return  Constant(value=True)
+
+    @_('FALSE')
+    def constant(self, p):
+        return Constant(value=False)
 
     @_('INTEGER')
     def constant(self, p):

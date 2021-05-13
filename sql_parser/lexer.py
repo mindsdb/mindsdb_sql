@@ -17,11 +17,11 @@ class SQLLexer(Lexer):
         # Operators
         PLUS, MINUS, DIVIDE, MODULO,
         EQUALS, NEQUALS, GREATER, GEQ, LESS, LEQ,
-        AND, OR, NOT, IS, ISNOT,
+        AND, OR, NOT, IS,
         IN, LIKE,
 
         # Data types
-        ID, INTEGER, FLOAT, STRING }
+        ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE }
     ignore = ' \t\n'
 
     # Tokens
@@ -69,13 +69,15 @@ class SQLLexer(Lexer):
     AND = r'AND'
     OR = r'OR'
     NOT = r'NOT'
-    ISNOT = r'IS NOT'
     IS = r'IS'
     LIKE = r'LIKE'
     IN = r'IN'
 
     # Data types
     ID = r'[a-zA-Z][a-zA-Z_.0-9]+'
+    NULL = r'NULL'
+    TRUE = r'TRUE'
+    FALSE = r'FALSE'
 
     @_(r'\d+\.\d+')
     def FLOAT(self, t):

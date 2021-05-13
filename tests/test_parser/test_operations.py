@@ -1,6 +1,6 @@
 import pytest
 
-from sql_parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation
+from sql_parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, NullConstant
 from sql_parser.ast.operation import Function, Operation
 from sql_parser.ast.tuple import Tuple
 from sql_parser.exceptions import ParsingException
@@ -69,6 +69,20 @@ class TestOperations:
         assert inner_op.args[0].value == 'column1'
         assert inner_op.args[1].value == 'column2'
         assert str(ast) == sql
+
+    def test_operator_chained_and(self):
+        sql = f"""SELECT column1 AND column2 AND column3"""
+        tokens = SQLLexer().tokenize(sql)
+        ast = SQLParser().parse(tokens)
+
+        expected_ast = Select(targets=[BinaryOperation(op='AND', args=(Identifier("column1"),
+                                                                       BinaryOperation(op='AND', args=(
+                                                                           Identifier("column2"),
+                                                                           Identifier("column3")))
+                                                                       ))])
+
+        assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
 
     def test_operator_precedence_or_and(self):
         sql = f'SELECT column1 OR column2 AND column3 FROM table'
@@ -175,3 +189,37 @@ class TestOperations:
                                              Tuple(items=[Constant('a'), Constant("b")]),
                                          ])
         assert ast.where == expected_where
+
+    def test_unary_is_special_values(self):
+        args = [('NULL', NullConstant()), ('TRUE', Constant(value=True)), ('FALSE', Constant(value=False))]
+        for sql_arg, python_obj in args:
+            sql = f"""SELECT column1 IS {sql_arg}"""
+            tokens = SQLLexer().tokenize(sql)
+            ast = SQLParser().parse(tokens)
+
+            expected_ast = Select(targets=[BinaryOperation(op='IS', args=(Identifier("column1"), python_obj))], )
+
+            assert str(ast) == sql
+            assert str(ast) == str(expected_ast)
+
+    def test_unary_is_not_special_values(self):
+        args = [('NULL', NullConstant()), ('TRUE', Constant(value=True)), ('FALSE', Constant(value=False))]
+        for sql_arg, python_obj in args:
+            sql = f"""SELECT column1 IS NOT {sql_arg}"""
+            tokens = SQLLexer().tokenize(sql)
+            ast = SQLParser().parse(tokens)
+
+            expected_ast = Select(targets=[BinaryOperation(op='IS NOT', args=(Identifier("column1"), python_obj))], )
+
+            assert str(ast) == sql
+            assert str(ast) == str(expected_ast)
+
+    def test_not_in(self):
+        sql = f"""SELECT column1 NOT IN column2"""
+        tokens = SQLLexer().tokenize(sql)
+        ast = SQLParser().parse(tokens)
+
+        expected_ast = Select(targets=[BinaryOperation(op='NOT IN', args=(Identifier("column1"), Identifier("column2")))], )
+
+        assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
