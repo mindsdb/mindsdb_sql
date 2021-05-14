@@ -15,7 +15,10 @@ class ASTNode:
         else:
             return some_str
 
-    def to_string(self, *args, **kwargs):
+    def to_tree(self, *args, **kwargs):
+        pass
+
+    def to_string(self, *args, level=0, **kwargs):
         pass
 
     def __str__(self):

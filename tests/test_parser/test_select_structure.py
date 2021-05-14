@@ -126,7 +126,6 @@ class TestSelectStructure:
     def test_select_where(self):
         sql = f'SELECT column FROM table WHERE column != 1'
         ast = parse_sql(sql)
-
         assert isinstance(ast, Select)
         assert len(ast.targets) == 1
         assert isinstance(ast.targets[0], Identifier)
@@ -276,23 +275,30 @@ class TestSelectStructure:
 
     def test_select_order_by_elaborate(self):
         sql = """SELECT * FROM t1 ORDER BY column1 ASC, column2, column3 DESC NULLS FIRST"""
-        assert str(parse_sql(sql)) == sql
-        assert str(parse_sql(sql)) == str(Select(targets=[Identifier("*")],
+        ast = parse_sql(sql)
+        expected_ast = Select(targets=[Identifier("*")],
                                                    from_table=Identifier('t1'),
                                                    order_by=[
                                                        OrderBy(Identifier('column1'), direction='ASC'),
                                                        OrderBy(Identifier('column2')),
                                                        OrderBy(Identifier('column3'), direction='DESC',
                                                                nulls='NULLS FIRST')],
-                                                   ))
+                                                   )
+
+
+        assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
 
     def test_select_limit_offset_elaborate(self):
         sql = """SELECT * FROM t1 LIMIT 1 OFFSET 2"""
-        assert str(parse_sql(sql)) == sql
-        assert str(parse_sql(sql)) == str(Select(targets=[Identifier("*")],
+        ast = parse_sql(sql)
+        expected_ast = Select(targets=[Identifier("*")],
                                                    from_table=Identifier('t1'),
                                                    limit=Constant(1),
-                                                   offset=Constant(2)))
+                                                   offset=Constant(2))
+
+        assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
 
     def test_having_raises_duplicate(self):
         sql = f'SELECT column FROM table GROUP BY col HAVING col > 1 HAVING col > 1'
@@ -426,6 +432,7 @@ class TestSelectStructure:
 
                                               ))
         ast = parse_sql(sql)
+
         assert ast == expected_ast
 
     def test_select_from_implicit_join(self):
@@ -496,14 +503,16 @@ class TestSelectStructure:
         assert str(ast) == str(expected_ast)
 
     def test_select_subquery_where(self):
-        sql = f"""SELECT * WHERE column1 IN (SELECT column2 FROM t2)"""
+        sql = f"""SELECT * FROM tab1 WHERE column1 IN (SELECT column2 FROM t2)"""
         ast = parse_sql(sql)
         expected_ast = Select(targets=[Identifier("*")],
-                                                   where=BinaryOperation(args=(
-                                                       Identifier('column1'),
-                                                       Select(targets=[Identifier('column2')],
-                                                              from_table=[Identifier('t2')])
-                                                   )))
+                              from_table=Identifier('tab1'),
+                              where=BinaryOperation(op='IN',
+                                                    args=(
+                                                        Identifier('column1'),
+                                                        Select(targets=[Identifier('column2')],
+                                                               from_table=Identifier('t2'),
+                                                               parentheses=True)
+                                                    )))
         assert str(ast) == sql
         assert str(ast) == str(expected_ast)
-

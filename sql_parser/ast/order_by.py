@@ -1,4 +1,5 @@
 from sql_parser.ast.base import ASTNode
+from sql_parser.utils import indent
 
 
 class OrderBy(ASTNode):
@@ -7,6 +8,9 @@ class OrderBy(ASTNode):
         self.field = field
         self.direction = direction
         self.nulls = nulls
+
+    def to_tree(self, *args, level=0, **kwargs):
+        return indent(level) + f'OrderBy(field={self.field.to_tree()}, direction={repr(self.direction)}, nulls={repr(self.nulls)})'
 
     def to_string(self, *args, **kwargs):
         out_str = self.field.to_string()

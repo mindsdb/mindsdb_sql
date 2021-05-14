@@ -1,5 +1,6 @@
 from sql_parser.ast.base import ASTNode
 from sql_parser.exceptions import ParsingException
+from sql_parser.utils import indent
 
 
 class Operation(ASTNode):
@@ -14,18 +15,24 @@ class Operation(ASTNode):
         if not self.args:
             raise ParsingException(f'Expected arguments for operation "{self.op}"')
 
-    def get_arg_strings(self):
-        return [arg.to_string() for arg in self.args]
+    def to_tree(self, *args, level=0, **kwargs):
+        ind = indent(level)
+        ind1 = indent(level+1)
+
+        arg_trees = [arg.to_tree(level=level+2) for arg in self.args]
+        arg_trees_str = ",\n".join(arg_trees)
+        out_str = f'{ind}Operation(op={repr(self.op)},\n{ind1}args=(\n{arg_trees_str}\n{ind1})\n{ind})'
+        return out_str
 
     def to_string(self, *args, **kwargs):
-        arg_strs = self.get_arg_strings()
+        arg_strs = [arg.to_string() for arg in self.args]
         args_str = ','.join(arg_strs)
         return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.op}({args_str})'))
 
 
 class BinaryOperation(Operation):
     def to_string(self, *args, **kwargs):
-        arg_strs = arg_strs = self.get_arg_strings()
+        arg_strs = arg_strs = [arg.to_string() for arg in self.args]
         return self.maybe_add_alias(self.maybe_add_parentheses(f'{arg_strs[0]} {self.op} {arg_strs[1]}'))
 
     def assert_arguments(self):

@@ -59,6 +59,7 @@ class SQLParser(Parser):
         self.names = dict()
 
     # SELECT
+
     @_('select OFFSET constant')
     def select(self, p):
         select = p.select
@@ -246,6 +247,12 @@ class SQLParser(Parser):
 
     # OPERATIONS
 
+    @_('LPAREN select RPAREN')
+    def expr(self, p):
+        select = p.select
+        select.parentheses = True
+        return select
+
     @_('LPAREN expr RPAREN')
     def expr(self, p):
         if isinstance(p.expr, ASTNode):
@@ -274,9 +281,6 @@ class SQLParser(Parser):
     def identifier(self, p):
         return Identifier(value=p.STAR)
 
-    @_('expr IN select')
-    def expr(self, p):
-        return BinaryOperation(op='IN', args=(p.expr, p.select))
 
     @_('expr IS NOT expr',
        'expr NOT IN expr')

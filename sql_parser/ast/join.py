@@ -1,4 +1,5 @@
 from sql_parser.ast.base import ASTNode
+from sql_parser.utils import indent
 
 
 class Join(ASTNode):
@@ -9,6 +10,17 @@ class Join(ASTNode):
         self.right = right
         self.condition = condition
         self.implicit = implicit
+
+    def to_tree(self, *args, level=0, **kwargs):
+        ind = indent(level)
+        ind1 = indent(level + 1)
+        args = f'implicit={repr(self.implicit)}, join_type={repr(self.join_type)}'
+        left_str = f'\n{ind1}left=\n{self.left.to_tree(level=level+2)}'
+        right_str = f'\n{ind1}right=\n{self.right.to_tree(level=level+2)}'
+        condition_str = f'\n{ind1}condition=\n{self.condition.to_tree(level=level+2)}'
+
+        out_str = f'{ind}Join({args},{left_str},{right_str},{condition_str}\n{ind})'
+        return out_str
 
     def to_string(self, *args, **kwargs):
         join_type_str = f' {self.join_type} ' if not self.implicit else ', '

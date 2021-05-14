@@ -1,10 +1,15 @@
 from sql_parser.ast.base import ASTNode
+from sql_parser.utils import indent
 
 
 class Constant(ASTNode):
     def __init__(self, value, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.value = value
+
+    def to_tree(self, *args, level=0, **kwargs):
+        alias_str = f', alias={repr(self.alias)}' if self.alias else ''
+        return indent(level) + f'Constant(value={repr(self.value)}{alias_str})'
 
     def to_string(self, *args, **kwargs):
         if isinstance(self.value, str):
@@ -19,6 +24,9 @@ class Constant(ASTNode):
 class NullConstant(Constant):
     def __init__(self, *args, **kwargs):
         super().__init__(value='NULL', *args, **kwargs)
+
+    def to_tree(self, *args, level=0, **kwargs):
+        return '\t'*level +  'NullConstant()'
 
     def to_string(self, *args, **kwargs):
         return 'NULL'
