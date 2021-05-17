@@ -49,10 +49,10 @@ class SQLParser(Parser):
     tokens = SQLLexer.tokens
 
     precedence = (
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS),
         ('left', PLUS, MINUS),
         ('left', STAR, DIVIDE),
-        ('right', UMINUS, UNOT),  # Unary minus operator
+        ('right', UMINUS, UNOT),  # Unary minus operator, unary not
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS),
     )
 
     def __init__(self):

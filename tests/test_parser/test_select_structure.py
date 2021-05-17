@@ -559,3 +559,19 @@ class TestSelectStructure:
         )
 
         assert str(ast) == str(expected_ast)
+
+    def test_where_not_order(self):
+        sql = "SELECT col1 FROM tab WHERE NOT col1 = \"FAMILY\""
+        ast = parse_sql(sql)
+
+        expected_ast = Select(targets=[Identifier('col1')],
+                              from_table=Identifier('tab'),
+                              where=UnaryOperation(op='NOT',
+                                   args=(
+                                      BinaryOperation(op='=',
+                                                      args=(Identifier('col1'), Constant('FAMILY'))),
+                                   )
+                              )
+                          )
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
