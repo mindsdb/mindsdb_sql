@@ -1,4 +1,4 @@
-from sql_parser.lexer import SQLLexer
+from mindsdb_sql.lexer import SQLLexer
 
 
 class TestLexer:

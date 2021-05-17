@@ -1,7 +1,7 @@
 import setuptools
 
 about = {}
-with open("sql_parser/__about__.py") as fp:
+with open("mindsdb_sql/__about__.py") as fp:
     exec(fp.read(), about)
 
 

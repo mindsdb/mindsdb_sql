@@ -2,14 +2,14 @@ import itertools
 
 import pytest
 
-from sql_parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, TypeCast
-from sql_parser.ast.join import Join
-from sql_parser.ast.operation import Function
-from sql_parser.ast.order_by import OrderBy
-from sql_parser.ast.tuple import Tuple
-from sql_parser.exceptions import ParsingException
-from sql_parser.lexer import SQLLexer
-from sql_parser.parser import SQLParser
+from mindsdb_sql.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, TypeCast
+from mindsdb_sql.ast.join import Join
+from mindsdb_sql.ast.operation import Function
+from mindsdb_sql.ast.order_by import OrderBy
+from mindsdb_sql.ast.tuple import Tuple
+from mindsdb_sql.exceptions import ParsingException
+from mindsdb_sql.lexer import SQLLexer
+from mindsdb_sql.parser import SQLParser
 
 
 def parse_sql(sql):

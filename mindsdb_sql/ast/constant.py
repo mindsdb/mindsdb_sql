@@ -1,5 +1,5 @@
-from sql_parser.ast.base import ASTNode
-from sql_parser.utils import indent
+from mindsdb_sql.ast.base import ASTNode
+from mindsdb_sql.utils import indent
 
 
 class Constant(ASTNode):

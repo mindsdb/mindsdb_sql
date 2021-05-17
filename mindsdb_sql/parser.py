@@ -1,12 +1,12 @@
 from sly import Parser
 
-from sql_parser.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant, TypeCast
-from sql_parser.ast.base import ASTNode
-from sql_parser.ast.operation import Operation, Function
-from sql_parser.ast.order_by import OrderBy
-from sql_parser.ast.tuple import Tuple
-from sql_parser.exceptions import ParsingException
-from sql_parser.lexer import SQLLexer
+from mindsdb_sql.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant, TypeCast
+from mindsdb_sql.ast.base import ASTNode
+from mindsdb_sql.ast.operation import Operation, Function
+from mindsdb_sql.ast.order_by import OrderBy
+from mindsdb_sql.ast.tuple import Tuple
+from mindsdb_sql.exceptions import ParsingException
+from mindsdb_sql.lexer import SQLLexer
 
 
 def ensure_select_keyword_order(select, operation):

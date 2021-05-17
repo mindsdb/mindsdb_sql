@@ -1,10 +1,10 @@
-__title__ = 'sql_parser'
-__package_name__ = 'sql_parser'
+__title__ = 'mindsdb_sql'
+__package_name__ = 'mindsdb_sql'
 __version__ = '0.0.1'
 __description__ = "Pure python SQL parser"
 __email__ = "jorge@mindsdb.com"
 __author__ = 'MindsDB Inc'
-__github__ = 'https://github.com/mindsdb/pysql'
-__pypi__ = 'https://pypi.org/project/pysql'
+__github__ = 'https://github.com/mindsdb/mindsdb_sql'
+__pypi__ = 'https://pypi.org/project/mindsdb_sql'
 __license__ = 'GPL-3.0'
 __copyright__ = 'Copyright 2021- mindsdb'

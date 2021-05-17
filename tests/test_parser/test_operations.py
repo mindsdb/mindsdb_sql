@@ -1,11 +1,11 @@
 import pytest
 
-from sql_parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, NullConstant
-from sql_parser.ast.operation import Function, Operation
-from sql_parser.ast.tuple import Tuple
-from sql_parser.exceptions import ParsingException
-from sql_parser.lexer import SQLLexer
-from sql_parser.parser import SQLParser
+from mindsdb_sql.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, NullConstant
+from mindsdb_sql.ast.operation import Function, Operation
+from mindsdb_sql.ast.tuple import Tuple
+from mindsdb_sql.exceptions import ParsingException
+from mindsdb_sql.lexer import SQLLexer
+from mindsdb_sql.parser import SQLParser
 
 
 class TestOperations:
