@@ -1,6 +1,6 @@
 from sly import Parser
 
-from sql_parser.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant
+from sql_parser.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant, TypeCast
 from sql_parser.ast.base import ASTNode
 from sql_parser.ast.operation import Operation, Function
 from sql_parser.ast.order_by import OrderBy
@@ -201,10 +201,12 @@ class SQLParser(Parser):
     def table_or_subquery(self, p):
         return p.identifier
 
-    @_('LEFT_JOIN')
-    @_('RIGHT_JOIN')
-    @_('INNER_JOIN')
-    @_('FULL_JOIN')
+    @_('LEFT_JOIN',
+        'RIGHT_JOIN',
+        'INNER_JOIN',
+        'FULL_JOIN',
+        'CROSS_JOIN',
+        'OUTER_JOIN')
     def join_clause(self, p):
         return p[0]
 
@@ -262,6 +264,10 @@ class SQLParser(Parser):
     @_('ID LPAREN expr_list RPAREN')
     def expr(self, p):
         return Function(op=p.ID, args=p.expr_list)
+
+    @_('CAST LPAREN expr AS identifier RPAREN')
+    def expr(self, p):
+        return TypeCast(arg=p.expr, type_name=p.identifier.value)
 
     @_('enumeration')
     def expr_list(self, p):

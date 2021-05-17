@@ -21,7 +21,7 @@ class SQLLexer(Lexer):
         IN, LIKE,
 
         # Data types
-        ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE }
+        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE }
     ignore = ' \t\n'
 
     # Tokens
@@ -74,6 +74,7 @@ class SQLLexer(Lexer):
     IN = r'IN'
 
     # Data types
+    CAST = r'CAST'
     ID = r'[a-zA-Z][a-zA-Z_.0-9]+'
     NULL = r'NULL'
     TRUE = r'TRUE'

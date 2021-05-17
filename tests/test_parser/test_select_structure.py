@@ -2,10 +2,11 @@ import itertools
 
 import pytest
 
-from sql_parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation
+from sql_parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, TypeCast
 from sql_parser.ast.join import Join
 from sql_parser.ast.operation import Function
 from sql_parser.ast.order_by import OrderBy
+from sql_parser.ast.tuple import Tuple
 from sql_parser.exceptions import ParsingException
 from sql_parser.lexer import SQLLexer
 from sql_parser.parser import SQLParser
@@ -82,6 +83,14 @@ class TestSelectStructure:
 
         assert str(ast) == sql
 
+    def test_select_from_table_long(self):
+        query = "SELECT 1 FROM database.schema.table"
+
+        assert str(parse_sql(query)) == str(Select(
+            targets=[Constant(1)],
+            from_table=Identifier('database.schema.table')
+        ))
+
     def test_select_distinct(self):
         sql = """SELECT DISTINCT column1 FROM t1"""
         assert str(parse_sql(sql)) == sql
@@ -138,8 +147,6 @@ class TestSelectStructure:
         assert ast.where.op == '!='
 
         assert str(ast) == sql
-
-
 
     def test_select_from_where_elaborate(self):
         query = """SELECT column1, column2 FROM t1 WHERE column1 = 1"""
@@ -516,3 +523,34 @@ class TestSelectStructure:
                                                     )))
         assert str(ast) == sql
         assert str(ast) == str(expected_ast)
+
+    def test_type_cast(self):
+        sql = f"""SELECT CAST(4 AS int64) AS result"""
+        ast = parse_sql(sql)
+        expected_ast = Select(targets=[TypeCast(type_name='int64', arg=Constant(4), alias='result')])
+        assert str(ast) == str(expected_ast)
+
+        sql = f"""SELECT CAST(column1 AS float) AS result"""
+        ast = parse_sql(sql)
+        expected_ast = Select(targets=[TypeCast(type_name='float', arg=Identifier(value='column1'), alias='result')])
+        assert str(ast) == str(expected_ast)
+
+        sql = f"""SELECT CAST((column1 + column2) AS float) AS result"""
+        ast = parse_sql(sql)
+        expected_ast = Select(targets=[TypeCast(type_name='float', arg=BinaryOperation(op='+', parentheses=True, args=[
+            Identifier(value='column1'), Identifier(value='column2')]), alias='result')])
+        assert str(ast) == str(expected_ast)
+
+    def test_in_tuple(self):
+        sql = "SELECT col FROM tab WHERE col IN (1, 2)"
+        ast = parse_sql(sql)
+        expected_ast = Select(targets=[Identifier('col')],
+                              from_table=Identifier('tab'),
+                              where=BinaryOperation(op='IN',
+                                                    args=(
+                                                        Identifier('col'),
+                                                        Tuple(items=[Constant(1), Constant(2)])
+                                                    )))
+        assert str(ast) == str(expected_ast)
+
+

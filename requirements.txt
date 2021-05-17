@@ -1,2 +1,2 @@
-sly
-pytest
+sly>=0.4
+pytest>=5.4.3
