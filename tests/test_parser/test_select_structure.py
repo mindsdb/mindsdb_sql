@@ -548,4 +548,14 @@ class TestSelectStructure:
                                                     )))
         assert str(ast) == str(expected_ast)
 
+    def test_count_distinct(self):
+        sql = "SELECT COUNT(DISTINCT survived) AS uniq_survived FROM titanic"
+        ast = parse_sql(sql)
 
+        expected_ast = Select(
+            targets=[Function(op='COUNT', distinct=True,
+                              args=(Identifier(value='survived'),), alias='uniq_survived')],
+            from_table=Identifier(value='titanic')
+        )
+
+        assert str(ast) == str(expected_ast)

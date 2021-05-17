@@ -21,7 +21,7 @@ class Operation(ASTNode):
 
         arg_trees = [arg.to_tree(level=level+2) for arg in self.args]
         arg_trees_str = ",\n".join(arg_trees)
-        out_str = f'{ind}Operation(op={repr(self.op)},\n{ind1}args=(\n{arg_trees_str}\n{ind1})\n{ind})'
+        out_str = f'{ind}{self.__class__.__name__}(op={repr(self.op)},\n{ind1}args=(\n{arg_trees_str}\n{ind1})\n{ind})'
         return out_str
 
     def to_string(self, *args, **kwargs):
@@ -32,7 +32,7 @@ class Operation(ASTNode):
 
 class BinaryOperation(Operation):
     def to_string(self, *args, **kwargs):
-        arg_strs = arg_strs = [arg.to_string() for arg in self.args]
+        arg_strs = [arg.to_string() for arg in self.args]
         return self.maybe_add_alias(self.maybe_add_parentheses(f'{arg_strs[0]} {self.op} {arg_strs[1]}'))
 
     def assert_arguments(self):
@@ -47,40 +47,23 @@ class UnaryOperation(Operation):
     def assert_arguments(self):
         if len(self.args) != 1:
             raise ParsingException(f'Expected one argument for operation "{self.op}"')
-#
-#
-# class ComparisonPredicate(UnaryOperation):
-#     def to_string(self, *args, **kwargs):
-#         return self.maybe_add_alias(f'{self.args[0].to_string()} {self.op}')
-#
-#
 
 
 class Function(Operation):
+    def __init__(self, *args, distinct=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.distinct = distinct
+
+    def to_tree(self, *args, level=0, **kwargs):
+        ind = indent(level)
+        ind1 = indent(level+1)
+
+        arg_trees = [arg.to_tree(level=level+2) for arg in self.args]
+        arg_trees_str = ",\n".join(arg_trees)
+        out_str = f'{ind}{self.__class__.__name__}(op={repr(self.op)}, distinct={repr(self.distinct)},\n{ind1}args=(\n{arg_trees_str}\n{ind1})\n{ind})'
+        return out_str
+
     def to_string(self, *args, **kwargs):
         args_str = ', '.join([arg.to_string() for arg in self.args])
-        return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.op}({args_str})'))
-
-#
-# class AggregateFunction(Function):
-#     pass
-#
-#
-# class InOperation(BinaryOperation):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(op='IN', *args, **kwargs)
-#
-#
-# def operation_factory(op, args, raw=None):
-#     if op == 'IN':
-#         return InOperation(args_=args)
-#
-#     op_class = Operation
-#     if len(args) == 2:
-#         op_class = BinaryOperation
-#     elif len(args) == 1:
-#         op_class = UnaryOperation
-#
-#     return op_class(op=op,
-#              args_=args,
-#              raw=raw)
+        distinct_str = 'DISTINCT ' if self.distinct else ''
+        return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.op}({distinct_str}{args_str})'))
