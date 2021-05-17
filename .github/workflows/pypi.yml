@@ -3,7 +3,7 @@ name: Build and publish to pypi
 on:
   push:
     branches:
-      - stable
+      - main
 
 jobs:
   test:
