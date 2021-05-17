@@ -1,5 +1,6 @@
 import pytest
 
+from mindsdb_sql import parse_sql
 from mindsdb_sql.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, NullConstant
 from mindsdb_sql.ast.operation import Function, Operation
 from mindsdb_sql.ast.tuple import Tuple
@@ -13,8 +14,7 @@ class TestOperations:
         for op in ['+', '-', '/', '*', '%', '=', '!=', '>', '<', '>=', '<=',
                    'IS', 'IS NOT', 'LIKE', 'IN', 'AND', 'OR', ]:
             sql = f'SELECT column1 {op} column2 FROM table'
-            tokens = SQLLexer().tokenize(sql)
-            ast = SQLParser().parse(tokens)
+            ast = parse_sql(sql)
 
             assert isinstance(ast, Select)
             assert len(ast.targets) == 1
@@ -129,8 +129,7 @@ class TestOperations:
     def test_select_unary_operations(self):
         for op in ['-', 'NOT']:
             sql = f'SELECT {op} column FROM table'
-            tokens = SQLLexer().tokenize(sql)
-            ast = SQLParser().parse(tokens)
+            ast = parse_sql(sql)
 
             assert isinstance(ast, Select)
             assert len(ast.targets) == 1
@@ -146,8 +145,7 @@ class TestOperations:
         funcs = ['sum', 'min', 'max', 'some_custom_function']
         for func in funcs:
             sql = f'SELECT {func}(column) FROM table'
-            tokens = SQLLexer().tokenize(sql)
-            ast = SQLParser().parse(tokens)
+            ast = parse_sql(sql)
 
             assert isinstance(ast, Select)
             assert len(ast.targets) == 1
@@ -161,8 +159,7 @@ class TestOperations:
         funcs = ['sum', 'min', 'max', 'some_custom_function']
         for func in funcs:
             sql = f'SELECT {func}(column1, column2) FROM table'
-            tokens = SQLLexer().tokenize(sql)
-            ast = SQLParser().parse(tokens)
+            ast = parse_sql(sql)
 
             assert isinstance(ast, Select)
             assert len(ast.targets) == 1
@@ -194,8 +191,7 @@ class TestOperations:
         args = [('NULL', NullConstant()), ('TRUE', Constant(value=True)), ('FALSE', Constant(value=False))]
         for sql_arg, python_obj in args:
             sql = f"""SELECT column1 IS {sql_arg}"""
-            tokens = SQLLexer().tokenize(sql)
-            ast = SQLParser().parse(tokens)
+            ast = parse_sql(sql)
 
             expected_ast = Select(targets=[BinaryOperation(op='IS', args=(Identifier("column1"), python_obj))], )
 
@@ -206,8 +202,7 @@ class TestOperations:
         args = [('NULL', NullConstant()), ('TRUE', Constant(value=True)), ('FALSE', Constant(value=False))]
         for sql_arg, python_obj in args:
             sql = f"""SELECT column1 IS NOT {sql_arg}"""
-            tokens = SQLLexer().tokenize(sql)
-            ast = SQLParser().parse(tokens)
+            ast = parse_sql(sql)
 
             expected_ast = Select(targets=[BinaryOperation(op='IS NOT', args=(Identifier("column1"), python_obj))], )
 

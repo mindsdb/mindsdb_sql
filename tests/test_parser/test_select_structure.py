@@ -2,6 +2,7 @@ import itertools
 
 import pytest
 
+from mindsdb_sql import parse_sql
 from mindsdb_sql.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, TypeCast
 from mindsdb_sql.ast.join import Join
 from mindsdb_sql.ast.operation import Function
@@ -10,12 +11,6 @@ from mindsdb_sql.ast.tuple import Tuple
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.lexer import SQLLexer
 from mindsdb_sql.parser import SQLParser
-
-
-def parse_sql(sql):
-    tokens = SQLLexer().tokenize(sql)
-    ast = SQLParser().parse(tokens)
-    return ast
 
 
 class TestSelectStructure:
