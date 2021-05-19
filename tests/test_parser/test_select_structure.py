@@ -164,6 +164,14 @@ class TestSelectStructure:
                                                                          args=(Identifier('column1'), Constant("1"))
                                                                          )))
 
+    def test_select_from_where_elaborate_lowercase(self):
+        sql = """select column1, column2 from t1 where column1 = 1"""
+        assert str(parse_sql(sql)) == str(Select(targets=[Identifier("column1"), Identifier("column2")],
+                                                   from_table=Identifier('t1'),
+                                                   where=BinaryOperation(op="=",
+                                                                         args=(Identifier('column1'), Constant(1))
+                                                                         )))
+
 
     def test_where_raises_nofrom(self):
         sql = f'SELECT column WHERE column != 1'

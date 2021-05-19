@@ -1,7 +1,10 @@
+import re
 from sly import Lexer
 
 
 class SQLLexer(Lexer):
+    reflags = re.IGNORECASE
+
     tokens = {
         # Keywords
         SELECT, DISTINCT, FROM, WHERE, AS,
@@ -18,36 +21,36 @@ class SQLLexer(Lexer):
         PLUS, MINUS, DIVIDE, MODULO,
         EQUALS, NEQUALS, GREATER, GEQ, LESS, LEQ,
         AND, OR, NOT, IS,
-        IN, LIKE,
+        IN, LIKE, CONCAT,
 
         # Data types
         CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE }
     ignore = ' \t\n'
 
     # Tokens
-    ON = r'ON'
-    ASC = r'ASC'
-    DESC = r'DESC'
-    NULLS_FIRST = r'NULLS FIRST'
-    NULLS_LAST = r'NULLS LAST'
-    SELECT = r'SELECT'
-    DISTINCT = r'DISTINCT'
-    FROM = r'FROM'
-    AS = r'AS'
-    WHERE = r'WHERE'
-    LIMIT = r'LIMIT'
-    OFFSET = r'OFFSET'
-    GROUP_BY = r'GROUP BY'
-    HAVING = r'HAVING'
-    ORDER_BY = r'ORDER BY'
+    ON = r'\bON\b'
+    ASC = r'\bASC\b'
+    DESC = r'\bDESC\b'
+    NULLS_FIRST = r'\bNULLS FIRST\b'
+    NULLS_LAST = r'\bNULLS LAST\b'
+    SELECT = r'\bSELECT\b'
+    DISTINCT = r'\bDISTINCT\b'
+    FROM = r'\bFROM\b'
+    AS = r'\bAS\b'
+    WHERE = r'\bWHERE\b'
+    LIMIT = r'\bLIMIT\b'
+    OFFSET = r'\bOFFSET\b'
+    GROUP_BY = r'\bGROUP BY\b'
+    HAVING = r'\bHAVING\b'
+    ORDER_BY = r'\bORDER BY\b'
     STAR = r'\*'
 
-    INNER_JOIN = r'INNER JOIN'
-    OUTER_JOIN = r'OUTER JOIN'
-    CROSS_JOIN = r'CROSS JOIN'
-    LEFT_JOIN = r'LEFT JOIN'
-    RIGHT_JOIN = r'RIGHT JOIN'
-    FULL_JOIN = r'FULL JOIN'
+    INNER_JOIN = r'\bINNER JOIN\b'
+    OUTER_JOIN = r'\bOUTER JOIN\b'
+    CROSS_JOIN = r'\bCROSS JOIN\b'
+    LEFT_JOIN = r'\bLEFT JOIN\b'
+    RIGHT_JOIN = r'\bRIGHT JOIN\b'
+    FULL_JOIN = r'\bFULL JOIN\b'
 
 
     COMMA = r','
@@ -66,19 +69,19 @@ class SQLLexer(Lexer):
     GREATER = r'>'
     LEQ = r'<='
     LESS = r'<'
-    AND = r'AND'
-    OR = r'OR'
-    NOT = r'NOT'
-    IS = r'IS'
-    LIKE = r'LIKE'
-    IN = r'IN'
+    AND = r'\bAND\b'
+    OR = r'\bOR\b'
+    NOT = r'\bNOT\b'
+    IS = r'\bIS\b'
+    LIKE = r'\bLIKE\b'
+    IN = r'\bIN\b'
+    CAST = r'\bCAST\b'
 
     # Data types
-    CAST = r'CAST'
     ID = r'[a-zA-Z][a-zA-Z_.0-9]+'
-    NULL = r'NULL'
-    TRUE = r'TRUE'
-    FALSE = r'FALSE'
+    NULL = r'\bNULL\b'
+    TRUE = r'\bTRUE\b'
+    FALSE = r'\bFALSE\b'
 
     @_(r'\d+\.\d+')
     def FLOAT(self, t):

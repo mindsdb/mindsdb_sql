@@ -314,6 +314,7 @@ class SQLParser(Parser):
         'expr NOT expr',
         'expr IS expr',
         'expr LIKE expr',
+        'expr CONCAT expr',
         'expr IN expr')
     def expr(self, p):
         return BinaryOperation(op=p[1], args=(p.expr0, p.expr1))

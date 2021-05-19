@@ -12,6 +12,12 @@ class TestLexer:
         assert tokens[1].type == 'INTEGER'
         assert tokens[1].value == 1
 
+        sql = f'select 1'
+        tokens = list(SQLLexer().tokenize(sql))
+        assert tokens[0].type == 'SELECT'
+        assert tokens[1].type == 'INTEGER'
+        assert tokens[1].value == 1
+
     def test_select_float(self):
         for float in [0.0, 1.000, 0.1, 1.0, 99999.9999]:
             sql = f'SELECT {float}'
@@ -180,3 +186,34 @@ class TestLexer:
             assert tokens[10].value == 'column'
             assert tokens[11].type == order_dir
             assert tokens[11].value == order_dir
+
+    def test_as_ones(self):
+        sql = "SELECT *, (SELECT 1) AS ones FROM t1"
+        tokens = list(SQLLexer().tokenize(sql))
+
+        assert tokens[0].type == 'SELECT'
+        assert tokens[1].type == 'STAR'
+        assert tokens[2].type == 'COMMA'
+        assert tokens[3].type == 'LPAREN'
+        assert tokens[4].type == 'SELECT'
+        assert tokens[5].type == 'INTEGER'
+        assert tokens[6].type == 'RPAREN'
+        assert tokens[7].type == 'AS'
+        assert tokens[8].type == 'ID'
+        assert tokens[9].type == 'FROM'
+        assert tokens[10].type == 'ID'
+
+        sql = "SELECT *, (SELECT 1) AS ones FROM t1".lower()
+        tokens = list(SQLLexer().tokenize(sql))
+
+        assert tokens[0].type == 'SELECT'
+        assert tokens[1].type == 'STAR'
+        assert tokens[2].type == 'COMMA'
+        assert tokens[3].type == 'LPAREN'
+        assert tokens[4].type == 'SELECT'
+        assert tokens[5].type == 'INTEGER'
+        assert tokens[6].type == 'RPAREN'
+        assert tokens[7].type == 'AS'
+        assert tokens[8].type == 'ID'
+        assert tokens[9].type == 'FROM'
+        assert tokens[10].type == 'ID'
