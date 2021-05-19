@@ -46,7 +46,7 @@ jobs:
         SETUP_PLAT_NAME=linux python3 setup.py sdist bdist_wheel --plat-name manylinux1_i686
     - name: Publish to PyPI
       env:
-        TWINE_USERNAME:  __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
       run: |
         twine upload dist/*manylinux*.whl
