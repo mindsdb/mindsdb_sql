@@ -76,6 +76,7 @@ class SQLLexer(Lexer):
     LIKE = r'\bLIKE\b'
     IN = r'\bIN\b'
     CAST = r'\bCAST\b'
+    CONCAT = r'\|\|'
 
     # Data types
     ID = r'[a-zA-Z][a-zA-Z_.0-9]+'

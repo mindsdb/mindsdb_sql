@@ -12,7 +12,7 @@ from mindsdb_sql.parser import SQLParser
 class TestOperations:
     def test_select_binary_operations(self):
         for op in ['+', '-', '/', '*', '%', '=', '!=', '>', '<', '>=', '<=',
-                   'IS', 'IS NOT', 'LIKE', 'IN', 'AND', 'OR', ]:
+                   'IS', 'IS NOT', 'LIKE', 'IN', 'AND', 'OR', '||']:
             sql = f'SELECT column1 {op} column2 FROM table'
             ast = parse_sql(sql)
 
