@@ -82,7 +82,7 @@ class TestOperations:
                                                                        ))])
 
         assert str(ast) == sql
-        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_precedence_or_and(self):
         sql = f'SELECT column1 OR column2 AND column3 FROM table'
@@ -196,7 +196,7 @@ class TestOperations:
             expected_ast = Select(targets=[BinaryOperation(op='IS', args=(Identifier("column1"), python_obj))], )
 
             assert str(ast) == sql
-            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
 
     def test_unary_is_not_special_values(self):
         args = [('NULL', NullConstant()), ('TRUE', Constant(value=True)), ('FALSE', Constant(value=False))]
@@ -207,14 +207,62 @@ class TestOperations:
             expected_ast = Select(targets=[BinaryOperation(op='IS NOT', args=(Identifier("column1"), python_obj))], )
 
             assert str(ast) == sql
+            assert ast.to_tree() == expected_ast.to_tree()
             assert str(ast) == str(expected_ast)
 
     def test_not_in(self):
         sql = f"""SELECT column1 NOT IN column2"""
-        tokens = SQLLexer().tokenize(sql)
-        ast = SQLParser().parse(tokens)
+        ast = parse_sql(sql)
 
         expected_ast = Select(targets=[BinaryOperation(op='NOT IN', args=(Identifier("column1"), Identifier("column2")))], )
 
         assert str(ast) == sql
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+    def test_is_null(self):
+        sql = "SELECT col1 FROM t1 WHERE col1 IS NULL"
+        ast = parse_sql(sql)
+
+        expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
+                              where=BinaryOperation('IS', args=(Identifier('col1'), NullConstant())))
+
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        assert str(ast) == sql
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+    def test_is_not_null(self):
+        sql = "SELECT col1 FROM t1 WHERE col1 IS NOT NULL"
+        ast = parse_sql(sql)
+
+        expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
+                              where=BinaryOperation('IS NOT', args=(Identifier('col1'), NullConstant())))
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        assert str(ast) == sql
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+    def test_is_true(self):
+        sql = "SELECT col1 FROM t1 WHERE col1 IS TRUE"
+        ast = parse_sql(sql)
+
+        expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
+                              where=BinaryOperation('IS', args=(Identifier('col1'), Constant(True))))
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        assert str(ast) == sql
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+    def test_is_false(self):
+        sql = "SELECT col1 FROM t1 WHERE col1 IS FALSE"
+        ast = parse_sql(sql)
+
+        expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
+                              where=BinaryOperation('IS', args=(Identifier('col1'), Constant(False))))
+        assert str(ast) == sql
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)

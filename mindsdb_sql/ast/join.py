@@ -17,7 +17,9 @@ class Join(ASTNode):
         args = f'implicit={repr(self.implicit)}, join_type={repr(self.join_type)}'
         left_str = f'\n{ind1}left=\n{self.left.to_tree(level=level+2)}'
         right_str = f'\n{ind1}right=\n{self.right.to_tree(level=level+2)}'
-        condition_str = f'\n{ind1}condition=\n{self.condition.to_tree(level=level+2)}'
+
+
+        condition_str = f'\n{ind1}condition=\n{self.condition.to_tree(level=level+2)}' if self.condition else ''
 
         out_str = f'{ind}Join({args},{left_str},{right_str},{condition_str}\n{ind})'
         return out_str

@@ -297,6 +297,7 @@ class TestSelectStructure:
 
 
         assert str(ast) == sql
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_select_limit_offset_elaborate(self):
@@ -308,6 +309,7 @@ class TestSelectStructure:
                                                    offset=Constant(2))
 
         assert str(ast) == sql
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_having_raises_duplicate(self):
@@ -455,6 +457,7 @@ class TestSelectStructure:
                                                                    implicit=True,
                                                                    condition=None))
         ast = parse_sql(sql)
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_select_from_different_join_types(self):
@@ -503,6 +506,7 @@ class TestSelectStructure:
         expected_ast = Select(targets=[Identifier("*"), Select(targets=[Constant(1)], parentheses=True)],
                               from_table=Identifier('t1'))
         assert str(ast) == sql
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
         sql = f"""SELECT *, (SELECT 1) AS ones FROM t1"""
@@ -510,6 +514,7 @@ class TestSelectStructure:
         expected_ast = Select(targets=[Identifier("*"), Select(targets=[Constant(1)], alias='ones', parentheses=True)],
                               from_table=Identifier('t1'))
         assert str(ast) == sql
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_select_subquery_where(self):
@@ -525,23 +530,27 @@ class TestSelectStructure:
                                                                parentheses=True)
                                                     )))
         assert str(ast) == sql
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_type_cast(self):
         sql = f"""SELECT CAST(4 AS int64) AS result"""
         ast = parse_sql(sql)
         expected_ast = Select(targets=[TypeCast(type_name='int64', arg=Constant(4), alias='result')])
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
         sql = f"""SELECT CAST(column1 AS float) AS result"""
         ast = parse_sql(sql)
         expected_ast = Select(targets=[TypeCast(type_name='float', arg=Identifier(value='column1'), alias='result')])
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
         sql = f"""SELECT CAST((column1 + column2) AS float) AS result"""
         ast = parse_sql(sql)
         expected_ast = Select(targets=[TypeCast(type_name='float', arg=BinaryOperation(op='+', parentheses=True, args=[
             Identifier(value='column1'), Identifier(value='column2')]), alias='result')])
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_in_tuple(self):
@@ -554,6 +563,7 @@ class TestSelectStructure:
                                                         Identifier('col'),
                                                         Tuple(items=[Constant(1), Constant(2)])
                                                     )))
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_count_distinct(self):
@@ -566,6 +576,7 @@ class TestSelectStructure:
             from_table=Identifier(value='titanic')
         )
 
+        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_where_not_order(self):

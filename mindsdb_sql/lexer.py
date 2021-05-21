@@ -79,10 +79,10 @@ class SQLLexer(Lexer):
     CONCAT = r'\|\|'
 
     # Data types
-    ID = r'[a-zA-Z][a-zA-Z_.0-9]+'
     NULL = r'\bNULL\b'
     TRUE = r'\bTRUE\b'
     FALSE = r'\bFALSE\b'
+    ID = r'[a-zA-Z][a-zA-Z_.0-9]+'
 
     @_(r'\d+\.\d+')
     def FLOAT(self, t):
