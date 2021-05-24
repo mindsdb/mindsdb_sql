@@ -23,7 +23,7 @@ class Constant(ASTNode):
 
 class NullConstant(Constant):
     def __init__(self, *args, **kwargs):
-        super().__init__(value='NULL', *args, **kwargs)
+        super().__init__(value=None, *args, **kwargs)
 
     def to_tree(self, *args, level=0, **kwargs):
         return '\t'*level +  'NullConstant()'
