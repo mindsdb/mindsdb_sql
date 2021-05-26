@@ -18,6 +18,12 @@ class TestLexer:
         assert tokens[1].type == 'INTEGER'
         assert tokens[1].value == 1
 
+        sql = f'select a'
+        tokens = list(SQLLexer().tokenize(sql))
+        assert tokens[0].type == 'SELECT'
+        assert tokens[1].type == 'ID'
+        assert tokens[1].value == 'a'
+
     def test_select_float(self):
         for float in [0.0, 1.000, 0.1, 1.0, 99999.9999]:
             sql = f'SELECT {float}'
