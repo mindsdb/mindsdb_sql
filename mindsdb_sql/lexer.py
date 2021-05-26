@@ -82,7 +82,13 @@ class SQLLexer(Lexer):
     NULL = r'\bNULL\b'
     TRUE = r'\bTRUE\b'
     FALSE = r'\bFALSE\b'
-    ID = r'[a-zA-Z][a-zA-Z_.0-9]*'
+
+    @_(r'[a-zA-Z][a-zA-Z_.0-9]*',
+      r'`([a-zA-Z][^`]*)`(\.`([a-zA-Z][^`]*)`)*')
+    def ID(self, t):
+        if t.value[0] == '`':
+            t.value = t.value.replace('`', '')
+        return t
 
     @_(r'\d+\.\d+')
     def FLOAT(self, t):

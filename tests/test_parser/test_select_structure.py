@@ -594,3 +594,30 @@ class TestSelectStructure:
                           )
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_backticks(self):
+        sql = "SELECT `name`, `status` FROM `mindsdb`.`wow stuff predictors`"
+        ast = parse_sql(sql)
+
+        expected_ast = Select(targets=[Identifier('name'), Identifier('status')],
+                              from_table=Identifier('mindsdb.wow stuff predictors'),
+
+                              )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "SELECT `my column name` FROM table WHERE `other column name` = 'bla bla ``` bla'"
+        ast = parse_sql(sql)
+
+        expected_ast = Select(targets=[Identifier('my column name')],
+                              from_table=Identifier('table'),
+                              where=BinaryOperation(op='=', args=(
+                                      Identifier('other column name'),
+                                      Constant('bla bla ``` bla')
+                                  )
+                              ))
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
