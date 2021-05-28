@@ -14,8 +14,8 @@ class SQLLexer(Lexer):
 
         INNER_JOIN, OUTER_JOIN, CROSS_JOIN, LEFT_JOIN, RIGHT_JOIN, FULL_JOIN, ON,
 
-        # Symbols
-        COMMA, LPAREN, RPAREN,
+        # Special
+        COMMA, LPAREN, RPAREN, PARAMETER,
 
         # Operators
         PLUS, MINUS, DIVIDE, MODULO,
@@ -27,7 +27,7 @@ class SQLLexer(Lexer):
         CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE }
     ignore = ' \t\n'
 
-    # Tokens
+    # Keywords
     ON = r'\bON\b'
     ASC = r'\bASC\b'
     DESC = r'\bDESC\b'
@@ -52,13 +52,13 @@ class SQLLexer(Lexer):
     RIGHT_JOIN = r'\bRIGHT JOIN\b'
     FULL_JOIN = r'\bFULL JOIN\b'
 
-
+    # Special
     COMMA = r','
     LPAREN = r'\('
     RPAREN = r'\)'
+    PARAMETER = r'\?'
 
     # Operators
-
     PLUS = r'\+'
     MINUS = r'-'
     DIVIDE = r'/'

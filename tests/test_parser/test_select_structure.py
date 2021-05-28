@@ -3,7 +3,7 @@ import itertools
 import pytest
 
 from mindsdb_sql import parse_sql
-from mindsdb_sql.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, TypeCast
+from mindsdb_sql.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, TypeCast, Parameter
 from mindsdb_sql.ast.join import Join
 from mindsdb_sql.ast.operation import Function
 from mindsdb_sql.ast.order_by import OrderBy
@@ -621,3 +621,12 @@ class TestSelectStructure:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_select_parameter(self):
+        sql = "SELECT ? = ? FROM ?"
+        ast = parse_sql(sql)
+
+        expected_ast = Select(targets=[BinaryOperation(op='=', args=(Parameter('?'), Parameter('?')))],
+                              from_table=Parameter('?'),
+                              )
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)

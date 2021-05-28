@@ -6,3 +6,4 @@ from .order_by import OrderBy
 from .join import Join
 from .type_cast import TypeCast
 from .tuple import Tuple
+from .parameter import Parameter

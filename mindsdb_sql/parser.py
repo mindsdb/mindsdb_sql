@@ -1,6 +1,7 @@
 from sly import Parser
 
-from mindsdb_sql.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant, TypeCast
+from mindsdb_sql.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant, TypeCast, \
+    Parameter
 from mindsdb_sql.ast.base import ASTNode
 from mindsdb_sql.ast.operation import Operation, Function
 from mindsdb_sql.ast.order_by import OrderBy
@@ -201,6 +202,10 @@ class SQLParser(Parser):
     def table_or_subquery(self, p):
         return p.identifier
 
+    @_('parameter')
+    def table_or_subquery(self, p):
+        return p.parameter
+
     @_('LEFT_JOIN',
         'RIGHT_JOIN',
         'INNER_JOIN',
@@ -353,6 +358,10 @@ class SQLParser(Parser):
     def expr(self, p):
         return p.identifier
 
+    @_('parameter')
+    def expr(self, p):
+        return p.parameter
+
     @_('constant')
     def expr(self, p):
         return p.constant
@@ -363,7 +372,7 @@ class SQLParser(Parser):
 
     @_('TRUE')
     def constant(self, p):
-        return  Constant(value=True)
+        return Constant(value=True)
 
     @_('FALSE')
     def constant(self, p):
@@ -384,6 +393,10 @@ class SQLParser(Parser):
     @_('ID')
     def identifier(self, p):
         return Identifier(value=p.ID)
+
+    @_('PARAMETER')
+    def parameter(self, p):
+        return Parameter(value=p.PARAMETER)
 
     @_('')
     def empty(self, p):
