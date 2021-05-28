@@ -248,19 +248,33 @@ class TestOperations:
 
             assert str(ast) == sql
 
+    def test_select_function_no_args(self):
+        sql = f'SELECT database() FROM table'
+        ast = parse_sql(sql)
+
+        expected_ast = Select(
+            targets=[Function(op='database', args=tuple())],
+            from_table=Identifier('table'),
+        )
+
+        assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_select_function_one_arg(self):
         funcs = ['sum', 'min', 'max', 'some_custom_function']
         for func in funcs:
             sql = f'SELECT {func}(column) FROM table'
             ast = parse_sql(sql)
 
-            assert isinstance(ast, Select)
-            assert len(ast.targets) == 1
-            assert isinstance(ast.targets[0], Function)
-            assert ast.targets[0].op == func
-            assert len(ast.targets[0].args) == 1
-            assert isinstance(ast.targets[0].args[0], Identifier)
-            assert ast.targets[0].args[0].value == 'column'
+            expected_ast = Select(
+                targets=[Function(op=func, args=(Identifier('column'),))],
+                from_table=Identifier('table'),
+            )
+
+            assert str(ast) == sql
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
 
     def test_select_function_two_args(self):
         funcs = ['sum', 'min', 'max', 'some_custom_function']
@@ -268,15 +282,14 @@ class TestOperations:
             sql = f'SELECT {func}(column1, column2) FROM table'
             ast = parse_sql(sql)
 
-            assert isinstance(ast, Select)
-            assert len(ast.targets) == 1
-            assert isinstance(ast.targets[0], Function)
-            assert ast.targets[0].op == func
-            assert len(ast.targets[0].args) == 2
-            assert isinstance(ast.targets[0].args[0], Identifier)
-            assert ast.targets[0].args[0].value == 'column1'
-            assert isinstance(ast.targets[0].args[1], Identifier)
-            assert ast.targets[0].args[1].value == 'column2'
+            expected_ast = Select(
+                targets=[Function(op=func, args=(Identifier('column1'),Identifier('column2')))],
+                from_table=Identifier('table'),
+            )
+
+            assert str(ast) == sql
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
 
     def test_select_in_operation(self):
         sql = """SELECT * FROM t1 WHERE col1 IN ("a", "b")"""

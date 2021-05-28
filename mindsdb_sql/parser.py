@@ -265,13 +265,28 @@ class SQLParser(Parser):
     def expr(self, p):
         return Function(op=p.ID, distinct=True, args=p.expr_list)
 
-    @_('ID LPAREN expr_list RPAREN')
+    @_('ID LPAREN expr_list_or_nothing RPAREN')
     def expr(self, p):
-        return Function(op=p.ID, args=p.expr_list)
+        args = p.expr_list_or_nothing
+        if not args:
+            args = tuple()
+        return Function(op=p.ID, args=args)
+
+    # arguments are optional in functions, so that things like `select database()` are possible
+    @_('expr_list')
+    def expr_list_or_nothing(self, p):
+        return p.expr_list
+
+    @_('empty')
+    def expr_list_or_nothing(self, p):
+        pass
+
 
     @_('CAST LPAREN expr AS identifier RPAREN')
     def expr(self, p):
         return TypeCast(arg=p.expr, type_name=p.identifier.value)
+
+
 
     @_('enumeration')
     def expr_list(self, p):
@@ -369,6 +384,10 @@ class SQLParser(Parser):
     @_('ID')
     def identifier(self, p):
         return Identifier(value=p.ID)
+
+    @_('')
+    def empty(self, p):
+        pass
 
     def error(self, p):
         if p:

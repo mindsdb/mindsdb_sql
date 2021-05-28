@@ -12,8 +12,7 @@ class Operation(ASTNode):
         self.assert_arguments()
 
     def assert_arguments(self):
-        if not self.args:
-            raise ParsingException(f'Expected arguments for operation "{self.op}"')
+        pass
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
