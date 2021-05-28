@@ -13,118 +13,225 @@ class TestOperations:
     def test_select_binary_operations(self):
         for op in ['+', '-', '/', '*', '%', '=', '!=', '>', '<', '>=', '<=',
                    'IS', 'IS NOT', 'LIKE', 'IN', 'AND', 'OR', '||']:
-            sql = f'SELECT column1 {op} column2 FROM table'
+            sql = f'SELECT column1 {op} column2 FROM tab'
             ast = parse_sql(sql)
 
-            assert isinstance(ast, Select)
-            assert len(ast.targets) == 1
-            assert isinstance(ast.targets[0], BinaryOperation)
-            assert ast.targets[0].op == op
-            assert len(ast.targets[0].args) == 2
-            assert isinstance(ast.targets[0].args[0], Identifier)
-            assert ast.targets[0].args[0].value == 'column1'
-            assert isinstance(ast.targets[0].args[1], Identifier)
-            assert ast.targets[0].args[1].value == 'column2'
+            expected_ast = Select(
+                targets=[BinaryOperation(op=op,
+                                         args=(
+                                             Identifier('column1'), Identifier('column2')
+                                         )),
+                         ],
+                from_table=Identifier('tab')
+            )
 
             assert str(ast) == sql
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_precedence_sum_mult(self):
-        sql = f'SELECT column1 + column2 * column3 FROM table'
-        tokens = SQLLexer().tokenize(sql)
-        ast = SQLParser().parse(tokens)
+        sql = f'SELECT column1 + column2 * column3'
+        ast = parse_sql(sql)
 
-        assert isinstance(ast, Select)
-        assert len(ast.targets) == 1
-        assert isinstance(ast.targets[0], BinaryOperation)
-        assert ast.targets[0].op == '+'
-        assert len(ast.targets[0].args) == 2
-        assert isinstance(ast.targets[0].args[0], Identifier)
-        assert ast.targets[0].args[0].value == 'column1'
-        inner_op = ast.targets[0].args[1]
-        assert isinstance(inner_op, BinaryOperation)
-        assert len(inner_op.args) == 2
-        assert inner_op.op == '*'
-        assert inner_op.args[0].value == 'column2'
-        assert inner_op.args[1].value == 'column3'
+        expected_ast = Select(
+            targets=[BinaryOperation(op='+',
+                                     args=(
+                                         Identifier('column1'),
+                                         BinaryOperation(op='*',
+                                                         args=(
+                                                             Identifier('column2'), Identifier('column3')
+                                                         )),
+
+                                     ),
+                                     )
+                     ]
+        )
+
         assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        sql = f'SELECT column1 * column2 + column3'
+        ast = parse_sql(sql)
+
+        expected_ast = Select(
+            targets=[BinaryOperation(op='+',
+                                     args=(
+                                         BinaryOperation(op='*',
+                                                         args=(
+                                                             Identifier('column1'), Identifier('column2')
+                                                         )),
+                                         Identifier('column3'),
+
+                                     )
+                                     )
+                     ]
+        )
+
+        assert str(ast) == sql
+        assert ast == expected_ast
+        assert ast.to_tree() == expected_ast.to_tree()
+
 
     def test_operator_precedence_sum_mult_parentheses(self):
-        sql = f'SELECT (column1 + column2) * column3 FROM table'
-        tokens = SQLLexer().tokenize(sql)
-        ast = SQLParser().parse(tokens)
+        sql = f'SELECT (column1 + column2) * column3'
+        ast = parse_sql(sql)
 
-        assert isinstance(ast, Select)
-        assert len(ast.targets) == 1
-        assert isinstance(ast.targets[0], BinaryOperation)
-        assert ast.targets[0].op == '*'
-        assert len(ast.targets[0].args) == 2
-        assert isinstance(ast.targets[0].args[1], Identifier)
-        assert ast.targets[0].args[1].value == 'column3'
+        expected_ast = Select(
+            targets=[BinaryOperation(op='*',
+                                     args=(
+                                         BinaryOperation(op='+',
+                                                         args=(
+                                                             Identifier('column1'), Identifier('column2')
+                                                         ),
+                                                         parentheses=True),
+                                         Identifier('column3'),
 
-        inner_op = ast.targets[0].args[0]
-        assert isinstance(inner_op, BinaryOperation)
-        assert inner_op.parentheses == True
-        assert len(inner_op.args) == 2
-        assert inner_op.op == '+'
-        assert inner_op.args[0].value == 'column1'
-        assert inner_op.args[1].value == 'column2'
+                                     ),
+                                     )
+                     ]
+        )
+
         assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_chained_and(self):
         sql = f"""SELECT column1 AND column2 AND column3"""
-        tokens = SQLLexer().tokenize(sql)
-        ast = SQLParser().parse(tokens)
+        ast = parse_sql(sql)
 
-        expected_ast = Select(targets=[BinaryOperation(op='AND', args=(Identifier("column1"),
-                                                                       BinaryOperation(op='AND', args=(
-                                                                           Identifier("column2"),
-                                                                           Identifier("column3")))
+        expected_ast = Select(targets=[BinaryOperation(op='AND', args=(BinaryOperation(op='AND', args=(
+                                                                           Identifier("column1"),
+                                                                           Identifier("column2"))),
+                                                                            Identifier("column3"),
+
                                                                        ))])
 
         assert str(ast) == sql
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_precedence_or_and(self):
-        sql = f'SELECT column1 OR column2 AND column3 FROM table'
-        tokens = SQLLexer().tokenize(sql)
-        ast = SQLParser().parse(tokens)
+        sql = f'SELECT column1 OR column2 AND column3'
+        ast = parse_sql(sql)
 
-        assert isinstance(ast, Select)
-        assert len(ast.targets) == 1
-        assert isinstance(ast.targets[0], BinaryOperation)
-        assert ast.targets[0].op == 'OR'
-        assert len(ast.targets[0].args) == 2
-        assert isinstance(ast.targets[0].args[0], Identifier)
-        assert ast.targets[0].args[0].value == 'column1'
-        inner_op = ast.targets[0].args[1]
-        assert isinstance(inner_op, BinaryOperation)
-        assert len(inner_op.args) == 2
-        assert inner_op.op == 'AND'
-        assert inner_op.args[0].value == 'column2'
-        assert inner_op.args[1].value == 'column3'
+        expected_ast = Select(
+            targets=[BinaryOperation(op='OR',
+                                     args=(Identifier('column1'),
+                                           BinaryOperation(op='AND',
+                                                           args=(
+                                                               Identifier('column2'), Identifier('column3')
+                                                           ))
+
+                                           )
+                                     )
+                     ]
+        )
+
         assert str(ast) == sql
+        assert ast == expected_ast
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        sql = f'SELECT column1 AND column2 OR column3'
+        ast = parse_sql(sql)
+
+        expected_ast = Select(
+            targets=[BinaryOperation(op='OR',
+                                     args=(
+                                         BinaryOperation(op='AND',
+                                                         args=(
+                                                             Identifier('column1'), Identifier('column2')
+                                                         )),
+                                         Identifier('column3'),
+
+                                     )
+                                     )
+                     ]
+        )
+
+        assert str(ast) == sql
+        assert ast == expected_ast
+        assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_precedence_or_and_parentheses(self):
-        sql = f'SELECT (column1 OR column2) AND column3 FROM table'
-        tokens = SQLLexer().tokenize(sql)
-        ast = SQLParser().parse(tokens)
+        sql = f'SELECT (column1 OR column2) AND column3'
+        ast = parse_sql(sql)
 
-        assert isinstance(ast, Select)
-        assert len(ast.targets) == 1
-        assert isinstance(ast.targets[0], BinaryOperation)
-        assert ast.targets[0].op == 'AND'
-        assert len(ast.targets[0].args) == 2
-        assert isinstance(ast.targets[0].args[1], Identifier)
-        assert ast.targets[0].args[1].value == 'column3'
+        expected_ast = Select(
+            targets=[BinaryOperation(op='AND',
+                                     args=(
+                                         BinaryOperation(op='OR',
+                                                         args=(
+                                                             Identifier('column1'), Identifier('column2')
+                                                         ),
+                                                         parentheses=True),
+                                         Identifier('column3'),
 
-        inner_op = ast.targets[0].args[0]
-        assert isinstance(inner_op, BinaryOperation)
-        assert inner_op.parentheses == True
-        assert len(inner_op.args) == 2
-        assert inner_op.op == 'OR'
-        assert inner_op.args[0].value == 'column1'
-        assert inner_op.args[1].value == 'column2'
+                                     ),
+                                     )
+                     ]
+        )
+
         assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_where_and_or_precedence(self):
+        sql = "SELECT col1 FROM tab WHERE col1 AND col2 OR col3"
+        ast = parse_sql(sql)
+
+        expected_ast = Select(
+            targets=[Identifier('col1')],
+            from_table=Identifier('tab'),
+            where=BinaryOperation(op='OR',
+                                  args=(
+                                      BinaryOperation(op='AND',
+                                                      args=(
+                                                          Identifier('col1'),
+                                                          Identifier('col2'),
+                                                      )),
+                                      Identifier('col3'),
+
+                                  ))
+        )
+
+        assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        sql = "SELECT col1 FROM tab WHERE col1 = 1 AND col2 = 1 OR col3 = 1"
+        ast = parse_sql(sql)
+
+        expected_ast = Select(
+            targets=[Identifier('col1')],
+            from_table=Identifier('tab'),
+            where=BinaryOperation(op='OR',
+                                  args=(
+                                      BinaryOperation(op='AND',
+                                                      args=(
+                                                          BinaryOperation(op='=',
+                                                                          args=(
+                                                                              Identifier('col1'),
+                                                                              Constant(1),
+                                                                          )),
+                                                          BinaryOperation(op='=',
+                                                                          args=(
+                                                                              Identifier('col2'),
+                                                                              Constant(1),
+                                                                          )),
+                                                      )),
+                                      BinaryOperation(op='=',
+                                                      args=(
+                                                          Identifier('col3'),
+                                                          Constant(1),
+                                                      )),
+
+                                  ))
+        )
+
+        assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
 
     def test_select_unary_operations(self):
         for op in ['-', 'NOT']:
@@ -174,8 +281,7 @@ class TestOperations:
     def test_select_in_operation(self):
         sql = """SELECT * FROM t1 WHERE col1 IN ("a", "b")"""
 
-        tokens = SQLLexer().tokenize(sql)
-        ast = SQLParser().parse(tokens)
+        ast = parse_sql(sql)
 
         assert isinstance(ast, Select)
         assert ast.where

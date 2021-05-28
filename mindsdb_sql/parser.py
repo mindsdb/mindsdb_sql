@@ -49,8 +49,8 @@ class SQLParser(Parser):
     tokens = SQLLexer.tokens
 
     precedence = (
-        ('left', PLUS, MINUS),
-        ('left', STAR, DIVIDE),
+        ('left', PLUS, MINUS, OR),
+        ('left', STAR, DIVIDE, AND),
         ('right', UMINUS, UNOT),  # Unary minus operator, unary not
         ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS),
     )
