@@ -37,7 +37,7 @@ class Select(ASTNode):
         target_trees = ',\n'.join([t.to_tree(level=level+2) for t in self.targets])
         targets_str = f'\n{ind1}targets=[\n{target_trees}\n{ind1}],'
 
-        from_str = f'\n{ind1}from=\n{self.from_table.to_tree(level=level+2)},' if self.from_table else ''
+        from_str = f'\n{ind1}from_table=\n{self.from_table.to_tree(level=level+2)},' if self.from_table else ''
         where_str = f'\n{ind1}where=\n{self.where.to_tree(level=level+2)},' if self.where else ''
 
         group_by_str = ''

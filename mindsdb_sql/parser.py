@@ -2,6 +2,7 @@ from sly import Parser
 
 from mindsdb_sql.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant,
                              TypeCast, Tuple, OrderBy, Operation, Function, Parameter)
+from mindsdb_sql.ast.create_view import CreateView
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.lexer import SQLLexer
 from mindsdb_sql.utils import ensure_select_keyword_order
@@ -17,8 +18,27 @@ class SQLParser(Parser):
         ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS),
     )
 
-    def __init__(self):
-        self.names = dict()
+    # Top-level statements
+    @_('create_view',
+       'select')
+    def query(self, p):
+        return p[0]
+
+    # CREATE VIEW
+
+    @_('CREATE VIEW identifier create_view_from_table_or_nothing AS LPAREN select RPAREN')
+    def create_view(self, p):
+        return CreateView(name=p.identifier.value,
+                          from_table=p.create_view_from_table_or_nothing,
+                          query=p.select)
+
+    @_('FROM identifier')
+    def create_view_from_table_or_nothing(self, p):
+        return p.identifier
+
+    @_('empty')
+    def create_view_from_table_or_nothing(self, p):
+        pass
 
     # SELECT
 
@@ -210,8 +230,6 @@ class SQLParser(Parser):
     @_('expr')
     def result_column(self, p):
         return p.expr
-
-
 
     # OPERATIONS
 

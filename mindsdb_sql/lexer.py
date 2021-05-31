@@ -12,6 +12,8 @@ class SQLLexer(Lexer):
         GROUP_BY, HAVING, ORDER_BY,
         STAR,
 
+        CREATE, VIEW,
+
         INNER_JOIN, OUTER_JOIN, CROSS_JOIN, LEFT_JOIN, RIGHT_JOIN, FULL_JOIN, ON,
 
         # Special
@@ -44,6 +46,9 @@ class SQLLexer(Lexer):
     HAVING = r'\bHAVING\b'
     ORDER_BY = r'\bORDER BY\b'
     STAR = r'\*'
+
+    CREATE = r'\bCREATE\b'
+    VIEW = r'\bVIEW\b'
 
     INNER_JOIN = r'\bINNER JOIN\b'
     OUTER_JOIN = r'\bOUTER JOIN\b'

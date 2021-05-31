@@ -1,5 +1,6 @@
 from .base import ASTNode
 from .select import Select
+from .create_view import CreateView
 from .constant import Constant, NullConstant
 from .identifier import Identifier
 from .operation import Operation, Function, BinaryOperation, UnaryOperation
