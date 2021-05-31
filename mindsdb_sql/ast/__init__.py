@@ -1,3 +1,4 @@
+from .base import ASTNode
 from .select import Select
 from .constant import Constant, NullConstant
 from .identifier import Identifier

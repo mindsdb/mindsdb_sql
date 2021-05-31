@@ -12,5 +12,5 @@ class Variable(ASTNode):
         return indent(level) + f'Variable(value={repr(self.value)}{alias_str})'
 
     def to_string(self, *args, **kwargs):
-        return self.maybe_add_alias(str(self.value))
+        return self.maybe_add_alias(f'@{str(self.value)}')
 

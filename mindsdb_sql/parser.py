@@ -1,11 +1,7 @@
 from sly import Parser
 
-from mindsdb_sql.ast import Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant, TypeCast, \
-    Parameter
-from mindsdb_sql.ast.base import ASTNode
-from mindsdb_sql.ast.operation import Operation, Function
-from mindsdb_sql.ast.order_by import OrderBy
-from mindsdb_sql.ast.tuple import Tuple
+from mindsdb_sql.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant,
+                             TypeCast, Tuple, OrderBy, Operation, Function, Parameter)
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.lexer import SQLLexer
 from mindsdb_sql.utils import ensure_select_keyword_order
