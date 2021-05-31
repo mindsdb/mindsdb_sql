@@ -1,10 +1,13 @@
+import pytest
 from mindsdb_sql.lexer import SQLLexer
+from mindsdb_sql.dialects.mysql.lexer import MySQLLexer
 
 
+@pytest.mark.parametrize('lexer', [SQLLexer(), MySQLLexer()])
 class TestLexer:
-    def test_select_basic(self):
+    def test_select_basic(self, lexer):
         sql = f'SELECT 1'
-        tokens = list(SQLLexer().tokenize(sql))
+        tokens = list(lexer.tokenize(sql))
 
         assert tokens[0].type == 'SELECT'
         assert tokens[0].value == 'SELECT'
@@ -13,20 +16,20 @@ class TestLexer:
         assert tokens[1].value == 1
 
         sql = f'select 1'
-        tokens = list(SQLLexer().tokenize(sql))
+        tokens = list(lexer.tokenize(sql))
         assert tokens[0].type == 'SELECT'
         assert tokens[1].type == 'INTEGER'
         assert tokens[1].value == 1
 
         sql = f'select a'
-        tokens = list(SQLLexer().tokenize(sql))
+        tokens = list(lexer.tokenize(sql))
         assert tokens[0].type == 'SELECT'
         assert tokens[1].type == 'ID'
         assert tokens[1].value == 'a'
 
 
 
-    def test_select_float(self):
+    def test_select_float(self, lexer):
         for float in [0.0, 1.000, 0.1, 1.0, 99999.9999]:
             sql = f'SELECT {float}'
             tokens = list(SQLLexer().tokenize(sql))
@@ -37,7 +40,7 @@ class TestLexer:
             assert tokens[1].type == 'FLOAT'
             assert tokens[1].value == float
 
-    def test_select_strings(self):
+    def test_select_strings(self, lexer):
         sql = 'SELECT "a", "b", "c"'
         tokens = list(SQLLexer().tokenize(sql))
         assert tokens[0].type == 'SELECT'
@@ -60,7 +63,7 @@ class TestLexer:
         assert tokens[5].type == 'STRING'
         assert tokens[5].value == 'c'
 
-    def test_select_strings_nested(self):
+    def test_select_strings_nested(self, lexer):
         sql = "SELECT '\"a\"', \"'b'\" "
         tokens = list(SQLLexer().tokenize(sql))
         assert tokens[0].type == 'SELECT'
@@ -70,7 +73,7 @@ class TestLexer:
         assert tokens[3].type == 'STRING'
         assert tokens[3].value == "'b'"
 
-    def test_binary_ops(self):
+    def test_binary_ops(self, lexer):
         for op, expected_type in [
             ('+', 'PLUS'),
             ('-', 'MINUS'),
@@ -104,7 +107,7 @@ class TestLexer:
             assert tokens[3].type == 'INTEGER'
             assert tokens[3].value == 2
 
-    def test_binary_ops_not(self):
+    def test_binary_ops_not(self, lexer):
         for op, expected_type in [
             ('IS NOT', 'IS NOT'),
             ('NOT IN', 'NOT IN'),
@@ -122,7 +125,7 @@ class TestLexer:
             assert tokens[4].type == 'INTEGER'
             assert tokens[4].value == 2
 
-    def test_select_from(self):
+    def test_select_from(self, lexer):
         sql = f'SELECT column AS other_column FROM db.schema.table'
         tokens = list(SQLLexer().tokenize(sql))
 
@@ -144,7 +147,7 @@ class TestLexer:
         assert tokens[5].type == 'ID'
         assert tokens[5].value == 'db.schema.table'
 
-    def test_select_star(self):
+    def test_select_star(self, lexer):
         sql = f'SELECT * FROM table'
         tokens = list(SQLLexer().tokenize(sql))
 
@@ -160,7 +163,7 @@ class TestLexer:
         assert tokens[3].type == 'ID'
         assert tokens[3].value == 'table'
 
-    def test_select_where(self):
+    def test_select_where(self, lexer):
         sql = f'SELECT column FROM table WHERE column = "something"'
         tokens = list(SQLLexer().tokenize(sql))
 
@@ -177,7 +180,7 @@ class TestLexer:
         assert tokens[7].type == 'STRING'
         assert tokens[7].value == 'something'
 
-    def test_select_group_by(self):
+    def test_select_group_by(self, lexer):
         sql = f'SELECT column, sum(column2) FROM db.schema.table GROUP BY column'
         tokens = list(SQLLexer().tokenize(sql))
 
@@ -195,7 +198,7 @@ class TestLexer:
         assert tokens[10].type == 'ID'
         assert tokens[10].value == 'column'
 
-    def test_select_order_by(self):
+    def test_select_order_by(self, lexer):
         for order_dir in ['ASC', 'DESC']:
             sql = f'SELECT column, sum(column2) FROM db.schema.table ORDER BY column {order_dir}'
             tokens = list(SQLLexer().tokenize(sql))
@@ -216,7 +219,7 @@ class TestLexer:
             assert tokens[11].type == order_dir
             assert tokens[11].value == order_dir
 
-    def test_as_ones(self):
+    def test_as_ones(self, lexer):
         sql = "SELECT *, (SELECT 1) AS ones FROM t1"
         tokens = list(SQLLexer().tokenize(sql))
 
@@ -247,7 +250,7 @@ class TestLexer:
         assert tokens[9].type == 'FROM'
         assert tokens[10].type == 'ID'
 
-    def test_select_parameter(self):
+    def test_select_parameter(self, lexer):
         sql = f'SELECT ?'
         tokens = list(SQLLexer().tokenize(sql))
 

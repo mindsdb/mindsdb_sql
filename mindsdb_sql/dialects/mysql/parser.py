@@ -1,14 +1,15 @@
-from sly import Parser
+from mindsdb_sql.parser import SQLParser
+from mindsdb_sql.dialects.mysql.lexer import MySQLLexer
+from mindsdb_sql.dialects.mysql.variable import Variable
 
 from mindsdb_sql.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant,
                              TypeCast, Tuple, OrderBy, Operation, Function, Parameter)
 from mindsdb_sql.exceptions import ParsingException
-from mindsdb_sql.lexer import SQLLexer
 from mindsdb_sql.utils import ensure_select_keyword_order
 
 
-class SQLParser(Parser):
-    tokens = SQLLexer.tokens
+class MySQLParser(SQLParser):
+    tokens = MySQLLexer.tokens
 
     precedence = (
         ('left', PLUS, MINUS, OR),
@@ -17,8 +18,7 @@ class SQLParser(Parser):
         ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS),
     )
 
-    def __init__(self):
-        self.names = dict()
+    # SQL common
 
     # SELECT
 
@@ -112,7 +112,8 @@ class SQLParser(Parser):
         ensure_select_keyword_order(select, 'WHERE')
         where_expr = p.expr
         if not isinstance(where_expr, Operation):
-            raise ParsingException(f"WHERE must contain an operation that evaluates to a boolean, got: {str(where_expr)}")
+            raise ParsingException(
+                f"WHERE must contain an operation that evaluates to a boolean, got: {str(where_expr)}")
         select.where = where_expr
         return select
 
@@ -168,11 +169,11 @@ class SQLParser(Parser):
         return p.parameter
 
     @_('LEFT_JOIN',
-        'RIGHT_JOIN',
-        'INNER_JOIN',
-        'FULL_JOIN',
-        'CROSS_JOIN',
-        'OUTER_JOIN')
+       'RIGHT_JOIN',
+       'INNER_JOIN',
+       'FULL_JOIN',
+       'CROSS_JOIN',
+       'OUTER_JOIN')
     def join_clause(self, p):
         return p[0]
 
@@ -211,8 +212,6 @@ class SQLParser(Parser):
     def result_column(self, p):
         return p.expr
 
-
-
     # OPERATIONS
 
     @_('LPAREN select RPAREN')
@@ -247,12 +246,9 @@ class SQLParser(Parser):
     def expr_list_or_nothing(self, p):
         pass
 
-
     @_('CAST LPAREN expr AS identifier RPAREN')
     def expr(self, p):
         return TypeCast(arg=p.expr, type_name=p.identifier.value)
-
-
 
     @_('enumeration')
     def expr_list(self, p):
@@ -272,7 +268,6 @@ class SQLParser(Parser):
     def identifier(self, p):
         return Identifier(value=p.STAR)
 
-
     @_('expr IS NOT expr',
        'expr NOT IN expr')
     def expr(self, p):
@@ -280,28 +275,28 @@ class SQLParser(Parser):
         return BinaryOperation(op=op, args=(p.expr0, p.expr1))
 
     @_('expr PLUS expr',
-        'expr MINUS expr',
-        'expr STAR expr',
-        'expr DIVIDE expr',
-        'expr MODULO expr',
-        'expr EQUALS expr',
-        'expr NEQUALS expr',
-        'expr GEQ expr',
-        'expr GREATER expr',
-        'expr LEQ expr',
-        'expr LESS expr',
-        'expr AND expr',
-        'expr OR expr',
-        'expr NOT expr',
-        'expr IS expr',
-        'expr LIKE expr',
-        'expr CONCAT expr',
-        'expr IN expr')
+       'expr MINUS expr',
+       'expr STAR expr',
+       'expr DIVIDE expr',
+       'expr MODULO expr',
+       'expr EQUALS expr',
+       'expr NEQUALS expr',
+       'expr GEQ expr',
+       'expr GREATER expr',
+       'expr LEQ expr',
+       'expr LESS expr',
+       'expr AND expr',
+       'expr OR expr',
+       'expr NOT expr',
+       'expr IS expr',
+       'expr LIKE expr',
+       'expr CONCAT expr',
+       'expr IN expr')
     def expr(self, p):
         return BinaryOperation(op=p[1], args=(p.expr0, p.expr1))
 
     @_('MINUS expr %prec UMINUS',
-       'NOT expr %prec UNOT',)
+       'NOT expr %prec UNOT', )
     def expr(self, p):
         return UnaryOperation(op=p[0], args=(p.expr,))
 
@@ -363,8 +358,16 @@ class SQLParser(Parser):
     def empty(self, p):
         pass
 
-    def error(self, p):
-        if p:
-            raise ParsingException(f"Syntax error at token {p.type}: \"{p.value}\"")
-        else:
-            raise ParsingException("Syntax error at EOF")
+    # MySQL specific
+
+    @_('variable')
+    def table_or_subquery(self, p):
+        return p.variable
+
+    @_('variable')
+    def expr(self, p):
+        return p.variable
+
+    @_('VARIABLE')
+    def variable(self, p):
+        return Variable(value=p.VARIABLE)
