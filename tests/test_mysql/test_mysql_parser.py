@@ -7,9 +7,14 @@ class TestMySQLParser:
     def test_select_variable(self):
         sql = 'SELECT @version'
         ast = parse_sql(sql, dialect='mysql')
-
         expected_ast = Select(targets=[Variable('version')])
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == sql
+        assert str(ast) == str(expected_ast)
 
+        sql = 'SELECT @@version'
+        ast = parse_sql(sql, dialect='mysql')
+        expected_ast = Select(targets=[Variable('version', is_system_var=True)])
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == sql
         assert str(ast) == str(expected_ast)

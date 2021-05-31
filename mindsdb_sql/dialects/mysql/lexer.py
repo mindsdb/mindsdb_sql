@@ -2,7 +2,7 @@ from mindsdb_sql.lexer import SQLLexer
 
 
 class MySQLLexer(SQLLexer):
-    tokens = SQLLexer.tokens.union({VARIABLE})
+    tokens = SQLLexer.tokens.union({VARIABLE, SYSTEM_VARIABLE})
 
     @_(r'@[a-zA-Z_.$]+',
        r"@'[a-zA-Z_.$][^']*'",
@@ -10,7 +10,7 @@ class MySQLLexer(SQLLexer):
        r'@"[a-zA-Z_.$][^"]*"'
        )
     def VARIABLE(self, t):
-        t.value = t.value[1:]
+        t.value = t.value.lstrip('@')
 
         if t.value[0] == '"':
             t.value = t.value.strip('\"')
@@ -20,5 +20,18 @@ class MySQLLexer(SQLLexer):
             t.value = t.value.strip('`')
         return t
 
+    @_(r'@@[a-zA-Z_.$]+',
+       r"@@'[a-zA-Z_.$][^']*'",
+       r"@@`[a-zA-Z_.$][^`]*`",
+       r'@@"[a-zA-Z_.$][^"]*"'
+       )
+    def SYSTEM_VARIABLE(self, t):
+        t.value = t.value.lstrip('@')
 
-
+        if t.value[0] == '"':
+            t.value = t.value.strip('\"')
+        elif t.value[0] == "'":
+            t.value = t.value.strip('\'')
+        elif t.value[0] == "`":
+            t.value = t.value.strip('`')
+        return t

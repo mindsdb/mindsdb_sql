@@ -368,6 +368,10 @@ class MySQLParser(SQLParser):
     def expr(self, p):
         return p.variable
 
+    @_('SYSTEM_VARIABLE')
+    def variable(self, p):
+        return Variable(value=p.SYSTEM_VARIABLE, is_system_var=True)
+
     @_('VARIABLE')
     def variable(self, p):
         return Variable(value=p.VARIABLE)
