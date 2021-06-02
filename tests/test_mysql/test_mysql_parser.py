@@ -20,11 +20,11 @@ class TestMySQLParser:
         assert str(ast) == str(expected_ast)
 
     def test_select_varialbe_complex(self):
-        sql = f"""SELECT * FROM tab1 WHERE column1 IN (SELECT column2 + @variable FROM t2)"""
+        sql = f"""SELECT * FROM tab1 WHERE column1 in (SELECT column2 + @variable FROM t2)"""
         ast = parse_sql(sql, dialect='mysql')
         expected_ast = Select(targets=[Identifier("*")],
                               from_table=Identifier('tab1'),
-                              where=BinaryOperation(op='IN',
+                              where=BinaryOperation(op='in',
                                                     args=(
                                                         Identifier('column1'),
                                                         Select(targets=[BinaryOperation(op='+',

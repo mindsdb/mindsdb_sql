@@ -13,7 +13,7 @@ from mindsdb_sql.parser import SQLParser
 class TestOperations:
     def test_select_binary_operations(self, dialect):
         for op in ['+', '-', '/', '*', '%', '=', '!=', '>', '<', '>=', '<=',
-                   'IS', 'IS NOT', 'LIKE', 'IN', 'AND', 'OR', '||']:
+                   'is', 'is not', 'like', 'in', 'and', 'or', '||']:
             sql = f'SELECT column1 {op} column2 FROM tab'
             ast = parse_sql(sql, dialect=dialect)
 
@@ -29,6 +29,22 @@ class TestOperations:
             assert str(ast) == sql
             assert str(ast) == str(expected_ast)
             assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_operation_converts_to_lowercase(self, dialect):
+        sql = f'SELECT column1 IS column2 FROM tab'
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[BinaryOperation(op='is',
+                                     args=(
+                                         Identifier('column1'), Identifier('column2')
+                                     )),
+                     ],
+            from_table=Identifier('tab')
+        )
+
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_precedence_sum_mult(self, dialect):
         sql = f'SELECT column1 + column2 * column3'
@@ -98,10 +114,10 @@ class TestOperations:
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_chained_and(self, dialect):
-        sql = f"""SELECT column1 AND column2 AND column3"""
+        sql = f"""SELECT column1 and column2 and column3"""
         ast = parse_sql(sql, dialect=dialect)
 
-        expected_ast = Select(targets=[BinaryOperation(op='AND', args=(BinaryOperation(op='AND', args=(
+        expected_ast = Select(targets=[BinaryOperation(op='AND', args=(BinaryOperation(op='and', args=(
                                                                            Identifier("column1"),
                                                                            Identifier("column2"))),
                                                                             Identifier("column3"),
@@ -112,13 +128,13 @@ class TestOperations:
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_precedence_or_and(self, dialect):
-        sql = f'SELECT column1 OR column2 AND column3'
+        sql = f'SELECT column1 or column2 and column3'
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
-            targets=[BinaryOperation(op='OR',
+            targets=[BinaryOperation(op='or',
                                      args=(Identifier('column1'),
-                                           BinaryOperation(op='AND',
+                                           BinaryOperation(op='and',
                                                            args=(
                                                                Identifier('column2'), Identifier('column3')
                                                            ))
@@ -132,13 +148,13 @@ class TestOperations:
         assert ast == expected_ast
         assert ast.to_tree() == expected_ast.to_tree()
 
-        sql = f'SELECT column1 AND column2 OR column3'
+        sql = f'SELECT column1 and column2 or column3'
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
-            targets=[BinaryOperation(op='OR',
+            targets=[BinaryOperation(op='or',
                                      args=(
-                                         BinaryOperation(op='AND',
+                                         BinaryOperation(op='and',
                                                          args=(
                                                              Identifier('column1'), Identifier('column2')
                                                          )),
@@ -154,13 +170,13 @@ class TestOperations:
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_precedence_or_and_parentheses(self, dialect):
-        sql = f'SELECT (column1 OR column2) AND column3'
+        sql = f'SELECT (column1 or column2) and column3'
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
-            targets=[BinaryOperation(op='AND',
+            targets=[BinaryOperation(op='and',
                                      args=(
-                                         BinaryOperation(op='OR',
+                                         BinaryOperation(op='or',
                                                          args=(
                                                              Identifier('column1'), Identifier('column2')
                                                          ),
@@ -177,15 +193,15 @@ class TestOperations:
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_where_and_or_precedence(self, dialect):
-        sql = "SELECT col1 FROM tab WHERE col1 AND col2 OR col3"
+        sql = "SELECT col1 FROM tab WHERE col1 and col2 or col3"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
             targets=[Identifier('col1')],
             from_table=Identifier('tab'),
-            where=BinaryOperation(op='OR',
+            where=BinaryOperation(op='or',
                                   args=(
-                                      BinaryOperation(op='AND',
+                                      BinaryOperation(op='and',
                                                       args=(
                                                           Identifier('col1'),
                                                           Identifier('col2'),
@@ -199,15 +215,15 @@ class TestOperations:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
-        sql = "SELECT col1 FROM tab WHERE col1 = 1 AND col2 = 1 OR col3 = 1"
+        sql = "SELECT col1 FROM tab WHERE col1 = 1 and col2 = 1 or col3 = 1"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
             targets=[Identifier('col1')],
             from_table=Identifier('tab'),
-            where=BinaryOperation(op='OR',
+            where=BinaryOperation(op='or',
                                   args=(
-                                      BinaryOperation(op='AND',
+                                      BinaryOperation(op='and',
                                                       args=(
                                                           BinaryOperation(op='=',
                                                                           args=(
@@ -235,7 +251,7 @@ class TestOperations:
 
 
     def test_select_unary_operations(self, dialect):
-        for op in ['-', 'NOT']:
+        for op in ['-', 'not']:
             sql = f'SELECT {op} column FROM table'
             ast = parse_sql(sql, dialect=dialect)
 
@@ -310,7 +326,7 @@ class TestOperations:
     def test_unary_is_special_values(self, dialect):
         args = [('NULL', NullConstant()), ('TRUE', Constant(value=True)), ('FALSE', Constant(value=False))]
         for sql_arg, python_obj in args:
-            sql = f"""SELECT column1 IS {sql_arg}"""
+            sql = f"""SELECT column1 is {sql_arg}"""
             ast = parse_sql(sql, dialect=dialect)
 
             expected_ast = Select(targets=[BinaryOperation(op='IS', args=(Identifier("column1"), python_obj))], )
@@ -321,31 +337,30 @@ class TestOperations:
     def test_unary_is_not_special_values(self, dialect):
         args = [('NULL', NullConstant()), ('TRUE', Constant(value=True)), ('FALSE', Constant(value=False))]
         for sql_arg, python_obj in args:
-            sql = f"""SELECT column1 IS NOT {sql_arg}"""
+            sql = f"""SELECT column1 is not {sql_arg}"""
             ast = parse_sql(sql, dialect=dialect)
 
-            expected_ast = Select(targets=[BinaryOperation(op='IS NOT', args=(Identifier("column1"), python_obj))], )
+            expected_ast = Select(targets=[BinaryOperation(op='is not', args=(Identifier("column1"), python_obj))], )
 
             assert str(ast) == sql
             assert ast.to_tree() == expected_ast.to_tree()
             assert str(ast) == str(expected_ast)
 
     def test_not_in(self, dialect):
-        sql = f"""SELECT column1 NOT IN column2"""
+        sql = f"""SELECT column1 not   in column2"""
         ast = parse_sql(sql, dialect=dialect)
 
-        expected_ast = Select(targets=[BinaryOperation(op='NOT IN', args=(Identifier("column1"), Identifier("column2")))], )
+        expected_ast = Select(targets=[BinaryOperation(op='not in', args=(Identifier("column1"), Identifier("column2")))], )
 
-        assert str(ast) == sql
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_is_null(self, dialect):
-        sql = "SELECT col1 FROM t1 WHERE col1 IS NULL"
+        sql = "SELECT col1 FROM t1 WHERE col1 is NULL"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
-                              where=BinaryOperation('IS', args=(Identifier('col1'), NullConstant())))
+                              where=BinaryOperation('is', args=(Identifier('col1'), NullConstant())))
 
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -354,11 +369,11 @@ class TestOperations:
         assert str(ast) == str(expected_ast)
 
     def test_is_not_null(self, dialect):
-        sql = "SELECT col1 FROM t1 WHERE col1 IS NOT NULL"
+        sql = "SELECT col1 FROM t1 WHERE col1 is not NULL"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
-                              where=BinaryOperation('IS NOT', args=(Identifier('col1'), NullConstant())))
+                              where=BinaryOperation('is not', args=(Identifier('col1'), NullConstant())))
         assert ast.to_tree() == expected_ast.to_tree()
 
         assert str(ast) == sql
@@ -366,11 +381,11 @@ class TestOperations:
         assert str(ast) == str(expected_ast)
 
     def test_is_true(self, dialect):
-        sql = "SELECT col1 FROM t1 WHERE col1 IS TRUE"
+        sql = "SELECT col1 FROM t1 WHERE col1 is TRUE"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
-                              where=BinaryOperation('IS', args=(Identifier('col1'), Constant(True))))
+                              where=BinaryOperation('is', args=(Identifier('col1'), Constant(True))))
         assert ast.to_tree() == expected_ast.to_tree()
 
         assert str(ast) == sql
@@ -378,11 +393,11 @@ class TestOperations:
         assert str(ast) == str(expected_ast)
 
     def test_is_false(self, dialect):
-        sql = "SELECT col1 FROM t1 WHERE col1 IS FALSE"
+        sql = "SELECT col1 FROM t1 WHERE col1 is FALSE"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
-                              where=BinaryOperation('IS', args=(Identifier('col1'), Constant(False))))
+                              where=BinaryOperation('is', args=(Identifier('col1'), Constant(False))))
         assert str(ast) == sql
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)

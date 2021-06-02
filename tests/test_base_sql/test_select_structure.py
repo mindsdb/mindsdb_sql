@@ -190,7 +190,7 @@ class TestSelectStructure:
             ast = parse_sql(sql, dialect=dialect)
 
     def test_select_where_and(self, dialect):
-        sql = f'SELECT column FROM table WHERE column != 1 AND column > 10'
+        sql = f'SELECT column FROM table WHERE column != 1 and column > 10'
         ast = parse_sql(sql, dialect=dialect)
 
         assert isinstance(ast, Select)
@@ -202,7 +202,7 @@ class TestSelectStructure:
         assert ast.from_table.value == 'table'
 
         assert isinstance(ast.where, BinaryOperation)
-        assert ast.where.op == 'AND'
+        assert ast.where.op == 'and'
 
         assert isinstance(ast.where.args[0], BinaryOperation)
         assert ast.where.args[0].op == '!='
@@ -420,14 +420,14 @@ class TestSelectStructure:
             assert 'must go after' in str(excinfo.value) or ' requires ' in str(excinfo.value)
 
     def test_select_from_inner_join(self, dialect):
-        sql = """SELECT * FROM t1 INNER JOIN t2 ON t1.x1 = t2.x2 AND t1.x2 = t2.x2"""
+        sql = """SELECT * FROM t1 INNER JOIN t2 ON t1.x1 = t2.x2 and t1.x2 = t2.x2"""
 
         expected_ast = Select(targets=[Identifier("*")],
                               from_table=Join(join_type='INNER JOIN',
                                               left=Identifier('t1'),
                                               right=Identifier('t2'),
                                               condition=
-                                              BinaryOperation(op='AND',
+                                              BinaryOperation(op='and',
                                                               args=[
                                                                   BinaryOperation(op='=',
                                                                                   args=(
@@ -519,11 +519,11 @@ class TestSelectStructure:
         assert str(ast) == str(expected_ast)
 
     def test_select_subquery_where(self, dialect):
-        sql = f"""SELECT * FROM tab1 WHERE column1 IN (SELECT column2 FROM t2)"""
+        sql = f"""SELECT * FROM tab1 WHERE column1 in (SELECT column2 FROM t2)"""
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Select(targets=[Identifier("*")],
                               from_table=Identifier('tab1'),
-                              where=BinaryOperation(op='IN',
+                              where=BinaryOperation(op='in',
                                                     args=(
                                                         Identifier('column1'),
                                                         Select(targets=[Identifier('column2')],
@@ -555,11 +555,11 @@ class TestSelectStructure:
         assert str(ast) == str(expected_ast)
 
     def test_in_tuple(self, dialect):
-        sql = "SELECT col FROM tab WHERE col IN (1, 2)"
+        sql = "SELECT col FROM tab WHERE col in (1, 2)"
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Select(targets=[Identifier('col')],
                               from_table=Identifier('tab'),
-                              where=BinaryOperation(op='IN',
+                              where=BinaryOperation(op='in',
                                                     args=(
                                                         Identifier('col'),
                                                         Tuple(items=[Constant(1), Constant(2)])
