@@ -1,6 +1,6 @@
 __title__ = 'mindsdb_sql'
 __package_name__ = 'mindsdb_sql'
-__version__ = '0.0.10'
+__version__ = '0.0.11'
 __description__ = "Pure python SQL parser"
 __email__ = "jorge@mindsdb.com"
 __author__ = 'MindsDB Inc'
