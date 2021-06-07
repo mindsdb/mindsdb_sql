@@ -29,6 +29,15 @@ class Operation(ASTNode):
         return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.op}({args_str})'))
 
 
+class BetweenOperation(Operation):
+    def __init__(self, *args, **kwargs):
+        super().__init__(op='between', *args, **kwargs)
+
+    def to_string(self, *args, **kwargs):
+        arg_strs = [arg.to_string() for arg in self.args]
+        return self.maybe_add_alias(self.maybe_add_parentheses(f'{arg_strs[0]} BETWEEN {arg_strs[1]} AND {arg_strs[2]}'))
+
+
 class BinaryOperation(Operation):
     def to_string(self, *args, **kwargs):
         arg_strs = [arg.to_string() for arg in self.args]

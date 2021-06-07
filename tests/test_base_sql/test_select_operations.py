@@ -2,7 +2,7 @@ import pytest
 
 from mindsdb_sql import parse_sql
 from mindsdb_sql.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, NullConstant
-from mindsdb_sql.ast.operation import Function, Operation
+from mindsdb_sql.ast.operation import Function, Operation, BetweenOperation
 from mindsdb_sql.ast.tuple import Tuple
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.lexer import SQLLexer
@@ -401,3 +401,16 @@ class TestOperations:
         assert str(ast) == sql
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_between(self, dialect):
+        sql = "SELECT col1 FROM t1 WHERE col1 BETWEEN a AND b"
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
+                              where=BetweenOperation(args=(Identifier('col1'), Identifier('a'), Identifier('b'))))
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        assert str(ast) == sql
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+

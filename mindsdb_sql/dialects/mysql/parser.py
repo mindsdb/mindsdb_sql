@@ -3,7 +3,7 @@ from mindsdb_sql.dialects.mysql.lexer import MySQLLexer
 from mindsdb_sql.dialects.mysql.variable import Variable
 
 from mindsdb_sql.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant,
-                             TypeCast, Tuple, OrderBy, Operation, Function, Parameter, CreateView)
+                             TypeCast, Tuple, OrderBy, Operation, Function, Parameter, CreateView, BetweenOperation)
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.utils import ensure_select_keyword_order
 
@@ -289,6 +289,10 @@ class MySQLParser(SQLParser):
     @_('STAR')
     def identifier(self, p):
         return Identifier(value=p.STAR)
+
+    @_('expr BETWEEN expr AND expr')
+    def expr(self, p):
+        return BetweenOperation(args=(p.expr0, p.expr1, p.expr2))
 
     @_('expr IS NOT expr',
        'expr NOT IN expr')

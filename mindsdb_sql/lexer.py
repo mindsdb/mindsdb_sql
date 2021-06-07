@@ -14,6 +14,8 @@ class SQLLexer(Lexer):
 
         CREATE, VIEW,
 
+        USE, BETWEEN,
+
         INNER_JOIN, OUTER_JOIN, CROSS_JOIN, LEFT_JOIN, RIGHT_JOIN, FULL_JOIN, ON,
 
         # Special
@@ -47,6 +49,8 @@ class SQLLexer(Lexer):
     ORDER_BY = r'\bORDER BY\b'
     STAR = r'\*'
 
+    USE = r'\bUSE\b'
+    BETWEEN = r'\bBETWEEN\b'
     CREATE = r'\bCREATE\b'
     VIEW = r'\bVIEW\b'
 

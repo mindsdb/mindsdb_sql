@@ -1,7 +1,7 @@
 from sly import Parser
 
 from mindsdb_sql.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant,
-                             TypeCast, Tuple, OrderBy, Operation, Function, Parameter)
+                             TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation)
 from mindsdb_sql.ast.create_view import CreateView
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.lexer import SQLLexer
@@ -290,6 +290,9 @@ class SQLParser(Parser):
     def identifier(self, p):
         return Identifier(value=p.STAR)
 
+    @_('expr BETWEEN expr AND expr')
+    def expr(self, p):
+        return BetweenOperation(args=(p.expr0, p.expr1, p.expr2))
 
     @_('expr IS NOT expr',
        'expr NOT IN expr')
