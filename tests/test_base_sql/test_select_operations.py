@@ -2,8 +2,8 @@ import pytest
 
 from mindsdb_sql import parse_sql
 from mindsdb_sql.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, NullConstant
-from mindsdb_sql.ast.operation import Function, Operation, BetweenOperation
-from mindsdb_sql.ast.tuple import Tuple
+from mindsdb_sql.ast import Function, Operation, BetweenOperation
+from mindsdb_sql.ast import Tuple
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.lexer import SQLLexer
 from mindsdb_sql.parser import SQLParser
@@ -252,7 +252,7 @@ class TestOperations:
 
     def test_select_unary_operations(self, dialect):
         for op in ['-', 'not']:
-            sql = f'SELECT {op} column FROM table'
+            sql = f'SELECT {op} column FROM tab'
             ast = parse_sql(sql, dialect=dialect)
 
             assert isinstance(ast, Select)
@@ -266,12 +266,12 @@ class TestOperations:
             assert str(ast) == sql
 
     def test_select_function_no_args(self, dialect):
-        sql = f'SELECT database() FROM table'
+        sql = f'SELECT database() FROM tab'
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
             targets=[Function(op='database', args=tuple())],
-            from_table=Identifier('table'),
+            from_table=Identifier('tab'),
         )
 
         assert str(ast) == sql
@@ -281,12 +281,12 @@ class TestOperations:
     def test_select_function_one_arg(self, dialect):
         funcs = ['sum', 'min', 'max', 'some_custom_function']
         for func in funcs:
-            sql = f'SELECT {func}(column) FROM table'
+            sql = f'SELECT {func}(column) FROM tab'
             ast = parse_sql(sql, dialect=dialect)
 
             expected_ast = Select(
                 targets=[Function(op=func, args=(Identifier('column'),))],
-                from_table=Identifier('table'),
+                from_table=Identifier('tab'),
             )
 
             assert str(ast) == sql
@@ -296,12 +296,12 @@ class TestOperations:
     def test_select_function_two_args(self, dialect):
         funcs = ['sum', 'min', 'max', 'some_custom_function']
         for func in funcs:
-            sql = f'SELECT {func}(column1, column2) FROM table'
+            sql = f'SELECT {func}(column1, column2) FROM tab'
             ast = parse_sql(sql, dialect=dialect)
 
             expected_ast = Select(
                 targets=[Function(op=func, args=(Identifier('column1'),Identifier('column2')))],
-                from_table=Identifier('table'),
+                from_table=Identifier('tab'),
             )
 
             assert str(ast) == sql

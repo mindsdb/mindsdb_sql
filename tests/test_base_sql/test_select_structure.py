@@ -1,16 +1,8 @@
 import itertools
-
 import pytest
-
 from mindsdb_sql import parse_sql
-from mindsdb_sql.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, TypeCast, Parameter
-from mindsdb_sql.ast.join import Join
-from mindsdb_sql.ast.operation import Function
-from mindsdb_sql.ast.order_by import OrderBy
-from mindsdb_sql.ast.tuple import Tuple
+from mindsdb_sql.ast import *
 from mindsdb_sql.exceptions import ParsingException
-from mindsdb_sql.lexer import SQLLexer
-from mindsdb_sql.parser import SQLParser
 
 
 @pytest.mark.parametrize('dialect', ['sqlite', 'mysql'])
@@ -66,7 +58,7 @@ class TestSelectStructure:
         assert str(ast) == sql
 
     def test_select_from_table(self, dialect):
-        sql = f'SELECT column FROM table'
+        sql = f'SELECT column FROM tab'
         ast = parse_sql(sql, dialect=dialect)
 
         assert isinstance(ast, Select)
@@ -75,16 +67,16 @@ class TestSelectStructure:
         assert ast.targets[0].value == 'column'
 
         assert isinstance(ast.from_table, Identifier)
-        assert ast.from_table.value == 'table'
+        assert ast.from_table.value == 'tab'
 
         assert str(ast) == sql
 
     def test_select_from_table_long(self, dialect):
-        query = "SELECT 1 FROM database.schema.table"
+        query = "SELECT 1 FROM database.schema.tab"
 
         assert str(parse_sql(query)) == str(Select(
             targets=[Constant(1)],
-            from_table=Identifier('database.schema.table')
+            from_table=Identifier('database.schema.tab')
         ))
 
     def test_select_distinct(self, dialect):
@@ -93,7 +85,7 @@ class TestSelectStructure:
         assert parse_sql(sql, dialect=dialect).distinct
 
     def test_select_multiple_from_table(self, dialect):
-        sql = f'SELECT column1, column2, 1 AS renamed_constant FROM table'
+        sql = f'SELECT column1, column2, 1 AS renamed_constant FROM tab'
         ast = parse_sql(sql, dialect=dialect)
 
         assert isinstance(ast, Select)
@@ -105,7 +97,7 @@ class TestSelectStructure:
         assert ast.targets[2].alias == 'renamed_constant'
 
         assert isinstance(ast.from_table, Identifier)
-        assert ast.from_table.value == 'table'
+        assert ast.from_table.value == 'tab'
 
         assert str(ast) == sql
 
@@ -124,12 +116,12 @@ class TestSelectStructure:
                                                    from_table=Identifier('t1')))
 
     def test_from_table_raises_duplicate(self, dialect):
-        sql = f'SELECT column FROM table FROM table'
+        sql = f'SELECT column FROM tab FROM tab'
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_select_where(self, dialect):
-        sql = f'SELECT column FROM table WHERE column != 1'
+        sql = f'SELECT column FROM tab WHERE column != 1'
         ast = parse_sql(sql, dialect=dialect)
         assert isinstance(ast, Select)
         assert len(ast.targets) == 1
@@ -137,7 +129,7 @@ class TestSelectStructure:
         assert ast.targets[0].value == 'column'
 
         assert isinstance(ast.from_table, Identifier)
-        assert ast.from_table.value == 'table'
+        assert ast.from_table.value == 'tab'
 
         assert isinstance(ast.where, BinaryOperation)
         assert ast.where.op == '!='
@@ -180,17 +172,17 @@ class TestSelectStructure:
             ast = parse_sql(sql, dialect=dialect)
 
     def test_where_raises_duplicate(self, dialect):
-        sql = f'SELECT column FROM table WHERE column != 1 WHERE column > 1'
+        sql = f'SELECT column FROM tab WHERE column != 1 WHERE column > 1'
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_where_raises_as(self, dialect):
-        sql = f'SELECT column FROM table WHERE column != 1 AS somealias'
+        sql = f'SELECT column FROM tab WHERE column != 1 AS somealias'
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_select_where_and(self, dialect):
-        sql = f'SELECT column FROM table WHERE column != 1 and column > 10'
+        sql = f'SELECT column FROM tab WHERE column != 1 and column > 10'
         ast = parse_sql(sql, dialect=dialect)
 
         assert isinstance(ast, Select)
@@ -199,7 +191,7 @@ class TestSelectStructure:
         assert ast.targets[0].value == 'column'
 
         assert isinstance(ast.from_table, Identifier)
-        assert ast.from_table.value == 'table'
+        assert ast.from_table.value == 'tab'
 
         assert isinstance(ast.where, BinaryOperation)
         assert ast.where.op == 'and'
@@ -211,7 +203,7 @@ class TestSelectStructure:
         assert str(ast) == sql
 
     def test_select_where_must_be_an_op(self, dialect):
-        sql = f'SELECT column FROM table WHERE column'
+        sql = f'SELECT column FROM tab WHERE column'
 
         with pytest.raises(ParsingException) as excinfo:
             ast = parse_sql(sql, dialect=dialect)
@@ -219,11 +211,11 @@ class TestSelectStructure:
         assert "WHERE must contain an operation that evaluates to a boolean" in str(excinfo.value)
 
     def test_select_group_by(self, dialect):
-        sql = f'SELECT column FROM table WHERE column != 1 GROUP BY column1'
+        sql = f'SELECT column FROM tab WHERE column != 1 GROUP BY column1'
         ast = parse_sql(sql, dialect=dialect)
         assert str(ast) == sql
 
-        sql = f'SELECT column FROM table WHERE column != 1 GROUP BY column1, column2'
+        sql = f'SELECT column FROM tab WHERE column != 1 GROUP BY column1, column2'
         ast = parse_sql(sql, dialect=dialect)
 
         assert isinstance(ast, Select)
@@ -232,7 +224,7 @@ class TestSelectStructure:
         assert ast.targets[0].value == 'column'
 
         assert isinstance(ast.from_table, Identifier)
-        assert ast.from_table.value == 'table'
+        assert ast.from_table.value == 'tab'
 
         assert isinstance(ast.where, BinaryOperation)
         assert ast.where.op == '!='
@@ -259,16 +251,16 @@ class TestSelectStructure:
                                                    group_by=[Identifier("column1"), Identifier("column2")]))
 
     def test_group_by_raises_duplicate(self, dialect):
-        sql = f'SELECT column FROM table GROUP BY col GROUP BY col'
+        sql = f'SELECT column FROM tab GROUP BY col GROUP BY col'
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_select_having(self, dialect):
-        sql = f'SELECT column FROM table WHERE column != 1 GROUP BY column1'
+        sql = f'SELECT column FROM tab WHERE column != 1 GROUP BY column1'
         ast = parse_sql(sql, dialect=dialect)
         assert str(ast) == sql
 
-        sql = f'SELECT column FROM table WHERE column != 1 GROUP BY column1, column2 HAVING column1 > 10'
+        sql = f'SELECT column FROM tab WHERE column != 1 GROUP BY column1, column2 HAVING column1 > 10'
         ast = parse_sql(sql, dialect=dialect)
 
         assert isinstance(ast, Select)
@@ -314,12 +306,12 @@ class TestSelectStructure:
         assert str(ast) == str(expected_ast)
 
     def test_having_raises_duplicate(self, dialect):
-        sql = f'SELECT column FROM table GROUP BY col HAVING col > 1 HAVING col > 1'
+        sql = f'SELECT column FROM tab GROUP BY col HAVING col > 1 HAVING col > 1'
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_select_order_by(self, dialect):
-        sql = f'SELECT column1 FROM table ORDER BY column2'
+        sql = f'SELECT column1 FROM tab ORDER BY column2'
         ast = parse_sql(sql, dialect=dialect)
         assert str(ast) == sql
 
@@ -329,7 +321,7 @@ class TestSelectStructure:
         assert ast.order_by[0].field.value == 'column2'
         assert ast.order_by[0].direction == 'default'
 
-        sql = f'SELECT column1 FROM table ORDER BY column2, column3 ASC, column4 DESC'
+        sql = f'SELECT column1 FROM tab ORDER BY column2, column3 ASC, column4 DESC'
         ast = parse_sql(sql, dialect=dialect)
         assert str(ast) == sql
 
@@ -351,12 +343,12 @@ class TestSelectStructure:
         assert ast.order_by[2].direction == 'DESC'
 
     def test_order_by_raises_duplicate(self, dialect):
-        sql = f'SELECT column FROM table ORDER BY col1 ORDER BY col1'
+        sql = f'SELECT column FROM tab ORDER BY col1 ORDER BY col1'
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_select_limit_offset(self, dialect):
-        sql = f'SELECT column FROM table LIMIT 5 OFFSET 3'
+        sql = f'SELECT column FROM tab LIMIT 5 OFFSET 3'
         ast = parse_sql(sql, dialect=dialect)
         assert str(ast) == sql
 
@@ -364,41 +356,41 @@ class TestSelectStructure:
         assert ast.offset == Constant(value=3)
 
     def test_select_limit_offset_raises_nonint(self, dialect):
-        sql = f'SELECT column FROM table OFFSET 3.0'
+        sql = f'SELECT column FROM tab OFFSET 3.0'
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
-        sql = "SELECT column FROM table LIMIT \"string\""
+        sql = "SELECT column FROM tab LIMIT \"string\""
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_select_limit_offset_raises_wrong_order(self, dialect):
-        sql = f'SELECT column FROM table OFFSET 3 LIMIT 5 '
+        sql = f'SELECT column FROM tab OFFSET 3 LIMIT 5 '
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_limit_raises_duplicate(self, dialect):
-        sql = f'SELECT column FROM table LIMIT 1 LIMIT 1'
+        sql = f'SELECT column FROM tab LIMIT 1 LIMIT 1'
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_offset_raises_duplicate(self, dialect):
-        sql = f'SELECT column FROM table OFFSET 1 OFFSET 1'
+        sql = f'SELECT column FROM tab OFFSET 1 OFFSET 1'
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_limit_raises_before_order_by(self, dialect):
-        sql = f'SELECT column FROM table LIMIT 1 ORDER BY column ASC'
+        sql = f'SELECT column FROM tab LIMIT 1 ORDER BY column ASC'
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_offset_raises_before_order_by(self, dialect):
-        sql = f'SELECT column FROM table OFFSET 1 ORDER BY column ASC'
+        sql = f'SELECT column FROM tab OFFSET 1 ORDER BY column ASC'
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
     def test_select_order(self, dialect):
-        components = ['FROM table',
+        components = ['FROM tab',
                       'WHERE column = 1',
                       'GROUP BY column',
                       'HAVING column != 2',
@@ -608,11 +600,11 @@ class TestSelectStructure:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
-        sql = "SELECT `my column name` FROM table WHERE `other column name` = 'bla bla ``` bla'"
+        sql = "SELECT `my column name` FROM tab WHERE `other column name` = 'bla bla ``` bla'"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[Identifier('my column name')],
-                              from_table=Identifier('table'),
+                              from_table=Identifier('tab'),
                               where=BinaryOperation(op='=', args=(
                                       Identifier('other column name'),
                                       Constant('bla bla ``` bla')

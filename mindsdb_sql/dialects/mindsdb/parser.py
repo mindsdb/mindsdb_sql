@@ -1,16 +1,16 @@
-from mindsdb_sql.dialects.mindsdb import CreateView
-from mindsdb_sql.parser import SQLParser
-from mindsdb_sql.dialects.mysql.lexer import MySQLLexer
-from mindsdb_sql.dialects.mysql.variable import Variable
+from sly import Parser
 
 from mindsdb_sql.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant,
                              TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation)
+from mindsdb_sql.dialects.mindsdb.use import Use
+from mindsdb_sql.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.exceptions import ParsingException
+from mindsdb_sql.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.utils import ensure_select_keyword_order
 
 
-class MySQLParser(SQLParser):
-    tokens = MySQLLexer.tokens
+class MindsDBParser(Parser):
+    tokens = MindsDBLexer.tokens
 
     precedence = (
         ('left', PLUS, MINUS, OR),
@@ -19,12 +19,34 @@ class MySQLParser(SQLParser):
         ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS),
     )
 
-    # SQL common
-
     # Top-level statements
-    @_('select')
+    @_( 'use',
+        'create_view',
+       'select')
     def query(self, p):
         return p[0]
+
+    # CUSE
+
+    @_('USE identifier')
+    def use(self, p):
+        return Use(value=p.identifier)
+
+    # CREATE VIEW
+
+    @_('CREATE VIEW identifier create_view_from_table_or_nothing AS LPAREN select RPAREN')
+    def create_view(self, p):
+        return CreateView(name=p.identifier.value,
+                          from_table=p.create_view_from_table_or_nothing,
+                          query=p.select)
+
+    @_('FROM identifier')
+    def create_view_from_table_or_nothing(self, p):
+        return p.identifier
+
+    @_('empty')
+    def create_view_from_table_or_nothing(self, p):
+        pass
 
     # SELECT
 
@@ -118,8 +140,7 @@ class MySQLParser(SQLParser):
         ensure_select_keyword_order(select, 'WHERE')
         where_expr = p.expr
         if not isinstance(where_expr, Operation):
-            raise ParsingException(
-                f"WHERE must contain an operation that evaluates to a boolean, got: {str(where_expr)}")
+            raise ParsingException(f"WHERE must contain an operation that evaluates to a boolean, got: {str(where_expr)}")
         select.where = where_expr
         return select
 
@@ -175,11 +196,11 @@ class MySQLParser(SQLParser):
         return p.parameter
 
     @_('LEFT_JOIN',
-       'RIGHT_JOIN',
-       'INNER_JOIN',
-       'FULL_JOIN',
-       'CROSS_JOIN',
-       'OUTER_JOIN')
+        'RIGHT_JOIN',
+        'INNER_JOIN',
+        'FULL_JOIN',
+        'CROSS_JOIN',
+        'OUTER_JOIN')
     def join_clause(self, p):
         return p[0]
 
@@ -285,28 +306,28 @@ class MySQLParser(SQLParser):
         return BinaryOperation(op=op, args=(p.expr0, p.expr1))
 
     @_('expr PLUS expr',
-       'expr MINUS expr',
-       'expr STAR expr',
-       'expr DIVIDE expr',
-       'expr MODULO expr',
-       'expr EQUALS expr',
-       'expr NEQUALS expr',
-       'expr GEQ expr',
-       'expr GREATER expr',
-       'expr LEQ expr',
-       'expr LESS expr',
-       'expr AND expr',
-       'expr OR expr',
-       'expr NOT expr',
-       'expr IS expr',
-       'expr LIKE expr',
-       'expr CONCAT expr',
-       'expr IN expr')
+        'expr MINUS expr',
+        'expr STAR expr',
+        'expr DIVIDE expr',
+        'expr MODULO expr',
+        'expr EQUALS expr',
+        'expr NEQUALS expr',
+        'expr GEQ expr',
+        'expr GREATER expr',
+        'expr LEQ expr',
+        'expr LESS expr',
+        'expr AND expr',
+        'expr OR expr',
+        'expr NOT expr',
+        'expr IS expr',
+        'expr LIKE expr',
+        'expr CONCAT expr',
+        'expr IN expr')
     def expr(self, p):
         return BinaryOperation(op=p[1], args=(p.expr0, p.expr1))
 
     @_('MINUS expr %prec UMINUS',
-       'NOT expr %prec UNOT', )
+       'NOT expr %prec UNOT',)
     def expr(self, p):
         return UnaryOperation(op=p[0], args=(p.expr,))
 
@@ -368,20 +389,8 @@ class MySQLParser(SQLParser):
     def empty(self, p):
         pass
 
-    # MySQL specific
-
-    @_('variable')
-    def table_or_subquery(self, p):
-        return p.variable
-
-    @_('variable')
-    def expr(self, p):
-        return p.variable
-
-    @_('SYSTEM_VARIABLE')
-    def variable(self, p):
-        return Variable(value=p.SYSTEM_VARIABLE, is_system_var=True)
-
-    @_('VARIABLE')
-    def variable(self, p):
-        return Variable(value=p.VARIABLE)
+    def error(self, p):
+        if p:
+            raise ParsingException(f"Syntax error at token {p.type}: \"{p.value}\"")
+        else:
+            raise ParsingException("Syntax error at EOF")

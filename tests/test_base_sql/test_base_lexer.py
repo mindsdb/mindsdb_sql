@@ -1,9 +1,10 @@
 import pytest
 from mindsdb_sql.lexer import SQLLexer
 from mindsdb_sql.dialects.mysql.lexer import MySQLLexer
+from mindsdb_sql.dialects.mindsdb.lexer import MindsDBLexer
 
 
-@pytest.mark.parametrize('lexer', [SQLLexer(), MySQLLexer()])
+@pytest.mark.parametrize('lexer', [SQLLexer(), MySQLLexer(), MindsDBLexer()])
 class TestLexer:
     def test_select_basic(self, lexer):
         sql = f'SELECT 1'
@@ -26,8 +27,6 @@ class TestLexer:
         assert tokens[0].type == 'SELECT'
         assert tokens[1].type == 'ID'
         assert tokens[1].value == 'a'
-
-
 
     def test_select_float(self, lexer):
         for float in [0.0, 1.000, 0.1, 1.0, 99999.9999]:
@@ -126,7 +125,7 @@ class TestLexer:
             assert tokens[4].value == 2
 
     def test_select_from(self, lexer):
-        sql = f'SELECT column AS other_column FROM db.schema.table'
+        sql = f'SELECT column AS other_column FROM db.schema.tab'
         tokens = list(SQLLexer().tokenize(sql))
 
         assert tokens[0].type == 'SELECT'
@@ -145,10 +144,10 @@ class TestLexer:
         assert tokens[4].value == 'FROM'
 
         assert tokens[5].type == 'ID'
-        assert tokens[5].value == 'db.schema.table'
+        assert tokens[5].value == 'db.schema.tab'
 
     def test_select_star(self, lexer):
-        sql = f'SELECT * FROM table'
+        sql = f'SELECT * FROM tab'
         tokens = list(SQLLexer().tokenize(sql))
 
         assert tokens[0].type == 'SELECT'
@@ -161,10 +160,10 @@ class TestLexer:
         assert tokens[2].value == 'FROM'
 
         assert tokens[3].type == 'ID'
-        assert tokens[3].value == 'table'
+        assert tokens[3].value == 'tab'
 
     def test_select_where(self, lexer):
-        sql = f'SELECT column FROM table WHERE column = "something"'
+        sql = f'SELECT column FROM tab WHERE column = "something"'
         tokens = list(SQLLexer().tokenize(sql))
 
         assert tokens[0].type == 'SELECT'
@@ -181,7 +180,7 @@ class TestLexer:
         assert tokens[7].value == 'something'
 
     def test_select_group_by(self, lexer):
-        sql = f'SELECT column, sum(column2) FROM db.schema.table GROUP BY column'
+        sql = f'SELECT column, sum(column2) FROM db.schema.tab GROUP BY column'
         tokens = list(SQLLexer().tokenize(sql))
 
         assert tokens[0].type == 'SELECT'
@@ -200,7 +199,7 @@ class TestLexer:
 
     def test_select_order_by(self, lexer):
         for order_dir in ['ASC', 'DESC']:
-            sql = f'SELECT column, sum(column2) FROM db.schema.table ORDER BY column {order_dir}'
+            sql = f'SELECT column, sum(column2) FROM db.schema.tab ORDER BY column {order_dir}'
             tokens = list(SQLLexer().tokenize(sql))
 
             assert tokens[0].type == 'SELECT'

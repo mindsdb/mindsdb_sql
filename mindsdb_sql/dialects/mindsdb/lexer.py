@@ -2,12 +2,17 @@ import re
 from sly import Lexer
 
 
-class SQLLexer(Lexer):
+class MindsDBLexer(Lexer):
     reflags = re.IGNORECASE
     ignore = ' \t\n'
 
     tokens = {
-        # Mindsdb Commands
+        CREATE, SHOW, USE, DROP,
+
+        VIEW, VIEWS, PREDICTOR, PREDICTORS, INTEGRATION, INTEGRATIONS,
+        STREAM, STREAMS, TABLE, TABLES, PUBLICATION, PUBLICATIONS, ALL,
+
+        ENGINE, TRAIN, TEST, PREDICT, MODEL,
 
         # SELECT Keywords
         SELECT, DISTINCT, FROM, WHERE, AS,
@@ -27,8 +32,32 @@ class SQLLexer(Lexer):
         IN, LIKE, CONCAT, BETWEEN, WINDOW,
 
         # Data types
-        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE }
+        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE}
 
+    # Custom commands
+
+    USE = r'\bUSE\b'
+    SHOW = r'\bSHOW\b'
+    CREATE = r'\bCREATE\b'
+    VIEW = r'\bVIEW\b'
+    VIEWS = r'\bVIEWS\b'
+    STREAM = r'\bSTREAM\b'
+    STREAMS = r'\bSTREAMS\b'
+    TABLE = r'\bTABLE\b'
+    TABLES = r'\bTABLES\b'
+    PREDICTOR = r'\bPREDICTOR\b'
+    PREDICTORS = r'\bPREDICTORS\b'
+    INTEGRATION = r'\bINTEGRATION\b'
+    INTEGRATIONS = r'\bINTEGRATIONS\b'
+    PUBLICATION = r'\bPUBLICATION\b'
+    PUBLICATIONS = r'\bPUBLICATIONS\b'
+    ALL = r'\bALL\b'
+    ENGINE = r'\bENGINE\b'
+    TRAIN = r'\bTRAIN\b'
+    TEST = r'\bTEST\b'
+    PREDICT = r'\bPREDICT\b'
+    MODEL = r'\bMODEL\b'
+    DROP = r'\bDROP\b'
 
     # SELECT
 
@@ -91,7 +120,7 @@ class SQLLexer(Lexer):
     FALSE = r'\bFALSE\b'
 
     @_(r'[a-zA-Z][a-zA-Z_.0-9]*',
-      r'`([a-zA-Z][^`]*)`(\.`([a-zA-Z][^`]*)`)*')
+       r'`([a-zA-Z][^`]*)`(\.`([a-zA-Z][^`]*)`)*')
     def ID(self, t):
         if t.value[0] == '`':
             t.value = t.value.replace('`', '')
@@ -115,3 +144,4 @@ class SQLLexer(Lexer):
         else:
             t.value = t.value.strip('\'')
         return t
+
