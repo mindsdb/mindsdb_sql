@@ -2,6 +2,7 @@ from sly import Parser
 
 from mindsdb_sql.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant,
                              TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation)
+from mindsdb_sql.dialects.mindsdb.show import Show
 from mindsdb_sql.dialects.mindsdb.use import Use
 from mindsdb_sql.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.exceptions import ParsingException
@@ -20,13 +21,29 @@ class MindsDBParser(Parser):
     )
 
     # Top-level statements
-    @_( 'use',
-        'create_view',
+    @_('show',
+       'use',
+       'create_view',
        'select')
     def query(self, p):
         return p[0]
 
-    # CUSE
+    # Show
+
+    @_('SHOW STREAMS',
+       'SHOW PREDICTORS',
+       'SHOW INTEGRATIONS',
+       'SHOW PUBLICATIONS',
+       'SHOW ALL')
+    def show(self, p):
+        return Show(value=p[1])
+
+    @_('SHOW TABLES identifier',
+       'SHOW VIEWS identifier')
+    def show(self, p):
+        return Show(value=p[1], arg=p[2])
+
+    # USE
 
     @_('USE identifier')
     def use(self, p):
