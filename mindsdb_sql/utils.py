@@ -39,3 +39,13 @@ def ensure_select_keyword_order(select, operation):
     for next_op in precedence[op_precedence_pos:]:
         if op_to_attr[next_op]:
             raise ParsingException(f"{operation} must go after {next_op}")
+
+
+class JoinType:
+    INNER_JOIN = 'INNER JOIN'
+    OUTER_JOIN = 'OUTER JOIN'
+    CROSS_JOIN = 'CROSS JOIN'
+    LEFT_JOIN = 'LEFT JOIN'
+    RIGHT_JOIN = 'RIGHT JOIN'
+    FULL_JOIN = 'FULL JOIN'
+
