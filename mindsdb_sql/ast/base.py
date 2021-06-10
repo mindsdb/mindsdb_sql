@@ -26,6 +26,6 @@ class ASTNode:
 
     def __eq__(self, other):
         if isinstance(other, ASTNode):
-            return str(self) == str(other)
+            return self.to_tree() == other.to_tree() and str(self) == str(other)
         else:
             return False
