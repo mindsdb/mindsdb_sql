@@ -9,7 +9,7 @@ from mindsdb_sql.lexer import SQLLexer
 from mindsdb_sql.parser import SQLParser
 
 
-@pytest.mark.parametrize('dialect', ['sqlite', 'mysql'])
+@pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
 class TestOperations:
     def test_select_binary_operations(self, dialect):
         for op in ['+', '-', '/', '*', '%', '=', '!=', '>', '<', '>=', '<=',

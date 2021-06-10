@@ -91,10 +91,8 @@ class SQLLexer(Lexer):
     FALSE = r'\bFALSE\b'
 
     @_(r'[a-zA-Z][a-zA-Z_.0-9]*',
-      r'`([a-zA-Z][^`]*)`(\.`([a-zA-Z][^`]*)`)*')
+        r'`([a-zA-Z][^`]*)`(\.`([a-zA-Z0-9][^`]*)`)*')
     def ID(self, t):
-        if t.value[0] == '`':
-            t.value = t.value.replace('`', '')
         return t
 
     @_(r'\d+\.\d+')

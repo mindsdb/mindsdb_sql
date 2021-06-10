@@ -358,7 +358,12 @@ class MySQLParser(SQLParser):
 
     @_('ID')
     def identifier(self, p):
-        return Identifier(value=p.ID)
+        value = p.ID
+        wrap = None
+        if value[0] == '`':
+            value = value.replace('`', '')
+            wrap = '`'
+        return Identifier(value=value, wrap=wrap)
 
     @_('PARAMETER')
     def parameter(self, p):

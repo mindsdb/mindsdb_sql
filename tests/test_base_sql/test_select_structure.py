@@ -5,7 +5,7 @@ from mindsdb_sql.ast import *
 from mindsdb_sql.exceptions import ParsingException
 
 
-@pytest.mark.parametrize('dialect', ['sqlite', 'mysql'])
+@pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
 class TestSelectStructure:
     def test_no_select(self, dialect):
         query = ""
@@ -33,6 +33,15 @@ class TestSelectStructure:
         assert ast.targets[0].value == 'column'
         assert str(ast) == sql
 
+    def test_select_identifier_with_dashes(self, dialect):
+        sql = f'SELECT `column-with-dashes`'
+        ast = parse_sql(sql, dialect=dialect)
+
+        assert isinstance(ast, Select)
+        assert len(ast.targets) == 1
+        assert isinstance(ast.targets[0], Identifier)
+        assert ast.targets[0].value == 'column-with-dashes'
+        assert str(ast) == sql
 
     def test_select_identifier_alias(self, dialect):
         sql = f'SELECT column AS column_alias'
@@ -479,7 +488,8 @@ class TestSelectStructure:
         expected_ast = Select(targets=[Identifier("*")],
                                                    from_table=Select(targets=[Identifier('column1')],
                                                               from_table=Identifier('t1'),
-                                                              alias='sub'))
+                                                              alias='sub',
+                                                              parentheses=True))
         ast = parse_sql(sql, dialect=dialect)
         assert str(ast) == sql
         assert ast == expected_ast
@@ -592,8 +602,8 @@ class TestSelectStructure:
         sql = "SELECT `name`, `status` FROM `mindsdb`.`wow stuff predictors`"
         ast = parse_sql(sql, dialect=dialect)
 
-        expected_ast = Select(targets=[Identifier('name'), Identifier('status')],
-                              from_table=Identifier('mindsdb.wow stuff predictors'),
+        expected_ast = Select(targets=[Identifier('name', wrap='`'), Identifier('status', wrap='`')],
+                              from_table=Identifier('mindsdb.wow stuff predictors', wrap='`'),
 
                               )
 
@@ -603,10 +613,10 @@ class TestSelectStructure:
         sql = "SELECT `my column name` FROM tab WHERE `other column name` = 'bla bla ``` bla'"
         ast = parse_sql(sql, dialect=dialect)
 
-        expected_ast = Select(targets=[Identifier('my column name')],
+        expected_ast = Select(targets=[Identifier('my column name', wrap='`')],
                               from_table=Identifier('tab'),
                               where=BinaryOperation(op='=', args=(
-                                      Identifier('other column name'),
+                                      Identifier('other column name', wrap='`'),
                                       Constant('bla bla ``` bla')
                                   )
                               ))
