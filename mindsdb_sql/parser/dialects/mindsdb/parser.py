@@ -157,7 +157,8 @@ class MindsDBParser(Parser):
         ensure_select_keyword_order(select, 'WHERE')
         where_expr = p.expr
         if not isinstance(where_expr, Operation):
-            raise ParsingException(f"WHERE must contain an operation that evaluates to a boolean, got: {str(where_expr)}")
+            raise ParsingException(
+                f"WHERE must contain an operation that evaluates to a boolean, got: {str(where_expr)}")
         select.where = where_expr
         return select
 
@@ -213,11 +214,11 @@ class MindsDBParser(Parser):
         return p.parameter
 
     @_('LEFT_JOIN',
-        'RIGHT_JOIN',
-        'INNER_JOIN',
-        'FULL_JOIN',
-        'CROSS_JOIN',
-        'OUTER_JOIN')
+       'RIGHT_JOIN',
+       'INNER_JOIN',
+       'FULL_JOIN',
+       'CROSS_JOIN',
+       'OUTER_JOIN')
     def join_clause(self, p):
         return p[0]
 
@@ -309,8 +310,8 @@ class MindsDBParser(Parser):
         return tup
 
     @_('STAR')
-    def identifier(self, p):
-        return Identifier(value=p.STAR)
+    def star(self, p):
+        return Star()
 
     @_('expr BETWEEN expr AND expr')
     def expr(self, p):
@@ -323,28 +324,28 @@ class MindsDBParser(Parser):
         return BinaryOperation(op=op, args=(p.expr0, p.expr1))
 
     @_('expr PLUS expr',
-        'expr MINUS expr',
-        'expr STAR expr',
-        'expr DIVIDE expr',
-        'expr MODULO expr',
-        'expr EQUALS expr',
-        'expr NEQUALS expr',
-        'expr GEQ expr',
-        'expr GREATER expr',
-        'expr LEQ expr',
-        'expr LESS expr',
-        'expr AND expr',
-        'expr OR expr',
-        'expr NOT expr',
-        'expr IS expr',
-        'expr LIKE expr',
-        'expr CONCAT expr',
-        'expr IN expr')
+       'expr MINUS expr',
+       'expr STAR expr',
+       'expr DIVIDE expr',
+       'expr MODULO expr',
+       'expr EQUALS expr',
+       'expr NEQUALS expr',
+       'expr GEQ expr',
+       'expr GREATER expr',
+       'expr LEQ expr',
+       'expr LESS expr',
+       'expr AND expr',
+       'expr OR expr',
+       'expr NOT expr',
+       'expr IS expr',
+       'expr LIKE expr',
+       'expr CONCAT expr',
+       'expr IN expr')
     def expr(self, p):
         return BinaryOperation(op=p[1], args=(p.expr0, p.expr1))
 
     @_('MINUS expr %prec UMINUS',
-       'NOT expr %prec UNOT',)
+       'NOT expr %prec UNOT', )
     def expr(self, p):
         return UnaryOperation(op=p[0], args=(p.expr,))
 
@@ -397,11 +398,7 @@ class MindsDBParser(Parser):
     @_('ID')
     def identifier(self, p):
         value = p.ID
-        wrap = None
-        if value[0] == '`':
-            value = value.replace('`', '')
-            wrap = '`'
-        return Identifier(value=value, wrap=wrap)
+        return Identifier.from_path_str(value)
 
     @_('PARAMETER')
     def parameter(self, p):

@@ -1,6 +1,7 @@
 from .select import Select
 from .constant import Constant, NullConstant
 from .identifier import Identifier
+from .star import Star
 from .join import Join
 from .type_cast import TypeCast
 from .tuple import Tuple

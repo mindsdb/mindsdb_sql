@@ -22,7 +22,7 @@ class TestMySQLParser:
     def test_select_varialbe_complex(self):
         sql = f"""SELECT * FROM tab1 WHERE column1 in (SELECT column2 + @variable FROM t2)"""
         ast = parse_sql(sql, dialect='mysql')
-        expected_ast = Select(targets=[Identifier("*")],
+        expected_ast = Select(targets=[Star()],
                               from_table=Identifier('tab1'),
                               where=BinaryOperation(op='in',
                                                     args=(

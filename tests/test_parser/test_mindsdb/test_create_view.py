@@ -26,7 +26,7 @@ class TestCreateView:
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateView(name='my_view',
                                   from_table=Identifier('integr'),
-                                  query=Select(targets=[Identifier('*')],
+                                  query=Select(targets=[Star()],
                                                from_table=Identifier('pred')))
 
         assert str(ast) == sql
@@ -37,7 +37,7 @@ class TestCreateView:
         sql = "CREATE VIEW my_view AS ( SELECT * FROM pred )"
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateView(name='my_view',
-                                  query=Select(targets=[Identifier('*')],
+                                  query=Select(targets=[Star()],
                                                from_table=Identifier('pred')))
 
         assert str(ast) == sql

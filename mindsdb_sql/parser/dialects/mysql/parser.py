@@ -2,8 +2,9 @@ from mindsdb_sql.parser.parser import SQLParser
 from mindsdb_sql.parser.dialects.mysql.lexer import MySQLLexer
 from mindsdb_sql.parser.dialects.mysql.variable import Variable
 
-from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant,
-                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation)
+from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
+                                    NullConstant,
+                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star)
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.utils import ensure_select_keyword_order
 
@@ -213,6 +214,10 @@ class MySQLParser(SQLParser):
         select.parentheses = True
         return select
 
+    @_('star')
+    def result_column(self, p):
+        return p.star
+
     @_('expr')
     def result_column(self, p):
         return p.expr
@@ -270,8 +275,8 @@ class MySQLParser(SQLParser):
         return tup
 
     @_('STAR')
-    def identifier(self, p):
-        return Identifier(value=p.STAR)
+    def star(self, p):
+        return Star()
 
     @_('expr BETWEEN expr AND expr')
     def expr(self, p):
@@ -358,11 +363,7 @@ class MySQLParser(SQLParser):
     @_('ID')
     def identifier(self, p):
         value = p.ID
-        wrap = None
-        if value[0] == '`':
-            value = value.replace('`', '')
-            wrap = '`'
-        return Identifier(value=value, wrap=wrap)
+        return Identifier.from_path_str(value)
 
     @_('PARAMETER')
     def parameter(self, p):

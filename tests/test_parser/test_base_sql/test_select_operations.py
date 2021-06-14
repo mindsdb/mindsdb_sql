@@ -17,10 +17,10 @@ class TestOperations:
             expected_ast = Select(
                 targets=[BinaryOperation(op=op,
                                          args=(
-                                             Identifier('column1'), Identifier('column2')
+                                             Identifier.from_path_str('column1'), Identifier.from_path_str('column2')
                                          )),
                          ],
-                from_table=Identifier('tab')
+                from_table=Identifier.from_path_str('tab')
             )
 
             assert str(ast) == sql
@@ -34,10 +34,10 @@ class TestOperations:
         expected_ast = Select(
             targets=[BinaryOperation(op='is',
                                      args=(
-                                         Identifier('column1'), Identifier('column2')
+                                         Identifier.from_path_str('column1'), Identifier.from_path_str('column2')
                                      )),
                      ],
-            from_table=Identifier('tab')
+            from_table=Identifier.from_path_str('tab')
         )
 
         assert str(ast) == str(expected_ast)
@@ -50,10 +50,10 @@ class TestOperations:
         expected_ast = Select(
             targets=[BinaryOperation(op='+',
                                      args=(
-                                         Identifier('column1'),
+                                         Identifier.from_path_str('column1'),
                                          BinaryOperation(op='*',
                                                          args=(
-                                                             Identifier('column2'), Identifier('column3')
+                                                             Identifier.from_path_str('column2'), Identifier.from_path_str('column3')
                                                          )),
 
                                      ),
@@ -73,9 +73,9 @@ class TestOperations:
                                      args=(
                                          BinaryOperation(op='*',
                                                          args=(
-                                                             Identifier('column1'), Identifier('column2')
+                                                             Identifier.from_path_str('column1'), Identifier.from_path_str('column2')
                                                          )),
-                                         Identifier('column3'),
+                                         Identifier.from_path_str('column3'),
 
                                      )
                                      )
@@ -96,10 +96,10 @@ class TestOperations:
                                      args=(
                                          BinaryOperation(op='+',
                                                          args=(
-                                                             Identifier('column1'), Identifier('column2')
+                                                             Identifier.from_path_str('column1'), Identifier.from_path_str('column2')
                                                          ),
                                                          parentheses=True),
-                                         Identifier('column3'),
+                                         Identifier.from_path_str('column3'),
 
                                      ),
                                      )
@@ -115,9 +115,9 @@ class TestOperations:
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[BinaryOperation(op='AND', args=(BinaryOperation(op='and', args=(
-                                                                           Identifier("column1"),
-                                                                           Identifier("column2"))),
-                                                                            Identifier("column3"),
+                                                                           Identifier.from_path_str("column1"),
+                                                                           Identifier.from_path_str("column2"))),
+                                                                            Identifier.from_path_str("column3"),
 
                                                                        ))])
 
@@ -130,10 +130,10 @@ class TestOperations:
 
         expected_ast = Select(
             targets=[BinaryOperation(op='or',
-                                     args=(Identifier('column1'),
+                                     args=(Identifier.from_path_str('column1'),
                                            BinaryOperation(op='and',
                                                            args=(
-                                                               Identifier('column2'), Identifier('column3')
+                                                               Identifier.from_path_str('column2'), Identifier.from_path_str('column3')
                                                            ))
 
                                            )
@@ -153,9 +153,9 @@ class TestOperations:
                                      args=(
                                          BinaryOperation(op='and',
                                                          args=(
-                                                             Identifier('column1'), Identifier('column2')
+                                                             Identifier.from_path_str('column1'), Identifier.from_path_str('column2')
                                                          )),
-                                         Identifier('column3'),
+                                         Identifier.from_path_str('column3'),
 
                                      )
                                      )
@@ -175,10 +175,10 @@ class TestOperations:
                                      args=(
                                          BinaryOperation(op='or',
                                                          args=(
-                                                             Identifier('column1'), Identifier('column2')
+                                                             Identifier.from_path_str('column1'), Identifier.from_path_str('column2')
                                                          ),
                                                          parentheses=True),
-                                         Identifier('column3'),
+                                         Identifier.from_path_str('column3'),
 
                                      ),
                                      )
@@ -194,16 +194,16 @@ class TestOperations:
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
-            targets=[Identifier('col1')],
-            from_table=Identifier('tab'),
+            targets=[Identifier.from_path_str('col1')],
+            from_table=Identifier.from_path_str('tab'),
             where=BinaryOperation(op='or',
                                   args=(
                                       BinaryOperation(op='and',
                                                       args=(
-                                                          Identifier('col1'),
-                                                          Identifier('col2'),
+                                                          Identifier.from_path_str('col1'),
+                                                          Identifier.from_path_str('col2'),
                                                       )),
-                                      Identifier('col3'),
+                                      Identifier.from_path_str('col3'),
 
                                   ))
         )
@@ -216,26 +216,26 @@ class TestOperations:
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
-            targets=[Identifier('col1')],
-            from_table=Identifier('tab'),
+            targets=[Identifier.from_path_str('col1')],
+            from_table=Identifier.from_path_str('tab'),
             where=BinaryOperation(op='or',
                                   args=(
                                       BinaryOperation(op='and',
                                                       args=(
                                                           BinaryOperation(op='=',
                                                                           args=(
-                                                                              Identifier('col1'),
+                                                                              Identifier.from_path_str('col1'),
                                                                               Constant(1),
                                                                           )),
                                                           BinaryOperation(op='=',
                                                                           args=(
-                                                                              Identifier('col2'),
+                                                                              Identifier.from_path_str('col2'),
                                                                               Constant(1),
                                                                           )),
                                                       )),
                                       BinaryOperation(op='=',
                                                       args=(
-                                                          Identifier('col3'),
+                                                          Identifier.from_path_str('col3'),
                                                           Constant(1),
                                                       )),
 
@@ -245,7 +245,6 @@ class TestOperations:
         assert str(ast) == sql
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
-
 
     def test_select_unary_operations(self, dialect):
         for op in ['-', 'not']:
@@ -258,7 +257,7 @@ class TestOperations:
             assert ast.targets[0].op == op
             assert len(ast.targets[0].args) == 1
             assert isinstance(ast.targets[0].args[0], Identifier)
-            assert ast.targets[0].args[0].value == 'column'
+            assert ast.targets[0].args[0].parts == ['column']
 
             assert str(ast) == sql
 
@@ -268,7 +267,7 @@ class TestOperations:
 
         expected_ast = Select(
             targets=[Function(op='database', args=tuple())],
-            from_table=Identifier('tab'),
+            from_table=Identifier.from_path_str('tab'),
         )
 
         assert str(ast) == sql
@@ -282,8 +281,8 @@ class TestOperations:
             ast = parse_sql(sql, dialect=dialect)
 
             expected_ast = Select(
-                targets=[Function(op=func, args=(Identifier('column'),))],
-                from_table=Identifier('tab'),
+                targets=[Function(op=func, args=(Identifier.from_path_str('column'),))],
+                from_table=Identifier.from_path_str('tab'),
             )
 
             assert str(ast) == sql
@@ -297,8 +296,8 @@ class TestOperations:
             ast = parse_sql(sql, dialect=dialect)
 
             expected_ast = Select(
-                targets=[Function(op=func, args=(Identifier('column1'),Identifier('column2')))],
-                from_table=Identifier('tab'),
+                targets=[Function(op=func, args=(Identifier.from_path_str('column1'),Identifier.from_path_str('column2')))],
+                from_table=Identifier.from_path_str('tab'),
             )
 
             assert str(ast) == sql
@@ -315,7 +314,7 @@ class TestOperations:
 
         expected_where = BinaryOperation(op='IN',
                                          args=[
-                                             Identifier('col1'),
+                                             Identifier.from_path_str('col1'),
                                              Tuple(items=[Constant('a'), Constant("b")]),
                                          ])
         assert ast.where == expected_where
@@ -326,7 +325,7 @@ class TestOperations:
             sql = f"""SELECT column1 is {sql_arg}"""
             ast = parse_sql(sql, dialect=dialect)
 
-            expected_ast = Select(targets=[BinaryOperation(op='IS', args=(Identifier("column1"), python_obj))], )
+            expected_ast = Select(targets=[BinaryOperation(op='IS', args=(Identifier.from_path_str("column1"), python_obj))], )
 
             assert str(ast) == sql
             assert ast.to_tree() == expected_ast.to_tree()
@@ -337,7 +336,7 @@ class TestOperations:
             sql = f"""SELECT column1 is not {sql_arg}"""
             ast = parse_sql(sql, dialect=dialect)
 
-            expected_ast = Select(targets=[BinaryOperation(op='is not', args=(Identifier("column1"), python_obj))], )
+            expected_ast = Select(targets=[BinaryOperation(op='is not', args=(Identifier.from_path_str("column1"), python_obj))], )
 
             assert str(ast) == sql
             assert ast.to_tree() == expected_ast.to_tree()
@@ -347,7 +346,7 @@ class TestOperations:
         sql = f"""SELECT column1 not   in column2"""
         ast = parse_sql(sql, dialect=dialect)
 
-        expected_ast = Select(targets=[BinaryOperation(op='not in', args=(Identifier("column1"), Identifier("column2")))], )
+        expected_ast = Select(targets=[BinaryOperation(op='not in', args=(Identifier.from_path_str("column1"), Identifier.from_path_str("column2")))], )
 
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
@@ -356,8 +355,8 @@ class TestOperations:
         sql = "SELECT col1 FROM t1 WHERE col1 is NULL"
         ast = parse_sql(sql, dialect=dialect)
 
-        expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
-                              where=BinaryOperation('is', args=(Identifier('col1'), NullConstant())))
+        expected_ast = Select(targets=[Identifier.from_path_str("col1")], from_table=Identifier.from_path_str('t1'),
+                              where=BinaryOperation('is', args=(Identifier.from_path_str('col1'), NullConstant())))
 
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -369,8 +368,8 @@ class TestOperations:
         sql = "SELECT col1 FROM t1 WHERE col1 is not NULL"
         ast = parse_sql(sql, dialect=dialect)
 
-        expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
-                              where=BinaryOperation('is not', args=(Identifier('col1'), NullConstant())))
+        expected_ast = Select(targets=[Identifier.from_path_str("col1")], from_table=Identifier.from_path_str('t1'),
+                              where=BinaryOperation('is not', args=(Identifier.from_path_str('col1'), NullConstant())))
         assert ast.to_tree() == expected_ast.to_tree()
 
         assert str(ast) == sql
@@ -381,8 +380,8 @@ class TestOperations:
         sql = "SELECT col1 FROM t1 WHERE col1 is TRUE"
         ast = parse_sql(sql, dialect=dialect)
 
-        expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
-                              where=BinaryOperation('is', args=(Identifier('col1'), Constant(True))))
+        expected_ast = Select(targets=[Identifier.from_path_str("col1")], from_table=Identifier.from_path_str('t1'),
+                              where=BinaryOperation('is', args=(Identifier.from_path_str('col1'), Constant(True))))
         assert ast.to_tree() == expected_ast.to_tree()
 
         assert str(ast) == sql
@@ -393,8 +392,8 @@ class TestOperations:
         sql = "SELECT col1 FROM t1 WHERE col1 is FALSE"
         ast = parse_sql(sql, dialect=dialect)
 
-        expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
-                              where=BinaryOperation('is', args=(Identifier('col1'), Constant(False))))
+        expected_ast = Select(targets=[Identifier.from_path_str("col1")], from_table=Identifier.from_path_str('t1'),
+                              where=BinaryOperation('is', args=(Identifier.from_path_str('col1'), Constant(False))))
         assert str(ast) == sql
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
@@ -403,8 +402,8 @@ class TestOperations:
         sql = "SELECT col1 FROM t1 WHERE col1 BETWEEN a AND b"
         ast = parse_sql(sql, dialect=dialect)
 
-        expected_ast = Select(targets=[Identifier("col1")], from_table=Identifier('t1'),
-                              where=BetweenOperation(args=(Identifier('col1'), Identifier('a'), Identifier('b'))))
+        expected_ast = Select(targets=[Identifier.from_path_str("col1")], from_table=Identifier.from_path_str('t1'),
+                              where=BetweenOperation(args=(Identifier.from_path_str('col1'), Identifier.from_path_str('a'), Identifier.from_path_str('b'))))
         assert ast.to_tree() == expected_ast.to_tree()
 
         assert str(ast) == sql

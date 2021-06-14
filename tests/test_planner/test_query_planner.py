@@ -2,24 +2,68 @@ import pytest
 
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import *
-from mindsdb_sql.planner import QueryPlanner
+from mindsdb_sql.planner import plan_query, QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep
 from mindsdb_sql.utils import JoinType
 
 
 class TestQueryPlanner:
-    def test_basic_plan(self):
+    def test_pure_select_plan(self):
         query = Select(targets=[Identifier('column1')],
-                       from_table=Identifier('integr.tab'))
-        planner = QueryPlanner(integrations=['integr'])
+                       from_table=Identifier('int.tab'))
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int', query=Select(targets=[Identifier('tab.column1', alias='column1')], from_table=Identifier('tab')), save=True),
+                                      ProjectStep(dataframe=Result(0), columns=['column1']),
+                                  ], result_refs={0: [1]})
 
-        plan = planner.plan(query)
+        plan = plan_query(query, integrations=['int'])
 
-        assert plan == [
-            FetchDataframeStep(integration='integr', table='tab', query=query, save=True),
-            ProjectStep(dataframe=Result(0), columns=['column1']),
-        ]
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_pure_select_plan_alias(self):
+        query = Select(targets=[Identifier('column1', alias='alias')],
+                       from_table=Identifier('int.tab'))
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int', query=Select(targets=[Identifier('tab.column1', alias='alias')], from_table=Identifier('tab')), save=True),
+                                      ProjectStep(dataframe=Result(0), columns=['alias']),
+                                  ], result_refs={0: [1]})
+
+        plan = plan_query(query, integrations=['int'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_pure_select_table_alias(self):
+        query = Select(targets=[Identifier('col1')],
+                       from_table=Identifier('int.tab', alias='alias'))
+        raise
+
+    def test_pure_select_wrapped_identifier(self):
+        query = Select(targets=[Identifier('column with spaces',  wrap='`')],
+                       from_table=Identifier('int.tab'))
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int', query=Select(targets=[Identifier('tab.`column with spaces`', alias='column with spaces')],
+                                                                                         from_table=Identifier('tab')), save=True),
+                                      ProjectStep(dataframe=Result(0), columns=['alias']),
+                                  ], result_refs={0: [1]})
+
+        plan = plan_query(query, integrations=['int'])
+
+        assert plan.steps[0].query.to_tree() == expected_plan.steps[0].query.to_tree()
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_no_integration_error(self):
+        query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
+                       from_table=Identifier('int.tab')
+                       )
+        with pytest.raises(PlanningException):
+            plan = plan_query(query, integrations=[], predictors=['pred'])
 
     def test_join_plan(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
@@ -33,10 +77,10 @@ class TestQueryPlanner:
         plan = planner.plan(query)
 
         assert plan == [
-            FetchDataframeStep(integration='integr', table='tab1',
+            FetchDataframeStep(integration='integr', table_path='tab1',
                                query=Select(targets=[Identifier('column1', alias='tab1.column1')],
                                             from_table=Identifier('tab1')), save=True),
-            FetchDataframeStep(integration='integr', table='tab2',
+            FetchDataframeStep(integration='integr', table_path='tab2',
                                query=Select(targets=[Identifier('column1', alias='tab2.column1'), Identifier('column2', alias='tab2.column2')],
                                             from_table=Identifier('tab2')), save=True),
             JoinStep(dataframe_left=Result(0), dataframe_right=Result(1), condition=query.from_table.condition,
@@ -53,8 +97,8 @@ class TestQueryPlanner:
         plan = planner.plan(query)
 
         assert plan == [
-            FetchDataframeStep(integration='integr', table='tab1',
-                               query=Select(targets=[Identifier('*')],
+            FetchDataframeStep(integration='integr', table_path='tab1',
+                               query=Select(targets=[Star()],
                                             from_table=Identifier('tab1')),
                                save=True),
             ApplyPredictorStep(dataframe=Result(0), predictor='pred', save=True),
@@ -62,14 +106,7 @@ class TestQueryPlanner:
             ProjectStep(dataframe=Result(2), columns=['tab1.column1', 'pred.predicted']),
         ]
 
-    def test_no_integration_error(self):
-        query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
-                       from_table=Join(left=Identifier('integr.tab1'),
-                                       right=Identifier('pred'))
-                       )
-        planner = QueryPlanner(integrations=[], predictors=['pred'])
-        with pytest.raises(PlanningException):
-            plan = planner.plan(query)
+
 
     def test_no_predictor_error(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],

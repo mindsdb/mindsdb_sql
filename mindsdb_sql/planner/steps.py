@@ -4,7 +4,7 @@ class PlanStep:
 
     def __eq__(self, other):
         if isinstance(other, PlanStep):
-            return self.__dict__ == other.__dict__
+            return type(self) == type(other) and all([getattr(self, k) == getattr(other, k) for k in self.__dict__])
         return False
 
 
@@ -28,10 +28,9 @@ class JoinStep(PlanStep):
 
 class FetchDataframeStep(PlanStep):
     """Fetches a dataframe from external integration"""
-    def __init__(self, integration, table, query, *args, **kwargs):
+    def __init__(self, integration, query, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.integration = integration
-        self.table = table
         self.query = query
 
 
