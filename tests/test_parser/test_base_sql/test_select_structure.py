@@ -5,7 +5,7 @@ from mindsdb_sql.parser.ast import *
 from mindsdb_sql.exceptions import ParsingException
 
 
-@pytest.mark.parametrize('dialect', ['sqlite'])#, 'mysql', 'mindsdb'])
+@pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
 class TestSelectStructure:
     def test_no_select(self, dialect):
         query = ""
