@@ -157,7 +157,7 @@ class MySQLParser(SQLParser):
     @_('table_or_subquery AS identifier')
     def table_or_subquery(self, p):
         entity = p.table_or_subquery
-        entity.alias = p.identifier.value
+        entity.alias = str(p.identifier)
         return entity
 
     @_('LPAREN select RPAREN')
@@ -205,7 +205,9 @@ class MySQLParser(SQLParser):
     @_('result_column AS identifier')
     def result_column(self, p):
         col = p.result_column
-        col.alias = p.identifier.value
+        if col.alias:
+            raise ParsingException(f'Attempt to provide two aliases for {str(col)}')
+        col.alias = str(p.identifier)
         return col
 
     @_('LPAREN select RPAREN')
@@ -258,7 +260,7 @@ class MySQLParser(SQLParser):
 
     @_('CAST LPAREN expr AS identifier RPAREN')
     def expr(self, p):
-        return TypeCast(arg=p.expr, type_name=p.identifier.value)
+        return TypeCast(arg=p.expr, type_name=str(p.identifier))
 
     @_('enumeration')
     def expr_list(self, p):

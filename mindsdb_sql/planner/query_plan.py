@@ -39,9 +39,8 @@ class QueryPlan:
             raise PlanningException(f'Can\'t obtain Result for plan step {ref_step_index}. Probably step has `save=False`.')
 
     def get_identifier_integration_table_or_error(self, identifier):
-        path = identifier.value
+        parts = identifier.parts
 
-        parts = path.split('.')
         if len(parts) == 1:
             raise PlanningException(f'No integration specified for table: {path}')
         elif len(parts) > 4:
@@ -89,13 +88,14 @@ class QueryPlan:
         new_query_targets = []
         for target in select.targets:
             if isinstance(target, Identifier):
-                initial_value = target.value
-                if target.value.startswith(f'{integration_name}.'):
-                    target.value = target.value.replace(f'{integration_name}.', '')
+                initial_path_str = target.parts_to_str()
+                parts = list(target.parts)
+                if parts[0] == integration_name:
+                    parts = parts[1:]
 
-                if not target.value.startswith(f'{table_path}.'):
-                    target.value = f'{table_path}.{str(target)}'
-                new_query_targets.append(Identifier(target.value, alias=target.alias or initial_value))
+                if not parts[0] == table_path:
+                    parts.insert(0, table_path)
+                new_query_targets.append(Identifier(parts=parts, alias=target.alias or initial_path_str))
             else:
                 raise PlanningException(f'Unknown select target {type(target)}')
 
@@ -112,7 +112,7 @@ class QueryPlan:
 
         from_table_result = self.add_result_reference(current_step=self.last_step_index+1,
                                                       ref_step_index=self.last_step_index)
-        self.plan_project(dataframe=from_table_result, columns=[target.alias or target.value for target in target_columns])
+        self.plan_project(dataframe=from_table_result, columns=[target.alias or target.parts_to_str() for target in target_columns])
 
     def from_query(self, query):
         if isinstance(query, Select):

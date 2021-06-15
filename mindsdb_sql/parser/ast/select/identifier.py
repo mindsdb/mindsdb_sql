@@ -5,16 +5,22 @@ import re
 
 no_wrap_identifier_regex = re.compile(r'[a-zA-Z][a-zA-Z_.0-9]*')
 
+def path_str_to_parts(path_str):
+    return [part.strip('`') for part in path_str.split('.')]
 
 class Identifier(ASTNode):
-    def __init__(self, parts, *args, **kwargs):
+    def __init__(self, path_str=None, parts=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        assert path_str or parts, "Either path_str or parts must be provided for an Identifier"
+        assert not (path_str and parts), "Provide either path_str or parts, but not both"
+        if path_str and not parts:
+            parts = path_str_to_parts(path_str)
         assert isinstance(parts, list)
         self.parts = parts
 
     @classmethod
     def from_path_str(self, value, *args, **kwargs):
-        parts = [part.strip('`') for part in value.split('.')]
+        parts = path_str_to_parts(value)
         return Identifier(parts=parts, *args, **kwargs)
 
     def parts_to_str(self):

@@ -119,8 +119,7 @@ class MindsDBLexer(Lexer):
     TRUE = r'\bTRUE\b'
     FALSE = r'\bFALSE\b'
 
-    @_(r'[a-zA-Z][a-zA-Z_.0-9]*',
-       r'`([a-zA-Z][^`]*)`(\.`([a-zA-Z0-9][^`]*)`)*')
+    @_(r'([a-zA-Z][a-zA-Z_.0-9]*)|(`([a-zA-Z0-9][^`]*)`)(\.(([a-zA-Z][a-zA-Z_.0-9]*)|(`([a-zA-Z0-9][^`]*)`)))*')
     def ID(self, t):
         return t
 
@@ -142,4 +141,3 @@ class MindsDBLexer(Lexer):
         else:
             t.value = t.value.strip('\'')
         return t
-

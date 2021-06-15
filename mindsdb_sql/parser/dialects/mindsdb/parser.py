@@ -1,7 +1,7 @@
 from sly import Parser
 
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant,
-                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation)
+                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star)
 from mindsdb_sql.parser.dialects.mindsdb.show import Show
 from mindsdb_sql.parser.dialects.mindsdb.use import Use
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
@@ -51,9 +51,9 @@ class MindsDBParser(Parser):
 
     # CREATE VIEW
 
-    @_('CREATE VIEW identifier create_view_from_table_or_nothing AS LPAREN select RPAREN')
+    @_('CREATE VIEW ID create_view_from_table_or_nothing AS LPAREN select RPAREN')
     def create_view(self, p):
-        return CreateView(name=p.identifier.value,
+        return CreateView(name=p.ID,
                           from_table=p.create_view_from_table_or_nothing,
                           query=p.select)
 
@@ -196,7 +196,7 @@ class MindsDBParser(Parser):
     @_('table_or_subquery AS identifier')
     def table_or_subquery(self, p):
         entity = p.table_or_subquery
-        entity.alias = p.identifier.value
+        entity.alias = str(p.identifier)
         return entity
 
     @_('LPAREN select RPAREN')
@@ -244,7 +244,9 @@ class MindsDBParser(Parser):
     @_('result_column AS identifier')
     def result_column(self, p):
         col = p.result_column
-        col.alias = p.identifier.value
+        if col.alias:
+            raise ParsingException(f'Attempt to provide two aliases for {str(col)}')
+        col.alias = str(p.identifier)
         return col
 
     @_('LPAREN select RPAREN')
@@ -252,6 +254,10 @@ class MindsDBParser(Parser):
         select = p.select
         select.parentheses = True
         return select
+
+    @_('star')
+    def result_column(self, p):
+        return p.star
 
     @_('expr')
     def result_column(self, p):
@@ -293,7 +299,7 @@ class MindsDBParser(Parser):
 
     @_('CAST LPAREN expr AS identifier RPAREN')
     def expr(self, p):
-        return TypeCast(arg=p.expr, type_name=p.identifier.value)
+        return TypeCast(arg=p.expr, type_name=str(p.identifier))
 
     @_('enumeration')
     def expr_list(self, p):

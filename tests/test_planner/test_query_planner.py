@@ -28,8 +28,30 @@ class TestQueryPlanner:
                        from_table=Identifier('int.tab'))
         expected_plan = QueryPlan(integrations=['int'],
                                   steps=[
-                                      FetchDataframeStep(integration='int', query=Select(targets=[Identifier('tab.column1', alias='alias')], from_table=Identifier('tab')), save=True),
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(
+                                                             targets=[Identifier('tab.column1', alias='alias')],
+                                                             from_table=Identifier('tab')),
+                                                         save=True),
                                       ProjectStep(dataframe=Result(0), columns=['alias']),
+                                  ], result_refs={0: [1]})
+
+        plan = plan_query(query, integrations=['int'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_pure_select_plan_complex_path(self):
+        query = Select(targets=[Identifier(parts=['int', 'tab', 'a column with spaces'])],
+                       from_table=Identifier('int.tab'))
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(
+                                                             targets=[Identifier('tab.`a column with spaces`', alias='int.tab.`a column with spaces`')],
+                                                             from_table=Identifier('tab')),
+                                                         save=True),
+                                      ProjectStep(dataframe=Result(0), columns=['int.tab.`a column with spaces`']),
                                   ], result_refs={0: [1]})
 
         plan = plan_query(query, integrations=['int'])
@@ -41,22 +63,6 @@ class TestQueryPlanner:
         query = Select(targets=[Identifier('col1')],
                        from_table=Identifier('int.tab', alias='alias'))
         raise
-
-    def test_pure_select_wrapped_identifier(self):
-        query = Select(targets=[Identifier('column with spaces',  wrap='`')],
-                       from_table=Identifier('int.tab'))
-        expected_plan = QueryPlan(integrations=['int'],
-                                  steps=[
-                                      FetchDataframeStep(integration='int', query=Select(targets=[Identifier('tab.`column with spaces`', alias='column with spaces')],
-                                                                                         from_table=Identifier('tab')), save=True),
-                                      ProjectStep(dataframe=Result(0), columns=['alias']),
-                                  ], result_refs={0: [1]})
-
-        plan = plan_query(query, integrations=['int'])
-
-        assert plan.steps[0].query.to_tree() == expected_plan.steps[0].query.to_tree()
-        assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
 
     def test_no_integration_error(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
@@ -73,8 +79,7 @@ class TestQueryPlanner:
                                        join_type=JoinType.INNER_JOIN
                                        )
                 )
-        planner = QueryPlanner(integrations=['integr'])
-        plan = planner.plan(query)
+        plan = plan_query(query, integrations=['integr'])
 
         assert plan == [
             FetchDataframeStep(integration='integr', table_path='tab1',
@@ -93,8 +98,7 @@ class TestQueryPlanner:
                        from_table=Join(left=Identifier('integr.tab1'),
                                        right=Identifier('pred'))
                 )
-        planner = QueryPlanner(integrations=['integr'], predictors=['pred'])
-        plan = planner.plan(query)
+        plan = plan_query(query, integrations=['integr'], predictors=['pred'])
 
         assert plan == [
             FetchDataframeStep(integration='integr', table_path='tab1',
@@ -111,8 +115,10 @@ class TestQueryPlanner:
     def test_no_predictor_error(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
                        from_table=Join(left=Identifier('integr.tab1'),
-                                       right=Identifier('pred'))
+                                       right=Identifier('pred'),
+                                       join_type=None,
+                                       implicit=True)
                        )
-        planner = QueryPlanner(integrations=['integr'], predictors=[])
+
         with pytest.raises(PlanningException):
-            plan = planner.plan(query)
+            plan = plan_query(query, integrations=['integr'])
