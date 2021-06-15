@@ -62,7 +62,22 @@ class TestQueryPlanner:
     def test_pure_select_table_alias(self):
         query = Select(targets=[Identifier('col1')],
                        from_table=Identifier('int.tab', alias='alias'))
-        raise
+
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(
+                                                             targets=[Identifier(parts=['alias','col1'],
+                                                                                 alias='col1')],
+                                                             from_table=Identifier(parts=['tab'], alias='alias')),
+                                                         save=True),
+                                      ProjectStep(dataframe=Result(0), columns=['col1']),
+                                  ], result_refs={0: [1]})
+
+        plan = plan_query(query, integrations=['int'])
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
 
     def test_no_integration_error(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],

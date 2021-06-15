@@ -51,7 +51,8 @@ class QueryPlan:
             raise PlanningException(f'Unknown integration {integration_name} for table {path}')
 
         table_path = '.'.join(parts[1:])
-        return integration_name, table_path
+        table_alias = identifier.alias
+        return integration_name, table_path, table_alias
 
     # def step_from_identifier(self, identifier):
     #     path = identifier.value
@@ -83,8 +84,11 @@ class QueryPlan:
     def plan_project(self, dataframe, columns):
         return self.add_step(ProjectStep(dataframe=dataframe, columns=columns))
 
-    def plan_pure_select(self, integration_name, table_path, select):
+    def plan_pure_select(self, integration_name, table_path, table_alias, select):
         """Plan for a select query that can be fully executed in an integration"""
+
+        column_table_ref = table_alias or table_path
+
         new_query_targets = []
         for target in select.targets:
             if isinstance(target, Identifier):
@@ -93,13 +97,13 @@ class QueryPlan:
                 if parts[0] == integration_name:
                     parts = parts[1:]
 
-                if not parts[0] == table_path:
-                    parts.insert(0, table_path)
+                if not parts[0] == column_table_ref:
+                    parts.insert(0, column_table_ref)
                 new_query_targets.append(Identifier(parts=parts, alias=target.alias or initial_path_str))
             else:
                 raise PlanningException(f'Unknown select target {type(target)}')
 
-        fetch_df_query = Select(targets=new_query_targets, from_table=Identifier(table_path))
+        fetch_df_query = Select(targets=new_query_targets, from_table=Identifier(table_path, alias=table_alias))
         self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_query, save=True))
 
     def plan_select(self, query):
@@ -107,8 +111,8 @@ class QueryPlan:
         from_table = query.from_table
 
         if isinstance(from_table, Identifier):
-            integration_name, table_path = self.get_identifier_integration_table_or_error(from_table)
-            self.plan_pure_select(integration_name, table_path, query)
+            integration_name, table_path, table_alias = self.get_identifier_integration_table_or_error(from_table)
+            self.plan_pure_select(integration_name, table_path, table_alias, query)
 
         from_table_result = self.add_result_reference(current_step=self.last_step_index+1,
                                                       ref_step_index=self.last_step_index)
