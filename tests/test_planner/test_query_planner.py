@@ -170,6 +170,28 @@ class TestQueryPlanner:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
+    def test_join_tables_error_on_unspecified_table_in_condition(self):
+        query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
+                       from_table=Join(left=Identifier('int.tab1'),
+                                       right=Identifier('int.tab2'),
+                                       condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'),
+                                                                               Identifier('column1')]), #Table name omitted
+                                       join_type=JoinType.INNER_JOIN
+                                       ))
+        with pytest.raises(PlanningException):
+            plan_query(query, integrations=['int'])
+
+    def test_join_tables_error_on_wrong_table_in_condition(self):
+        query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
+                       from_table=Join(left=Identifier('int.tab1'),
+                                       right=Identifier('int.tab2'),
+                                       condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'),
+                                                                               Identifier('tab3.column1')]), #Wrong table name
+                                       join_type=JoinType.INNER_JOIN
+                                       ))
+        with pytest.raises(PlanningException) as e:
+            plan_query(query, integrations=['int'])
+
     # def test_join_predictor_plan(self):
     #     query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
     #                    from_table=Join(left=Identifier('int.tab1'),

@@ -142,7 +142,7 @@ class QueryPlan:
                                                                     right_table_alias, initial_path_as_alias=False))
                         else:
                             raise PlanningException(
-                                f'No source table specific for column in join condition: {str(arg)}')
+                                f'Wrong table or no source table in join condition for column: {str(arg)}')
                     else:
                         new_condition_args.append(arg)
                 new_join = copy.deepcopy(join)
