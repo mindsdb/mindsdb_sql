@@ -1,7 +1,4 @@
 class PlanStep:
-    def __init__(self, save=False):
-        self.save = save
-
     def __eq__(self, other):
         if isinstance(other, PlanStep):
             return type(self) == type(other) and all([getattr(self, k) == getattr(other, k) for k in self.__dict__])
@@ -18,12 +15,11 @@ class ProjectStep(PlanStep):
 
 class JoinStep(PlanStep):
     """Joins two dataframes, producing a new dataframe"""
-    def __init__(self, dataframe_left, dataframe_right, join_type, condition, *args, **kwargs):
+    def __init__(self, left, right, query, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.dataframe_left = dataframe_left
-        self.dataframe_right = dataframe_right
-        self.join_type = join_type
-        self.condition = condition
+        self.left = left
+        self.right = right
+        self.query = query
 
 
 class FetchDataframeStep(PlanStep):
