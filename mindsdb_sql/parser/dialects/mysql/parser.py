@@ -6,7 +6,7 @@ from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, Binar
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star)
 from mindsdb_sql.exceptions import ParsingException
-from mindsdb_sql.utils import ensure_select_keyword_order
+from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
 
 class MySQLParser(SQLParser):
@@ -140,7 +140,7 @@ class MySQLParser(SQLParser):
     def from_table(self, p):
         return Join(left=p.table_or_subquery0,
                     right=p.table_or_subquery1,
-                    join_type='INNER JOIN',
+                    join_type=JoinType.INNER_JOIN,
                     implicit=True)
 
     @_('table_or_subquery join_clause table_or_subquery ON expr')

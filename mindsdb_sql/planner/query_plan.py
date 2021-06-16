@@ -3,7 +3,8 @@ from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import Select, Identifier, Join, Star
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import FetchDataframeStep, ProjectStep, JoinStep
+from mindsdb_sql.planner.steps import FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep
+
 
 class QueryPlan:
     def __init__(self, integrations=None, predictors=None, steps=None, results=None, result_refs=None):
@@ -98,13 +99,13 @@ class QueryPlan:
                 raise PlanningException(f'Can\'t join two predictors {str(join.left.parts[0])} and {str(join.left.parts[1])}')
 
             predictor = None
-            if join.left.parts[0] in self.predictors:
-                predictor = join.left.parts[0]
+            if join.left.parts_to_str() in self.predictors:
+                predictor = join.left.parts_to_str()
             else:
                 self.plan_pure_select(Select(targets=[Star()], from_table=join.left))
 
-            if join.right.parts[0] in self.predictors:
-                predictor = join.right.parts[0]
+            if join.right.parts_to_str() in self.predictors:
+                predictor = join.right.parts_to_str()
             else:
                 self.plan_pure_select(Select(targets=[Star()], from_table=join.right))
 
@@ -113,10 +114,17 @@ class QueryPlan:
                 # Apply mindsdb model to result of last dataframe fetch
                 # Then join results of applying mindsdb with table
                 fetch_table_result = self.add_last_result_reference()
-                self.add_step(ApplyPredictorStep(dataframe=fetch_table_result, predictor=predictor.parts_to_str()))
+                self.add_step(ApplyPredictorStep(dataframe=fetch_table_result, predictor=predictor))
                 fetch_predictor_output_result = self.add_last_result_reference()
 
-                self.add_step(JoinStep(left=fetch_table_result, right=fetch_predictor_output_result, query=join))
+                self.add_result_reference(current_step=self.last_step_index+1,
+                                                               ref_step_index=fetch_table_result.step_num)
+                new_join = Join(left=Identifier(fetch_table_result.ref_name),
+                                right=Identifier(fetch_predictor_output_result.ref_name),
+                                join_type=join.join_type,
+                                implicit=join.implicit,
+                                condition=join.condition)
+                self.add_step(JoinStep(left=fetch_table_result, right=fetch_predictor_output_result, query=new_join))
             else:
                 # Both arguments are tables, join results of last 2 dataframe fetches
                 fetch_left_result = self.add_result_reference(current_step=self.last_step_index+1,
@@ -146,10 +154,10 @@ class QueryPlan:
                     else:
                         new_condition_args.append(arg)
                 new_join = copy.deepcopy(join)
-                join.condition.args = new_condition_args
-                join.left = Identifier(left_table_path, alias=left_table_alias)
-                join.right = Identifier(right_table_path, alias=right_table_alias)
-                self.add_step(JoinStep(left=fetch_left_result, right=fetch_right_result, query=join))
+                new_join.condition.args = new_condition_args
+                new_join.left = Identifier(left_table_path, alias=left_table_alias)
+                new_join.right = Identifier(right_table_path, alias=right_table_alias)
+                self.add_step(JoinStep(left=fetch_left_result, right=fetch_right_result, query=new_join))
         else:
             raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')
 

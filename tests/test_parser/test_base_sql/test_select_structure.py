@@ -3,6 +3,7 @@ import pytest
 from mindsdb_sql import parse_sql
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.exceptions import ParsingException
+from mindsdb_sql.utils import JoinType
 
 
 @pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
@@ -427,7 +428,7 @@ class TestSelectStructure:
         sql = """SELECT * FROM t1 INNER JOIN t2 ON t1.x1 = t2.x2 and t1.x2 = t2.x2"""
 
         expected_ast = Select(targets=[Star()],
-                              from_table=Join(join_type='INNER JOIN',
+                              from_table=Join(join_type=JoinType.INNER_JOIN,
                                               left=Identifier(parts=['t1']),
                                               right=Identifier(parts=['t2']),
                                               condition=
@@ -458,7 +459,7 @@ class TestSelectStructure:
         expected_ast = Select(targets=[Star()],
                                                    from_table=Join(left=Identifier(parts=['t1']),
                                                                    right=Identifier(parts=['t2']),
-                                                                   join_type='INNER JOIN',
+                                                                   join_type=JoinType.INNER_JOIN,
                                                                    implicit=True,
                                                                    condition=None))
         ast = parse_sql(sql, dialect=dialect)

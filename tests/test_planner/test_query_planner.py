@@ -192,19 +192,31 @@ class TestQueryPlanner:
         with pytest.raises(PlanningException) as e:
             plan_query(query, integrations=['int'])
 
-    # def test_join_predictor_plan(self):
-    #     query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
-    #                    from_table=Join(left=Identifier('int.tab1'),
-    #                                    right=Identifier('pred'))
-    #             )
-    #     plan = plan_query(query, integrations=['int'], predictors=['pred'])
-    #
-    #     assert plan == [
-    #         FetchDataframeStep(integration='int', table_path='tab1',
-    #                            query=Select(targets=[Star()],
-    #                                         from_table=Identifier('tab1')),
-    #                            ),
-    #         ApplyPredictorStep(dataframe=Result(0), predictor='pred'),
-    #         JoinStep(dataframe_left=Result(0), dataframe_right=Result(1)),
-    #         ProjectStep(dataframe=Result(2), columns=['tab1.column1', 'pred.predicted']),
-    #     ]
+    def test_join_predictor_plan(self):
+        query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
+                       from_table=Join(left=Identifier('int.tab1'),
+                                       right=Identifier('pred'),
+                                       join_type=JoinType.INNER_JOIN,
+                                       implicit=True)
+                       )
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('tab1')),
+                                   ),
+                ApplyPredictorStep(dataframe=Result(0), predictor='pred'),
+                JoinStep(left=Result(0), right=Result(1),
+                         query=Join(left=Identifier('result_0'),
+                                    right=Identifier('result_1'),
+                                    join_type=JoinType.INNER_JOIN,
+                                    implicit=True)),
+                ProjectStep(dataframe=Result(2), columns=['tab1.column1', 'pred.predicted']),
+            ],
+            results=[0, 1, 2],
+            result_refs={0: [1, 2], 1: [2], 2: [3]},
+        )
+        plan = plan_query(query, integrations=['int'], predictors=['pred'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
