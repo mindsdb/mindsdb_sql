@@ -23,6 +23,20 @@ class TestQueryPlanner:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
+    def test_pure_select_plan_star(self):
+        query = Select(targets=[Star()],
+                       from_table=Identifier('int.tab'))
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int', query=Select(targets=[Star()], from_table=Identifier('tab'))),
+                                      ProjectStep(dataframe=Result(0), columns=['*']),
+                                  ], result_refs={0: [1]})
+
+        plan = plan_query(query, integrations=['int'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
     def test_pure_select_plan_alias(self):
         query = Select(targets=[Identifier('column1', alias='alias')],
                        from_table=Identifier('int.tab'))

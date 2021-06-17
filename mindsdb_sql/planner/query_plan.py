@@ -177,7 +177,16 @@ class QueryPlan:
 
         from_table_result = self.add_result_reference(current_step=self.last_step_index+1,
                                                       ref_step_index=self.last_step_index)
-        self.plan_project(dataframe=from_table_result, columns=[target.alias or target.parts_to_str() for target in target_columns])
+
+        out_columns = []
+        for target in target_columns:
+            if isinstance(target, Identifier):
+                out_columns.append(target.alias or target.parts_to_str())
+            elif isinstance(target, Star):
+                out_columns.append('*')
+            else:
+                raise PlanningException(f'Unsupported select target {str(target)}')
+        self.plan_project(dataframe=from_table_result, columns=out_columns)
 
     def from_query(self, query):
         if isinstance(query, Select):
