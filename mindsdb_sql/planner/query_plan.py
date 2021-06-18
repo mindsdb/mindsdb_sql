@@ -128,7 +128,7 @@ class QueryPlan:
 
                 integration_name, table_path, table_alias = self.get_identifier_integration_table_or_error(table)
                 new_join = Join(left=Identifier(fetch_table_result.ref_name, alias=table.alias or table_path),
-                                right=Identifier(fetch_predictor_output_result.ref_name, alias=predictor_alias),
+                                right=Identifier(fetch_predictor_output_result.ref_name, alias=predictor_alias or predictor),
                                 join_type=join.join_type)
                 self.add_step(JoinStep(left=fetch_table_result, right=fetch_predictor_output_result, query=new_join))
             else:
