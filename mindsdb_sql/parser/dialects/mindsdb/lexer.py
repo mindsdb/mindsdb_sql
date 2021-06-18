@@ -20,7 +20,7 @@ class MindsDBLexer(Lexer):
         GROUP_BY, HAVING, ORDER_BY,
         STAR,
 
-        INNER_JOIN, OUTER_JOIN, CROSS_JOIN, LEFT_JOIN, RIGHT_JOIN, FULL_JOIN, ON,
+        JOIN, INNER_JOIN, OUTER_JOIN, CROSS_JOIN, LEFT_JOIN, RIGHT_JOIN, FULL_JOIN, ON,
 
         # Special
         COMMA, LPAREN, RPAREN, PARAMETER,
@@ -79,6 +79,7 @@ class MindsDBLexer(Lexer):
     ORDER_BY = r'\bORDER BY\b'
     STAR = r'\*'
 
+    JOIN = r'\bJOIN\b'
     INNER_JOIN = r'\bINNER JOIN\b'
     OUTER_JOIN = r'\bOUTER JOIN\b'
     CROSS_JOIN = r'\bCROSS JOIN\b'

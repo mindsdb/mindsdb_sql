@@ -467,7 +467,7 @@ class TestSelectStructure:
         assert str(ast) == str(expected_ast)
 
     def test_select_from_different_join_types(self, dialect):
-        join_types = ['INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN']
+        join_types = ['JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN']
         for join in join_types:
             sql = f"""SELECT * FROM t1 {join} t2 ON t1.x1 = t2.x2"""
             expected_ast = Select(targets=[Star()],

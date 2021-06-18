@@ -213,7 +213,8 @@ class MindsDBParser(Parser):
     def table_or_subquery(self, p):
         return p.parameter
 
-    @_('LEFT_JOIN',
+    @_('JOIN',
+       'LEFT_JOIN',
        'RIGHT_JOIN',
        'INNER_JOIN',
        'FULL_JOIN',
