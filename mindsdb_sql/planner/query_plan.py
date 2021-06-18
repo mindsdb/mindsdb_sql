@@ -99,15 +99,18 @@ class QueryPlan:
                 raise PlanningException(f'Can\'t join two predictors {str(join.left.parts[0])} and {str(join.left.parts[1])}')
 
             predictor = None
+            predictor_alias = None
             table = None
             if join.left.parts_to_str() in self.predictors:
                 predictor = join.left.parts_to_str()
+                predictor_alias = join.left.alias
             else:
                 self.plan_pure_select(Select(targets=[Star()], from_table=join.left))
                 table = join.left
 
             if join.right.parts_to_str() in self.predictors:
                 predictor = join.right.parts_to_str()
+                predictor_alias = join.right.alias
             else:
                 self.plan_pure_select(Select(targets=[Star()], from_table=join.right))
                 table = join.right
@@ -121,11 +124,11 @@ class QueryPlan:
                 fetch_predictor_output_result = self.add_last_result_reference()
 
                 self.add_result_reference(current_step=self.last_step_index+1,
-                                                               ref_step_index=fetch_table_result.step_num)
+                                                       ref_step_index=fetch_table_result.step_num)
 
                 integration_name, table_path, table_alias = self.get_identifier_integration_table_or_error(table)
                 new_join = Join(left=Identifier(fetch_table_result.ref_name, alias=table.alias or table_path),
-                                right=Identifier(fetch_predictor_output_result.ref_name, alias=predictor),
+                                right=Identifier(fetch_predictor_output_result.ref_name, alias=predictor_alias),
                                 join_type=join.join_type)
                 self.add_step(JoinStep(left=fetch_table_result, right=fetch_predictor_output_result, query=new_join))
             else:

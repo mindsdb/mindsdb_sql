@@ -92,7 +92,6 @@ class TestQueryPlanner:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
-
     def test_no_integration_error(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
                        from_table=Identifier('int.tab'))
@@ -233,3 +232,32 @@ class TestQueryPlanner:
 
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
+
+    def test_join_predictor_plan_predictor_alias(self):
+        query = Select(targets=[Identifier('tab1.column1'), Identifier('pred_alias.predicted')],
+                       from_table=Join(left=Identifier('int.tab1'),
+                                       right=Identifier('pred', alias='pred_alias'),
+                                       join_type=JoinType.INNER_JOIN,
+                                       implicit=True)
+                       )
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('tab1')),
+                                   ),
+                ApplyPredictorStep(dataframe=Result(0), predictor='pred'),
+                JoinStep(left=Result(0), right=Result(1),
+                         query=Join(left=Identifier('result_0', alias='tab1'),
+                                    right=Identifier('result_1', alias='pred_alias'),
+                                    join_type=JoinType.INNER_JOIN)),
+                ProjectStep(dataframe=Result(2), columns=['tab1.column1', 'pred_alias.predicted']),
+            ],
+            results=[0, 1, 2],
+            result_refs={0: [1, 2], 1: [2], 2: [3]},
+        )
+        plan = plan_query(query, integrations=['int'], predictors=['pred'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
