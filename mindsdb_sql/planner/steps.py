@@ -7,10 +7,11 @@ class PlanStep:
 
 class ProjectStep(PlanStep):
     """Selects columns from a dataframe"""
-    def __init__(self, dataframe, columns, *args, **kwargs):
+    def __init__(self, dataframe, columns, aliases=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.dataframe = dataframe
         self.columns = columns
+        self.aliases = aliases or {}
 
 
 class JoinStep(PlanStep):
@@ -36,3 +37,11 @@ class ApplyPredictorStep(PlanStep):
         super().__init__(*args, **kwargs)
         self.dataframe = dataframe
         self.predictor = predictor
+
+
+class ApplyPredictorRowStep(PlanStep):
+    """Applies a mindsdb predictor to one row of values and returns a dataframe of one row, the predictor."""
+    def __init__(self, predictor, row_dict, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.predictor = predictor
+        self.row_dict = row_dict

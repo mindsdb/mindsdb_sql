@@ -4,7 +4,8 @@ from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query, QueryPlan
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep
+from mindsdb_sql.planner.steps import FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep, \
+    ApplyPredictorRowStep
 from mindsdb_sql.utils import JoinType
 
 
@@ -30,24 +31,6 @@ class TestQueryPlanner:
                                   steps=[
                                       FetchDataframeStep(integration='int', query=Select(targets=[Star()], from_table=Identifier('tab'))),
                                       ProjectStep(dataframe=Result(0), columns=['*']),
-                                  ], result_refs={0: [1]})
-
-        plan = plan_query(query, integrations=['int'])
-
-        assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
-
-    def test_pure_select_plan_alias(self):
-        query = Select(targets=[Identifier('column1', alias='alias')],
-                       from_table=Identifier('int.tab'))
-        expected_plan = QueryPlan(integrations=['int'],
-                                  steps=[
-                                      FetchDataframeStep(integration='int',
-                                                         query=Select(
-                                                             targets=[Identifier('tab.column1', alias='alias')],
-                                                             from_table=Identifier('tab')),
-                                                         ),
-                                      ProjectStep(dataframe=Result(0), columns=['alias']),
                                   ], result_refs={0: [1]})
 
         plan = plan_query(query, integrations=['int'])
@@ -92,12 +75,30 @@ class TestQueryPlanner:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
+    def test_pure_select_column_alias(self):
+        query = Select(targets=[Identifier('col1', alias='column_alias')],
+                       from_table=Identifier('int.tab'))
+
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(
+                                                             targets=[Identifier(parts=['tab', 'col1'], alias='col1')],
+                                                             from_table=Identifier(parts=['tab'])),
+                                                         ),
+                                      ProjectStep(dataframe=Result(0), columns=['col1'], aliases=dict(col1='column_alias')),
+                                  ], result_refs={0: [1]})
+
+        plan = plan_query(query, integrations=['int'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
     def test_no_integration_error(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
                        from_table=Identifier('int.tab'))
         with pytest.raises(PlanningException):
             plan = plan_query(query, integrations=[], predictors=['pred'])
-
 
     def test_no_predictor_error(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
@@ -261,3 +262,85 @@ class TestQueryPlanner:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
+    def test_select_from_predictor_plan(self):
+        query = Select(targets=[Star()],
+                       from_table=Identifier('pred'),
+                       where=BinaryOperation(op='and',
+                                             args=[BinaryOperation(op='=', args=[Identifier('x1'), Constant(1)]),
+                                                   BinaryOperation(op='=', args=[Identifier('x2'), Constant('2')])],
+                                             ))
+        expected_plan = QueryPlan(predictors=['pred'],
+                                  steps=[
+                                      ApplyPredictorRowStep(predictor='pred', row_dict={'x1': 1, 'x2': '2'}),
+                                      ProjectStep(dataframe=Result(0), columns=['*']),
+                                  ], result_refs={0: [1]})
+
+        plan = plan_query(query, predictors=['pred'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_select_from_predictor_plan_predictor_alias(self):
+        query = Select(targets=[Star()],
+                       from_table=Identifier('pred', alias='pred_alias'),
+                       where=BinaryOperation(op='and',
+                                             args=[BinaryOperation(op='=', args=[Identifier('pred_alias.x1'), Constant(1)]),
+                                                   BinaryOperation(op='=', args=[Identifier('pred_alias.x2'), Constant('2')])],
+                                             ))
+        expected_plan = QueryPlan(predictors=['pred'],
+                                  steps=[
+                                      ApplyPredictorRowStep(predictor='pred', row_dict={'x1': 1, 'x2': '2'}),
+                                      ProjectStep(dataframe=Result(0), columns=['*']),
+                                  ], result_refs={0: [1]})
+
+        plan = plan_query(query, predictors=['pred'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_select_from_predictor_plan_verbose_col_names(self):
+        query = Select(targets=[Star()],
+                       from_table=Identifier('pred'),
+                       where=BinaryOperation(op='and',
+                                             args=[BinaryOperation(op='=', args=[Identifier('pred.x1'), Constant(1)]),
+                                                   BinaryOperation(op='=', args=[Identifier('pred.x2'), Constant('2')])],
+                                             ))
+        expected_plan = QueryPlan(predictors=['pred'],
+                                  steps=[
+                                      ApplyPredictorRowStep(predictor='pred', row_dict={'x1': 1, 'x2': '2'}),
+                                      ProjectStep(dataframe=Result(0), columns=['*']),
+                                  ], result_refs={0: [1]})
+
+        plan = plan_query(query, predictors=['pred'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_select_from_predictor_wrong_where_op_error(self):
+        query = Select(targets=[Star()],
+                       from_table=Identifier('pred'),
+                       where=BinaryOperation(op='and',
+                                             args=[BinaryOperation(op='>', args=[Identifier('x1'), Constant(1)]),
+                                                   BinaryOperation(op='=', args=[Identifier('x2'), Constant('2')])],
+                                             ))
+
+        with pytest.raises(PlanningException):
+            plan_query(query, predictors=['pred'])
+
+    def test_select_from_predictor_multiple_values_error(self):
+        query = Select(targets=[Star()],
+                       from_table=Identifier('pred'),
+                       where=BinaryOperation(op='and',
+                                             args=[BinaryOperation(op='=', args=[Identifier('x1'), Constant(1)]),
+                                                   BinaryOperation(op='=', args=[Identifier('x1'), Constant('2')])],
+                                             ))
+
+        with pytest.raises(PlanningException):
+            plan_query(query, predictors=['pred'])
+
+    def test_select_from_predictor_no_where_error(self):
+        query = Select(targets=[Star()],
+                       from_table=Identifier('pred'))
+
+        with pytest.raises(PlanningException):
+            plan_query(query, predictors=['pred'])
