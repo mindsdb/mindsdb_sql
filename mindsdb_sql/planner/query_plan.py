@@ -8,9 +8,9 @@ from mindsdb_sql.planner.steps import FetchDataframeStep, ProjectStep, JoinStep,
 
 
 class QueryPlan:
-    def __init__(self, integrations=None, predictors=None, steps=None, results=None, result_refs=None):
+    def __init__(self, integrations=None, predictor_namespace=None, steps=None, results=None, result_refs=None):
         self.integrations = integrations or []
-        self.predictors = predictors or []
+        self.predictor_namespace = predictor_namespace or 'mindsdb'
         self.steps = steps or []
         self.results = results or []
 
@@ -44,7 +44,7 @@ class QueryPlan:
 
     def is_predictor(self, identifier):
         parts = identifier.parts
-        if parts[0] in self.predictors:
+        if parts[0] == self.predictor_namespace:
             return True
         return False
 
@@ -54,7 +54,7 @@ class QueryPlan:
             return True
         return False
 
-    def get_identifier_integration_table_or_error(self, identifier):
+    def get_integration_table_or_error_from_identifier(self, identifier):
         parts = identifier.parts
 
         if len(parts) == 1:
@@ -69,6 +69,20 @@ class QueryPlan:
         table_path = '.'.join(parts[1:])
         table_alias = identifier.alias
         return integration_name, table_path, table_alias
+
+    def get_predictor_namespace_and_name_from_identifier(select, identifier):
+        parts = identifier.parts
+
+        if len(parts) == 1:
+            raise PlanningException(f'No predictor name specified for predictor: {str(identifier)}')
+        elif len(parts) > 4:
+            raise PlanningException(f'Too many parts (dots) in predictor identifier: {str(identifier)}')
+
+        namespace = parts[0]
+
+        predictor_path = '.'.join(parts[1:])
+        predictor_alias = identifier.alias
+        return namespace, predictor_path, predictor_alias
 
     def disambiguate_integration_column_identifier(self, identifier, integration_name, table_path, table_alias,
                                        initial_path_as_alias=True):
@@ -99,7 +113,7 @@ class QueryPlan:
 
     def plan_pure_select(self, select):
         """Plan for a select query that can be fully executed in an integration"""
-        integration_name, table_path, table_alias = self.get_identifier_integration_table_or_error(select.from_table)
+        integration_name, table_path, table_alias = self.get_integration_table_or_error_from_identifier(select.from_table)
 
         new_query_targets = []
         for target in select.targets:
@@ -114,7 +128,6 @@ class QueryPlan:
         self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_query))
 
     def recursively_extract_column_values(self, op, row_dict, predictor_name, predictor_alias):
-        print(str(op))
         if isinstance(op, BinaryOperation) and op.op == '=':
             id = self.disambiguate_predictor_column_identifier(op.args[0], predictor_name, predictor_alias)
             value = op.args[1]
@@ -133,8 +146,7 @@ class QueryPlan:
             raise PlanningException(f'Only \'and\' and \'=\' operations allowed in WHERE clause, found: {op.to_tree()}')
 
     def plan_select_from_predictor(self, select):
-        predictor_name, predictor_alias = select.from_table.parts_to_str(), select.from_table.alias
-
+        predictor_namespace, predictor_name, predictor_alias = self.get_predictor_namespace_and_name_from_identifier(select.from_table)
         new_query_targets = []
         for target in select.targets:
             if isinstance(target, Identifier):
@@ -153,26 +165,26 @@ class QueryPlan:
         self.recursively_extract_column_values(where_clause, row_dict, predictor_name, predictor_alias)
 
         # Get values from WHERE
-        self.add_step(ApplyPredictorRowStep(predictor=predictor_name, row_dict=row_dict))
+        self.add_step(ApplyPredictorRowStep(namespace=predictor_namespace, predictor=predictor_name, row_dict=row_dict))
 
-    def plan_join_table_and_predictor(self, join, table, predictor_name, predictor_alias):
+    def plan_join_table_and_predictor(self, join, table, predictor_namespace, predictor_name, predictor_alias):
         fetch_table_result = self.add_last_result_reference()
-        self.add_step(ApplyPredictorStep(dataframe=fetch_table_result, predictor=predictor_name))
+        self.add_step(ApplyPredictorStep(namespace=predictor_namespace, dataframe=fetch_table_result, predictor=predictor_name))
         fetch_predictor_output_result = self.add_last_result_reference()
 
         self.add_result_reference(current_step=self.last_step_index + 1,
                                   ref_step_index=fetch_table_result.step_num)
 
-        integration_name, table_path, table_alias = self.get_identifier_integration_table_or_error(table)
+        integration_name, table_path, table_alias = self.get_integration_table_or_error_from_identifier(table)
         new_join = Join(left=Identifier(fetch_table_result.ref_name, alias=table.alias or table_path),
                         right=Identifier(fetch_predictor_output_result.ref_name, alias=predictor_alias or predictor_name),
                         join_type=join.join_type)
         self.add_step(JoinStep(left=fetch_table_result, right=fetch_predictor_output_result, query=new_join))
 
     def plan_join_two_tables(self, join, left_dataframe, right_dataframe):
-        left_integration_name, left_table_path, left_table_alias = self.get_identifier_integration_table_or_error(
+        left_integration_name, left_table_path, left_table_alias = self.get_integration_table_or_error_from_identifier(
             join.left)
-        right_integration_name, right_table_path, right_table_alias = self.get_identifier_integration_table_or_error(
+        right_integration_name, right_table_path, right_table_alias = self.get_integration_table_or_error_from_identifier(
             join.right)
 
         new_condition_args = []
@@ -199,22 +211,21 @@ class QueryPlan:
 
     def plan_join(self, join):
         if isinstance(join.left, Identifier) and isinstance(join.right, Identifier):
-            if join.left.parts[0] in self.predictors and join.left.parts[1] in self.predictors:
+            if self.is_predictor(join.left) and self.is_predictor(join.right):
                 raise PlanningException(f'Can\'t join two predictors {str(join.left.parts[0])} and {str(join.left.parts[1])}')
 
+            predictor_namespace = None
             predictor_name = None
             predictor_alias = None
             table = None
-            if join.left.parts_to_str() in self.predictors:
-                predictor_name = join.left.parts_to_str()
-                predictor_alias = join.left.alias
+            if self.is_predictor(join.left):
+                predictor_namespace, predictor_name, predictor_alias = self.get_predictor_namespace_and_name_from_identifier(join.left)
             else:
                 self.plan_pure_select(Select(targets=[Star()], from_table=join.left))
                 table = join.left
 
-            if join.right.parts_to_str() in self.predictors:
-                predictor_name = join.right.parts_to_str()
-                predictor_alias = join.right.alias
+            if self.is_predictor(join.right):
+                predictor_namespace, predictor_name, predictor_alias = self.get_predictor_namespace_and_name_from_identifier(join.right)
             else:
                 self.plan_pure_select(Select(targets=[Star()], from_table=join.right))
                 table = join.right
@@ -223,7 +234,7 @@ class QueryPlan:
                 # One argument is a table, another is a predictor
                 # Apply mindsdb model to result of last dataframe fetch
                 # Then join results of applying mindsdb with table
-                self.plan_join_table_and_predictor(join, table, predictor_name, predictor_alias)
+                self.plan_join_table_and_predictor(join, table, predictor_namespace, predictor_name, predictor_alias)
             else:
                 # Both arguments are tables, join results of last 2 dataframe fetches
                 fetch_left_result = self.add_result_reference(current_step=self.last_step_index + 1,
