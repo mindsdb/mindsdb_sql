@@ -1,7 +1,7 @@
 import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
-from mindsdb_sql.parser.ast import Select, Identifier, Join, Star, BinaryOperation, Constant
+from mindsdb_sql.parser.ast import Select, Identifier, Join, Star, BinaryOperation, Constant, Operation
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep, \
     ApplyPredictorRowStep
@@ -111,7 +111,18 @@ class QueryPlan:
         new_identifier = Identifier(parts=parts)
         return new_identifier
 
-    def plan_pure_select(self, select):
+    def recursively_disambiguate_identifiers_in_op(self, op, integration_name, table_path, table_alias):
+        for arg in op.args:
+            if isinstance(arg, Identifier):
+                new_identifier = self.disambiguate_integration_column_identifier(arg, integration_name, table_path,
+                                                                                 table_alias,
+                                                                                 initial_path_as_alias=False)
+                arg.parts = new_identifier.parts
+                arg.alias = new_identifier.alias
+            elif isinstance(arg, Operation):
+                self.recursively_disambiguate_identifiers_in_op(arg, integration_name, table_path, table_alias)
+
+    def plan_integration_select(self, select):
         """Plan for a select query that can be fully executed in an integration"""
         integration_name, table_path, table_alias = self.get_integration_table_or_error_from_identifier(select.from_table)
 
@@ -124,7 +135,17 @@ class QueryPlan:
             else:
                 raise PlanningException(f'Unknown select target {type(target)}')
 
-        fetch_df_query = Select(targets=new_query_targets, from_table=Identifier(table_path, alias=table_alias))
+        where = None
+        if select.where:
+            if not isinstance(select.where, BinaryOperation):
+                raise PlanningException(f'Unsupported where clause {type(select.where)}, only BinaryOperation is supported now.')
+
+            where = copy.deepcopy(select.where)
+            self.recursively_disambiguate_identifiers_in_op(where, integration_name, table_path, table_alias)
+
+        fetch_df_query = Select(targets=new_query_targets,
+                                from_table=Identifier(table_path, alias=table_alias),
+                                where=where)
         self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_query))
 
     def recursively_extract_column_values(self, op, row_dict, predictor_name, predictor_alias):
@@ -209,7 +230,8 @@ class QueryPlan:
         new_join.right = Identifier(right_table_path, alias=right_table_alias)
         self.add_step(JoinStep(left=left_dataframe, right=right_dataframe, query=new_join))
 
-    def plan_join(self, join):
+    def plan_join(self, query):
+        join = query.from_table
         if isinstance(join.left, Identifier) and isinstance(join.right, Identifier):
             if self.is_predictor(join.left) and self.is_predictor(join.right):
                 raise PlanningException(f'Can\'t join two predictors {str(join.left.parts[0])} and {str(join.left.parts[1])}')
@@ -221,13 +243,13 @@ class QueryPlan:
             if self.is_predictor(join.left):
                 predictor_namespace, predictor_name, predictor_alias = self.get_predictor_namespace_and_name_from_identifier(join.left)
             else:
-                self.plan_pure_select(Select(targets=[Star()], from_table=join.left))
+                self.plan_integration_select(Select(targets=[Star()], from_table=join.left, where=query.where))
                 table = join.left
 
             if self.is_predictor(join.right):
                 predictor_namespace, predictor_name, predictor_alias = self.get_predictor_namespace_and_name_from_identifier(join.right)
             else:
-                self.plan_pure_select(Select(targets=[Star()], from_table=join.right))
+                self.plan_integration_select(Select(targets=[Star()], from_table=join.right, where=query.where))
                 table = join.right
 
             if predictor_name:
@@ -253,9 +275,9 @@ class QueryPlan:
             if self.is_predictor(from_table):
                 self.plan_select_from_predictor(query)
             else:
-                self.plan_pure_select(query)
+                self.plan_integration_select(query)
         elif isinstance(from_table, Join):
-            self.plan_join(from_table)
+            self.plan_join(query)
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 

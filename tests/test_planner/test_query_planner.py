@@ -12,10 +12,25 @@ from mindsdb_sql.utils import JoinType
 class TestQueryPlanner:
     def test_pure_select_plan(self):
         query = Select(targets=[Identifier('column1')],
-                       from_table=Identifier('int.tab'))
+                       from_table=Identifier('int.tab'),
+                       where=BinaryOperation('and', args=[
+                           BinaryOperation('=', args=[Identifier('column1'), Identifier('column2')]),
+                           BinaryOperation('>', args=[Identifier('column3'), Constant(0)]),
+                       ]))
         expected_plan = QueryPlan(integrations=['int'],
                                   steps=[
-                                      FetchDataframeStep(integration='int', query=Select(targets=[Identifier('tab.column1', alias='column1')], from_table=Identifier('tab'))),
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(targets=[Identifier('tab.column1', alias='column1')],
+                                                                      from_table=Identifier('tab'),
+                                                                      where=BinaryOperation('and', args=[
+                                                                              BinaryOperation('=',
+                                                                                              args=[Identifier('tab.column1'),
+                                                                                                    Identifier('tab.column2')]),
+                                                                              BinaryOperation('>',
+                                                                                              args=[Identifier('tab.column3'),
+                                                                                                    Constant(0)]),
+                                                                          ])
+                                                                      )),
                                       ProjectStep(dataframe=Result(0), columns=['column1']),
                                   ], result_refs={0: [1]})
 
@@ -225,6 +240,48 @@ class TestQueryPlanner:
                                     right=Identifier('result_1', alias='pred'),
                                     join_type=JoinType.INNER_JOIN)),
                 ProjectStep(dataframe=Result(2), columns=['tab1.column1', 'pred.predicted']),
+            ],
+            results=[0, 1, 2],
+            result_refs={0: [1, 2], 1: [2], 2: [3]},
+        )
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_join_predictor_plan_where(self):
+        query = Select(targets=[Identifier('tab.column1'), Identifier('pred.predicted')],
+                       from_table=Join(left=Identifier('int.tab'),
+                                       right=Identifier('mindsdb.pred'),
+                                       join_type=JoinType.INNER_JOIN,
+                                       implicit=True),
+                       where=BinaryOperation('and', args=[
+                           BinaryOperation('=', args=[Identifier('product_id'), Constant('x')]),
+                           BetweenOperation(args=[Identifier('time'), Constant('2021-01-01'), Constant('2021-01-31')]),
+                       ])
+                       )
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('tab'),
+                                                where=BinaryOperation('and', args=[
+                                                    BinaryOperation('=',
+                                                                    args=[Identifier('tab.product_id'), Constant('x')]),
+                                                    BetweenOperation(
+                                                        args=[Identifier('tab.time'),
+                                                              Constant('2021-01-01'),
+                                                              Constant('2021-01-31')]),
+                                                ])
+                                                ),
+                                   ),
+                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(0), predictor='pred'),
+                JoinStep(left=Result(0), right=Result(1),
+                         query=Join(left=Identifier('result_0', alias='tab'),
+                                    right=Identifier('result_1', alias='pred'),
+                                    join_type=JoinType.INNER_JOIN)),
+                ProjectStep(dataframe=Result(2), columns=['tab.column1', 'pred.predicted']),
             ],
             results=[0, 1, 2],
             result_refs={0: [1, 2], 1: [2], 2: [3]},

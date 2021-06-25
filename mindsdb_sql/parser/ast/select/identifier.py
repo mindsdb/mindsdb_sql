@@ -5,8 +5,10 @@ import re
 
 no_wrap_identifier_regex = re.compile(r'[a-zA-Z][a-zA-Z_.0-9]*')
 
+
 def path_str_to_parts(path_str):
     return [part.strip('`') for part in path_str.split('.')]
+
 
 class Identifier(ASTNode):
     def __init__(self, path_str=None, parts=None, *args, **kwargs):
