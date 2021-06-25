@@ -14,6 +14,14 @@ class ProjectStep(PlanStep):
         self.aliases = aliases or {}
 
 
+class FilterStep(PlanStep):
+    """Filters some dataframe according to a query"""
+    def __init__(self, dataframe, query, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dataframe = dataframe
+        self.query = query
+
+
 class JoinStep(PlanStep):
     """Joins two dataframes, producing a new dataframe"""
     def __init__(self, left, right, query, *args, **kwargs):
@@ -47,3 +55,5 @@ class ApplyPredictorRowStep(PlanStep):
         self.namespace = namespace
         self.predictor = predictor
         self.row_dict = row_dict
+
+

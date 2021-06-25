@@ -15,7 +15,6 @@ class TestUse:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
-        print(ast.to_tree())
 
     def test_use_wrong_dialect(self):
         sql = "USE my_integration"

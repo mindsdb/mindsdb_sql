@@ -4,7 +4,7 @@ from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import Select, Identifier, Join, Star, BinaryOperation, Constant, Operation
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep, \
-    ApplyPredictorRowStep
+    ApplyPredictorRowStep, FilterStep
 
 
 class QueryPlan:
@@ -188,7 +188,9 @@ class QueryPlan:
         # Get values from WHERE
         self.add_step(ApplyPredictorRowStep(namespace=predictor_namespace, predictor=predictor_name, row_dict=row_dict))
 
-    def plan_join_table_and_predictor(self, join, table, predictor_namespace, predictor_name, predictor_alias):
+    def plan_join_table_and_predictor(self, query, table, predictor_namespace, predictor_name, predictor_alias):
+        join = query.from_table
+        self.plan_integration_select(Select(targets=[Star()], from_table=table, where=query.where))
         fetch_table_result = self.add_last_result_reference()
         self.add_step(ApplyPredictorStep(namespace=predictor_namespace, dataframe=fetch_table_result, predictor=predictor_name))
         fetch_predictor_output_result = self.add_last_result_reference()
@@ -230,8 +232,20 @@ class QueryPlan:
         new_join.right = Identifier(right_table_path, alias=right_table_alias)
         self.add_step(JoinStep(left=left_dataframe, right=right_dataframe, query=new_join))
 
+    def recursively_check_join_identifiers_for_ambiguity(self, op):
+        for arg in op.args:
+            if isinstance(arg, Identifier):
+                if len(arg.parts) == 1:
+                    raise PlanningException(f'Ambigous identifier {str(arg)}, provide table name when filtering a join.')
+            elif isinstance(arg, Operation):
+                self.recursively_check_join_identifiers_for_ambiguity(arg)
+
     def plan_join(self, query):
         join = query.from_table
+
+        if query.where:
+            self.recursively_check_join_identifiers_for_ambiguity(query.where)
+
         if isinstance(join.left, Identifier) and isinstance(join.right, Identifier):
             if self.is_predictor(join.left) and self.is_predictor(join.right):
                 raise PlanningException(f'Can\'t join two predictors {str(join.left.parts[0])} and {str(join.left.parts[1])}')
@@ -243,27 +257,33 @@ class QueryPlan:
             if self.is_predictor(join.left):
                 predictor_namespace, predictor_name, predictor_alias = self.get_predictor_namespace_and_name_from_identifier(join.left)
             else:
-                self.plan_integration_select(Select(targets=[Star()], from_table=join.left, where=query.where))
                 table = join.left
 
             if self.is_predictor(join.right):
                 predictor_namespace, predictor_name, predictor_alias = self.get_predictor_namespace_and_name_from_identifier(join.right)
             else:
-                self.plan_integration_select(Select(targets=[Star()], from_table=join.right, where=query.where))
                 table = join.right
 
             if predictor_name:
                 # One argument is a table, another is a predictor
                 # Apply mindsdb model to result of last dataframe fetch
                 # Then join results of applying mindsdb with table
-                self.plan_join_table_and_predictor(join, table, predictor_namespace, predictor_name, predictor_alias)
+                self.plan_join_table_and_predictor(query, table, predictor_namespace, predictor_name, predictor_alias)
             else:
-                # Both arguments are tables, join results of last 2 dataframe fetches
+                # Both arguments are tables, join results of 2 dataframe fetches
+                self.plan_integration_select(Select(targets=[Star()], from_table=join.left))
+                self.plan_integration_select(Select(targets=[Star()], from_table=join.right))
                 fetch_left_result = self.add_result_reference(current_step=self.last_step_index + 1,
                                                               ref_step_index=self.last_step_index - 1)
                 fetch_right_result = self.add_result_reference(current_step=self.last_step_index + 1,
                                                                ref_step_index=self.last_step_index)
                 self.plan_join_two_tables(join, fetch_left_result, fetch_right_result)
+
+            # Filter join results
+            # We don't do that if joined predictor with table, because in that case WHERE is pushed to the integration query
+            if query.where and not predictor_name:
+                last_result = self.add_last_result_reference()
+                self.add_step(FilterStep(dataframe=last_result, query=query.where))
         else:
             raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')
 
