@@ -22,6 +22,16 @@ class FilterStep(PlanStep):
         self.query = query
 
 
+class GroupByStep(PlanStep):
+    """Groups output by columns and computes aggregation functions"""
+
+    def __init__(self, dataframe, columns, targets, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dataframe = dataframe
+        self.columns = columns
+        self.targets = targets
+
+
 class JoinStep(PlanStep):
     """Joins two dataframes, producing a new dataframe"""
     def __init__(self, left, right, query, *args, **kwargs):
