@@ -85,7 +85,7 @@ class QueryPlan:
         return namespace, predictor_path, predictor_alias
 
     def disambiguate_integration_column_identifier(self, identifier, integration_name, table_path, table_alias,
-                                       initial_path_as_alias=True):
+                                       initial_path_as_alias=False):
         """Removes integration name from column if it's present, adds table path if it's absent"""
         column_table_ref = table_alias or table_path
         initial_path_str = identifier.parts_to_str()
@@ -97,8 +97,11 @@ class QueryPlan:
             parts.insert(0, column_table_ref)
 
         new_identifier = Identifier(parts=parts)
-        if initial_path_as_alias:
+        if identifier.alias:
+            new_identifier.alias = identifier.alias
+        elif initial_path_as_alias:
             new_identifier.alias = initial_path_str
+
         return new_identifier
 
     def disambiguate_predictor_column_identifier(self, identifier, predictor_name, predictor_alias):
@@ -129,9 +132,14 @@ class QueryPlan:
         new_query_targets = []
         for target in select.targets:
             if isinstance(target, Identifier):
-                new_query_targets.append(self.disambiguate_integration_column_identifier(target, integration_name, table_path, table_alias))
+                new_query_targets.append(self.disambiguate_integration_column_identifier(target, integration_name, table_path, table_alias,
+                                                                                         initial_path_as_alias=True))
             elif isinstance(target, Star):
                 new_query_targets.append(target)
+            elif isinstance(target, Operation):
+                new_op = copy.deepcopy(target)
+                self.recursively_disambiguate_identifiers_in_op(new_op, integration_name, table_path, table_alias)
+                new_query_targets.append(new_op)
             else:
                 raise PlanningException(f'Unknown select target {type(target)}')
 
@@ -143,9 +151,26 @@ class QueryPlan:
             where = copy.deepcopy(select.where)
             self.recursively_disambiguate_identifiers_in_op(where, integration_name, table_path, table_alias)
 
+        group_by = None
+        if select.group_by:
+            group_by = [self.disambiguate_integration_column_identifier(id, integration_name, table_path, table_alias, initial_path_as_alias=False)
+                        for id in select.group_by]
+
+        having = None
+        if select.having:
+            if not isinstance(select.having, BinaryOperation):
+                raise PlanningException(
+                    f'Unsupported having clause {type(select.having)}, only BinaryOperation is supported now.')
+
+            having = copy.deepcopy(select.having)
+            self.recursively_disambiguate_identifiers_in_op(having, integration_name, table_path, table_alias)
+
         fetch_df_query = Select(targets=new_query_targets,
                                 from_table=Identifier(table_path, alias=table_alias),
-                                where=where)
+                                where=where,
+                                group_by=group_by,
+                                having=having,
+                                )
         self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_query))
 
     def recursively_extract_column_values(self, op, row_dict, predictor_name, predictor_alias):
@@ -240,6 +265,18 @@ class QueryPlan:
             elif isinstance(arg, Operation):
                 self.recursively_check_join_identifiers_for_ambiguity(arg)
 
+    def plan_project(self, query):
+        last_step_result = self.add_last_result_reference()
+        out_aliases = {}
+        out_columns = []
+        for target in query.targets:
+            if target.alias:
+                out_aliases[str(target)] = target.alias
+            target.alias = None
+            out_columns.append(str(target))
+
+        self.add_step(ProjectStep(dataframe=last_step_result, columns=out_columns, aliases=out_aliases))
+
     def plan_join(self, query):
         join = query.from_table
 
@@ -286,6 +323,7 @@ class QueryPlan:
                 self.add_step(FilterStep(dataframe=last_result, query=query.where))
         else:
             raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')
+        self.plan_project(query)
 
     def plan_select(self, query):
         target_columns = query.targets
@@ -300,22 +338,6 @@ class QueryPlan:
             self.plan_join(query)
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
-
-        from_table_result = self.add_result_reference(current_step=self.last_step_index+1,
-                                                      ref_step_index=self.last_step_index)
-
-        out_aliases = {}
-        out_columns = []
-        for target in target_columns:
-            if isinstance(target, Identifier):
-                out_columns.append(target.parts_to_str())
-                if target.alias:
-                    out_aliases[target.parts_to_str()] = target.alias
-            elif isinstance(target, Star):
-                out_columns.append('*')
-            else:
-                raise PlanningException(f'Unsupported select target {str(target)}')
-        self.add_step(ProjectStep(dataframe=from_table_result, columns=out_columns, aliases=out_aliases))
 
     def from_query(self, query):
         if isinstance(query, Select):

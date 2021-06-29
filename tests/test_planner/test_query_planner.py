@@ -10,7 +10,7 @@ from mindsdb_sql.utils import JoinType
 
 
 class TestQueryPlanner:
-    def test_pure_select_plan(self):
+    def test_integration_select_plan(self):
         query = Select(targets=[Identifier('column1')],
                        from_table=Identifier('int.tab'),
                        where=BinaryOperation('and', args=[
@@ -31,29 +31,27 @@ class TestQueryPlanner:
                                                                                                     Constant(0)]),
                                                                           ])
                                                                       )),
-                                      ProjectStep(dataframe=Result(0), columns=['column1']),
-                                  ], result_refs={0: [1]})
+                                  ])
 
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
-    def test_pure_select_plan_star(self):
+    def test_integration_select_plan_star(self):
         query = Select(targets=[Star()],
                        from_table=Identifier('int.tab'))
         expected_plan = QueryPlan(integrations=['int'],
                                   steps=[
                                       FetchDataframeStep(integration='int', query=Select(targets=[Star()], from_table=Identifier('tab'))),
-                                      ProjectStep(dataframe=Result(0), columns=['*']),
-                                  ], result_refs={0: [1]})
+                                  ])
 
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
-    def test_pure_select_plan_complex_path(self):
+    def test_integration_select_plan_complex_path(self):
         query = Select(targets=[Identifier(parts=['int', 'tab', 'a column with spaces'])],
                        from_table=Identifier('int.tab'))
         expected_plan = QueryPlan(integrations=['int'],
@@ -63,15 +61,14 @@ class TestQueryPlanner:
                                                              targets=[Identifier('tab.`a column with spaces`', alias='int.tab.`a column with spaces`')],
                                                              from_table=Identifier('tab')),
                                                          ),
-                                      ProjectStep(dataframe=Result(0), columns=['int.tab.`a column with spaces`']),
-                                  ], result_refs={0: [1]})
+                                  ])
 
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
-    def test_pure_select_table_alias(self):
+    def test_integration_select_table_alias(self):
         query = Select(targets=[Identifier('col1')],
                        from_table=Identifier('int.tab', alias='alias'))
 
@@ -83,14 +80,13 @@ class TestQueryPlanner:
                                                                                  alias='col1')],
                                                              from_table=Identifier(parts=['tab'], alias='alias')),
                                                          ),
-                                      ProjectStep(dataframe=Result(0), columns=['col1']),
-                                  ], result_refs={0: [1]})
+                                  ])
 
         plan = plan_query(query, integrations=['int'])
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
-    def test_pure_select_column_alias(self):
+    def test_integration_select_column_alias(self):
         query = Select(targets=[Identifier('col1', alias='column_alias')],
                        from_table=Identifier('int.tab'))
 
@@ -98,11 +94,44 @@ class TestQueryPlanner:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier(parts=['tab', 'col1'], alias='col1')],
+                                                             targets=[Identifier(parts=['tab', 'col1'], alias='column_alias')],
                                                              from_table=Identifier(parts=['tab'])),
                                                          ),
-                                      ProjectStep(dataframe=Result(0), columns=['col1'], aliases=dict(col1='column_alias')),
-                                  ], result_refs={0: [1]})
+                                  ])
+
+        plan = plan_query(query, integrations=['int'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_integration_select_plan_group_by(self):
+        query = Select(targets=[Identifier('column1'),
+                                Identifier("column2"),
+                                Function(op="sum",
+                                 args=[Identifier(parts=["column3"])],
+                                 alias='total'),
+                                ],
+                       from_table=Identifier('int.tab'),
+                       group_by=[Identifier("column1"), Identifier("column2")],
+                       having=BinaryOperation('=', args=[Identifier("column1"), Constant(0)])
+                       )
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(targets=[
+                                                             Identifier('tab.column1', alias='column1'),
+                                                             Identifier('tab.column2', alias='column2'),
+                                                             Function(op="sum",
+                                                                      args=[Identifier(parts=['tab', 'column3'])],
+                                                                      alias='total'),
+
+                                                         ],
+                                                             from_table=Identifier('tab'),
+                                                             group_by=[Identifier('tab.column1'), Identifier('tab.column2')],
+                                                             having=BinaryOperation('=', args=[Identifier('tab.column1'),
+                                                                                               Constant(0)])
+                                                         )),
+                                  ])
 
         plan = plan_query(query, integrations=['int'])
 
@@ -447,8 +476,7 @@ class TestQueryPlanner:
         expected_plan = QueryPlan(predictor_namespace='mindsdb',
                                   steps=[
                                       ApplyPredictorRowStep(namespace='mindsdb', predictor='pred', row_dict={'x1': 1, 'x2': '2'}),
-                                      ProjectStep(dataframe=Result(0), columns=['*']),
-                                  ], result_refs={0: [1]})
+                                  ])
 
         plan = plan_query(query, predictor_namespace='mindsdb')
 
@@ -465,8 +493,7 @@ class TestQueryPlanner:
         expected_plan = QueryPlan(predictor_namespace='mindsdb',
                                   steps=[
                                       ApplyPredictorRowStep(namespace='mindsdb', predictor='pred', row_dict={'x1': 1, 'x2': '2'}),
-                                      ProjectStep(dataframe=Result(0), columns=['*']),
-                                  ], result_refs={0: [1]})
+                                  ])
 
         plan = plan_query(query, predictor_namespace='mindsdb')
 
@@ -483,8 +510,7 @@ class TestQueryPlanner:
         expected_plan = QueryPlan(predictor_namespace='mindsdb',
                                   steps=[
                                       ApplyPredictorRowStep(namespace='mindsdb', predictor='pred', row_dict={'x1': 1, 'x2': '2'}),
-                                      ProjectStep(dataframe=Result(0), columns=['*']),
-                                  ], result_refs={0: [1]})
+                                  ])
 
         plan = plan_query(query, predictor_namespace='mindsdb')
 
