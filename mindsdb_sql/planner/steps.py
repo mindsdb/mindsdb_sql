@@ -1,8 +1,13 @@
 class PlanStep:
     def __eq__(self, other):
-        if isinstance(other, PlanStep):
-            return type(self) == type(other) and all([getattr(self, k) == getattr(other, k) for k in vars(self)])
-        return False
+        if type(self) != type(other):
+            return False
+
+        for k in vars(self):
+            if getattr(self, k) != getattr(other, k):
+                return False
+
+        return True
 
 
 class ProjectStep(PlanStep):

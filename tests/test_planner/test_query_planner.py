@@ -278,7 +278,7 @@ class TestQueryPlanner:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
-    def test_join_tables_plan_oupby(self):
+    def test_join_tables_plan_groupby(self):
         query = Select(targets=[
             Identifier('tab1.column1'),
             Identifier('tab2.column1'),
@@ -289,7 +289,7 @@ class TestQueryPlanner:
                                                       args=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
                             join_type=JoinType.INNER_JOIN
                             ),
-            group_by=['tab1.column1', 'tab2.column1'],
+            group_by=[Identifier('tab1.column1'), Identifier('tab2.column1')],
             having=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Constant(0)])
         )
         plan = plan_query(query, integrations=['int'])
@@ -315,14 +315,13 @@ class TestQueryPlanner:
                                       GroupByStep(dataframe=Result(2),
                                                   targets=[Identifier('tab1.column1'),
                                                             Identifier('tab2.column1'),
-                                                            Function('sum', args=[Identifier('tab2.column2')], alias='total')],
-                                                  columns=['tab1.column1', 'tab2.column1']),
+                                                            Function('sum', args=[Identifier('tab2.column2')])],
+                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
                                       FilterStep(dataframe=Result(3), query=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Constant(0)])),
+                                      ProjectStep(dataframe=Result(4), columns=['tab1.column1', 'tab2.column1', 'sum(tab2.column2)'], aliases={'sum(tab2.column2)': 'total'}),
                                   ],
-                                  result_refs={0: [2], 1: [2], 2: [3], 3: [4]})
-
-        assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+                                  result_refs={0: [2], 1: [2], 2: [3], 3: [4], 4: [5]})
+        assert plan == expected_plan
 
     def test_join_tables_where_ambigous_column_error(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
@@ -500,18 +499,19 @@ class TestQueryPlanner:
                 FetchDataframeStep(integration='int',
                                    query=Select(targets=[Star()],
                                                 from_table=Identifier('tab'),
+                                                group_by=[Identifier('tab.asset')],
+                                                having=BinaryOperation('=', args=[Identifier('tab.asset'),
+                                                                                  Constant('bitcoin')])
                                                 ),
                                    ),
-                GroupByStep(dataframe=Result(0), columns=['tab.asset'], targets=[Identifier('tab.asset'), Identifier('tab.time')]),
-                FilterStep(dataframe=Result(1), query=BinaryOperation('=', args=[Identifier('tab.asset'), Constant('bitcoin')])),
-                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(2), predictor='pred'),
-                JoinStep(left=Result(2), right=Result(3),
+                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(0), predictor='pred'),
+                JoinStep(left=Result(0), right=Result(1),
                          query=Join(left=Identifier('result_0', alias='tab'),
                                     right=Identifier('result_1', alias='pred'),
                                     join_type=JoinType.INNER_JOIN)),
                 ProjectStep(dataframe=Result(2), columns=['tab.asset', 'tab.time', 'pred.predicted']),
             ],
-            result_refs={0: [1], 1: [2], 2: [3, 4], 3: [4], 4: [5]},
+            result_refs={0: [1, 2], 1: [2], 2: [3]},
         )
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
 
@@ -597,8 +597,13 @@ class TestQueryPlanner:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
-    def test_select_from_predictor_plan_group_by(self):
-        raise Exception()
+    def test_select_from_predictor_plan_group_by_error(self):
+        query = Select(targets=[Identifier('x1'), Identifier('x2'), Identifier('pred.y')],
+                       from_table=Identifier('mindsdb.pred'),
+                       group_by=[Identifier('x1')]
+                       )
+        with pytest.raises(PlanningException):
+            plan_query(query, predictor_namespace='mindsdb')
 
     def test_select_from_predictor_wrong_where_op_error(self):
         query = Select(targets=[Star()],

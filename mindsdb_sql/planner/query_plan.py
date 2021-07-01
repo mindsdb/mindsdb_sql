@@ -4,7 +4,7 @@ from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import Select, Identifier, Join, Star, BinaryOperation, Constant, Operation
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep, \
-    ApplyPredictorRowStep, FilterStep
+    ApplyPredictorRowStep, FilterStep, GroupByStep
 
 
 class QueryPlan:
@@ -19,9 +19,20 @@ class QueryPlan:
         self.result_refs = result_refs or defaultdict(list)
 
     def __eq__(self, other):
-        if isinstance(other, QueryPlan):
-            return self.steps == other.steps and self.result_refs == other.result_refs
-        return False
+        if type(self) != type(other):
+            return False
+
+        if len(self.steps) != len(other.steps):
+            return False
+
+        for step, other_step in zip(self.steps, other.steps):
+            if step != other_step:
+                return False
+
+        if self.result_refs != other.result_refs:
+            return False
+        return True
+
 
     @property
     def last_step_index(self):
@@ -153,8 +164,9 @@ class QueryPlan:
 
         group_by = None
         if select.group_by:
+            group_by = copy.deepcopy(select.group_by)
             group_by = [self.disambiguate_integration_column_identifier(id, integration_name, table_path, table_alias, initial_path_as_alias=False)
-                        for id in select.group_by]
+                        for id in group_by]
 
         having = None
         if select.having:
@@ -203,6 +215,9 @@ class QueryPlan:
             else:
                 raise PlanningException(f'Unknown select target {type(target)}')
 
+        if select.group_by or select.having:
+            raise PlanningException(f'Unsupported operation when querying predictor. Only WHERE is allowed and required.')
+
         row_dict = {}
         where_clause = select.where
         if not where_clause:
@@ -210,12 +225,15 @@ class QueryPlan:
 
         self.recursively_extract_column_values(where_clause, row_dict, predictor_name, predictor_alias)
 
-        # Get values from WHERE
         self.add_step(ApplyPredictorRowStep(namespace=predictor_namespace, predictor=predictor_name, row_dict=row_dict))
 
     def plan_join_table_and_predictor(self, query, table, predictor_namespace, predictor_name, predictor_alias):
         join = query.from_table
-        self.plan_integration_select(Select(targets=[Star()], from_table=table, where=query.where))
+        self.plan_integration_select(Select(targets=[Star()],
+                                            from_table=table,
+                                            where=query.where,
+                                            group_by=query.group_by,
+                                            having=query.having))
         fetch_table_result = self.add_last_result_reference()
         self.add_step(ApplyPredictorStep(namespace=predictor_namespace, dataframe=fetch_table_result, predictor=predictor_name))
         fetch_predictor_output_result = self.add_last_result_reference()
@@ -229,7 +247,15 @@ class QueryPlan:
                         join_type=join.join_type)
         self.add_step(JoinStep(left=fetch_table_result, right=fetch_predictor_output_result, query=new_join))
 
-    def plan_join_two_tables(self, join, left_dataframe, right_dataframe):
+    def plan_join_two_tables(self, join):
+
+        self.plan_integration_select(Select(targets=[Star()], from_table=join.left))
+        self.plan_integration_select(Select(targets=[Star()], from_table=join.right))
+        fetch_left_result = self.add_result_reference(current_step=self.last_step_index + 1,
+                                                      ref_step_index=self.last_step_index - 1)
+        fetch_right_result = self.add_result_reference(current_step=self.last_step_index + 1,
+                                                       ref_step_index=self.last_step_index)
+
         left_integration_name, left_table_path, left_table_alias = self.get_integration_table_or_error_from_identifier(
             join.left)
         right_integration_name, right_table_path, right_table_alias = self.get_integration_table_or_error_from_identifier(
@@ -255,13 +281,18 @@ class QueryPlan:
         new_join.condition.args = new_condition_args
         new_join.left = Identifier(left_table_path, alias=left_table_alias)
         new_join.right = Identifier(right_table_path, alias=right_table_alias)
-        self.add_step(JoinStep(left=left_dataframe, right=right_dataframe, query=new_join))
+        self.add_step(JoinStep(left=fetch_left_result, right=fetch_right_result, query=new_join))
 
     def recursively_check_join_identifiers_for_ambiguity(self, op):
-        for arg in op.args:
+        if isinstance(op, Operation):
+            iterate_over = op.args
+        else:
+            iterate_over = op
+
+        for arg in iterate_over:
             if isinstance(arg, Identifier):
                 if len(arg.parts) == 1:
-                    raise PlanningException(f'Ambigous identifier {str(arg)}, provide table name when filtering a join.')
+                    raise PlanningException(f'Ambigous identifier {str(arg)}, provide table name for operations on a join.')
             elif isinstance(arg, Operation):
                 self.recursively_check_join_identifiers_for_ambiguity(arg)
 
@@ -270,11 +301,11 @@ class QueryPlan:
         out_aliases = {}
         out_columns = []
         for target in query.targets:
+            target_no_alias_copy = copy.deepcopy(target)
+            target_no_alias_copy.alias = None
             if target.alias:
-                out_aliases[str(target)] = target.alias
-            target.alias = None
-            out_columns.append(str(target))
-
+                out_aliases[str(target_no_alias_copy)] = target.alias
+            out_columns.append(str(target_no_alias_copy))
         self.add_step(ProjectStep(dataframe=last_step_result, columns=out_columns, aliases=out_aliases))
 
     def plan_join(self, query):
@@ -282,6 +313,12 @@ class QueryPlan:
 
         if query.where:
             self.recursively_check_join_identifiers_for_ambiguity(query.where)
+
+        if query.group_by:
+            self.recursively_check_join_identifiers_for_ambiguity(query.group_by)
+
+        if query.having:
+            self.recursively_check_join_identifiers_for_ambiguity(query.having)
 
         if isinstance(join.left, Identifier) and isinstance(join.right, Identifier):
             if self.is_predictor(join.left) and self.is_predictor(join.right):
@@ -308,19 +345,26 @@ class QueryPlan:
                 self.plan_join_table_and_predictor(query, table, predictor_namespace, predictor_name, predictor_alias)
             else:
                 # Both arguments are tables, join results of 2 dataframe fetches
-                self.plan_integration_select(Select(targets=[Star()], from_table=join.left))
-                self.plan_integration_select(Select(targets=[Star()], from_table=join.right))
-                fetch_left_result = self.add_result_reference(current_step=self.last_step_index + 1,
-                                                              ref_step_index=self.last_step_index - 1)
-                fetch_right_result = self.add_result_reference(current_step=self.last_step_index + 1,
-                                                               ref_step_index=self.last_step_index)
-                self.plan_join_two_tables(join, fetch_left_result, fetch_right_result)
 
-            # Filter join results
-            # We don't do that if joined predictor with table, because in that case WHERE is pushed to the integration query
-            if query.where and not predictor_name:
-                last_result = self.add_last_result_reference()
-                self.add_step(FilterStep(dataframe=last_result, query=query.where))
+                self.plan_join_two_tables(join)
+
+                if query.where:
+                    last_result = self.add_last_result_reference()
+                    self.add_step(FilterStep(dataframe=last_result, query=query.where))
+
+                if query.group_by:
+                    last_result = self.add_last_result_reference()
+                    group_by_targets = []
+                    for t in query.targets:
+                        target_copy = copy.deepcopy(t)
+                        target_copy.alias = None
+                        group_by_targets.append(target_copy)
+                    self.add_step(GroupByStep(dataframe=last_result, columns=query.group_by, targets=group_by_targets))
+
+                if query.having:
+                    last_result = self.add_last_result_reference()
+                    self.add_step(FilterStep(dataframe=last_result, query=query.having))
+
         else:
             raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')
         self.plan_project(query)
