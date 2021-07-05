@@ -46,6 +46,15 @@ class JoinStep(PlanStep):
         self.query = query
 
 
+class OrderByStep(PlanStep):
+    """Applies sorting to a dataframe"""
+
+    def __init__(self, dataframe, order_by, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dataframe = dataframe
+        self.order_by = order_by
+
+
 class LimitOffsetStep(PlanStep):
     """Applies limit and offset to a dataframe"""
     def __init__(self, dataframe, limit=None, offset=None, *args, **kwargs):

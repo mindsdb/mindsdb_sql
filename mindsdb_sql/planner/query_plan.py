@@ -1,10 +1,10 @@
 import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
-from mindsdb_sql.parser.ast import Select, Identifier, Join, Star, BinaryOperation, Constant, Operation
+from mindsdb_sql.parser.ast import Select, Identifier, Join, Star, BinaryOperation, Constant, Operation, OrderBy
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep, \
-    ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep
+from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
+                                       ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep)
 
 
 class QueryPlan:
@@ -298,17 +298,18 @@ class QueryPlan:
         new_join.right = Identifier(right_table_path, alias=right_table_alias)
         self.add_step(JoinStep(left=fetch_left_result, right=fetch_right_result, query=new_join))
 
-    def recursively_check_join_identifiers_for_ambiguity(self, op):
-        if isinstance(op, Operation):
-            iterate_over = op.args
-        else:
-            iterate_over = op
-
-        for arg in iterate_over:
-            if isinstance(arg, Identifier):
-                if len(arg.parts) == 1:
-                    raise PlanningException(f'Ambigous identifier {str(arg)}, provide table name for operations on a join.')
-            elif isinstance(arg, Operation):
+    def recursively_check_join_identifiers_for_ambiguity(self, item):
+        if item is None:
+            return
+        elif isinstance(item, Identifier):
+            if len(item.parts) == 1:
+                raise PlanningException(f'Ambigous identifier {str(item)}, provide table name for operations on a join.')
+        elif isinstance(item, Operation):
+            self.recursively_check_join_identifiers_for_ambiguity(item.args)
+        elif isinstance(item, OrderBy):
+            self.recursively_check_join_identifiers_for_ambiguity(item.field)
+        elif isinstance(item, list):
+            for arg in item:
                 self.recursively_check_join_identifiers_for_ambiguity(arg)
 
     def plan_project(self, query):
@@ -326,14 +327,10 @@ class QueryPlan:
     def plan_join(self, query):
         join = query.from_table
 
-        if query.where:
-            self.recursively_check_join_identifiers_for_ambiguity(query.where)
-
-        if query.group_by:
-            self.recursively_check_join_identifiers_for_ambiguity(query.group_by)
-
-        if query.having:
-            self.recursively_check_join_identifiers_for_ambiguity(query.having)
+        self.recursively_check_join_identifiers_for_ambiguity(query.where)
+        self.recursively_check_join_identifiers_for_ambiguity(query.group_by)
+        self.recursively_check_join_identifiers_for_ambiguity(query.having)
+        self.recursively_check_join_identifiers_for_ambiguity(query.order_by)
 
         if isinstance(join.left, Identifier) and isinstance(join.right, Identifier):
             if self.is_predictor(join.left) and self.is_predictor(join.right):
@@ -379,6 +376,10 @@ class QueryPlan:
                 if query.having:
                     last_result = self.add_last_result_reference()
                     self.add_step(FilterStep(dataframe=last_result, query=query.having))
+
+                if query.order_by:
+                    last_result = self.add_last_result_reference()
+                    self.add_step(OrderByStep(dataframe=last_result, order_by=query.order_by))
 
                 if query.limit is not None or query.offset is not None:
                     last_result = self.add_last_result_reference()

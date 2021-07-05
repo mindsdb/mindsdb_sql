@@ -80,6 +80,40 @@ class TestPlanJoinPredictor:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
+    def test_join_predictor_plan_group_by(self):
+        query = Select(targets=[Identifier('tab.asset'), Identifier('tab.time'), Identifier('pred.predicted')],
+                       from_table=Join(left=Identifier('int.tab'),
+                                       right=Identifier('mindsdb.pred'),
+                                       join_type=JoinType.INNER_JOIN,
+                                       implicit=True),
+                       group_by=[Identifier('tab.asset')],
+                       having=BinaryOperation('=', args=[Identifier('tab.asset'), Constant('bitcoin')])
+                       )
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('tab'),
+                                                group_by=[Identifier('tab.asset')],
+                                                having=BinaryOperation('=', args=[Identifier('tab.asset'),
+                                                                                  Constant('bitcoin')])
+                                                ),
+                                   ),
+                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(0), predictor='pred'),
+                JoinStep(left=Result(0), right=Result(1),
+                         query=Join(left=Identifier('result_0', alias='tab'),
+                                    right=Identifier('result_1', alias='pred'),
+                                    join_type=JoinType.INNER_JOIN)),
+                ProjectStep(dataframe=Result(2), columns=['tab.asset', 'tab.time', 'pred.predicted']),
+            ],
+            result_refs={0: [1, 2], 1: [2], 2: [3]},
+        )
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
     def test_join_predictor_plan_limit_offset(self):
         query = Select(targets=[Identifier('tab.column1'), Identifier('pred.predicted')],
                        from_table=Join(left=Identifier('int.tab'),
@@ -116,14 +150,16 @@ class TestPlanJoinPredictor:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
-    def test_join_predictor_plan_group_by(self):
-        query = Select(targets=[Identifier('tab.asset'), Identifier('tab.time'), Identifier('pred.predicted')],
+    def test_join_predictor_plan_order_by(self):
+        query = Select(targets=[Identifier('tab.column1'), Identifier('pred.predicted')],
                        from_table=Join(left=Identifier('int.tab'),
                                        right=Identifier('mindsdb.pred'),
                                        join_type=JoinType.INNER_JOIN,
                                        implicit=True),
-                       group_by=[Identifier('tab.asset')],
-                       having=BinaryOperation('=', args=[Identifier('tab.asset'), Constant('bitcoin')])
+                       where=BinaryOperation('=', args=[Identifier('tab.product_id'), Constant('x')]),
+                       limit=Constant(10),
+                       offset=Constant(15),
+                       order_by=[OrderBy(field=Identifier('tab.column1'))]
                        )
 
         expected_plan = QueryPlan(
@@ -131,9 +167,10 @@ class TestPlanJoinPredictor:
                 FetchDataframeStep(integration='int',
                                    query=Select(targets=[Star()],
                                                 from_table=Identifier('tab'),
-                                                group_by=[Identifier('tab.asset')],
-                                                having=BinaryOperation('=', args=[Identifier('tab.asset'),
-                                                                                  Constant('bitcoin')])
+                                                where=BinaryOperation('=', args=[Identifier('tab.product_id'), Constant('x')]),
+                                                limit=Constant(10),
+                                                offset=Constant(15),
+                                                order_by=[OrderBy(field=Identifier('tab.column1'))],
                                                 ),
                                    ),
                 ApplyPredictorStep(namespace='mindsdb', dataframe=Result(0), predictor='pred'),
@@ -141,8 +178,9 @@ class TestPlanJoinPredictor:
                          query=Join(left=Identifier('result_0', alias='tab'),
                                     right=Identifier('result_1', alias='pred'),
                                     join_type=JoinType.INNER_JOIN)),
-                ProjectStep(dataframe=Result(2), columns=['tab.asset', 'tab.time', 'pred.predicted']),
+                ProjectStep(dataframe=Result(2), columns=['tab.column1', 'pred.predicted']),
             ],
+            results=[0, 1, 2],
             result_refs={0: [1, 2], 1: [2], 2: [3]},
         )
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
