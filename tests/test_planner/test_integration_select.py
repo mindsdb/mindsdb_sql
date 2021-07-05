@@ -64,6 +64,35 @@ class TestPlanIntegrationSelect:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
+    def test_integration_select_order_by(self):
+        query = Select(targets=[Identifier('column1')],
+                       from_table=Identifier('int.tab'),
+                       where=BinaryOperation('=', args=[Identifier('column1'), Identifier('column2')]),
+                       limit=Constant(10),
+                       offset=Constant(15),
+                       order_by=[OrderBy(field=Identifier('column1'))],
+                       )
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(
+                                                             targets=[Identifier('tab.column1', alias='column1')],
+                                                             from_table=Identifier('tab'),
+                                                             where=BinaryOperation('=', args=[Identifier('tab.column1'),
+                                                                                              Identifier(
+                                                                                                  'tab.column2')]),
+                                                             limit=Constant(10),
+                                                             offset=Constant(15),
+                                                             order_by=[OrderBy(field=Identifier('tab.column1'))],
+                                                             ),
+                                                         ),
+                                  ])
+
+        plan = plan_query(query, integrations=['int'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
     def test_integration_select_plan_star(self):
         query = Select(targets=[Star()],
                        from_table=Identifier('int.tab'))

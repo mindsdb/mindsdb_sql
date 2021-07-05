@@ -177,11 +177,20 @@ class QueryPlan:
             having = copy.deepcopy(select.having)
             self.recursively_disambiguate_identifiers_in_op(having, integration_name, table_path, table_alias)
 
+        order_by = None
+        if select.order_by:
+            order_by = []
+            for order_by_item in select.order_by:
+                new_order_item = copy.deepcopy(order_by_item)
+                new_order_item.field = self.disambiguate_integration_column_identifier(new_order_item.field, integration_name, table_path, table_alias)
+                order_by.append(new_order_item)
+
         fetch_df_query = Select(targets=new_query_targets,
                                 from_table=Identifier(table_path, alias=table_alias),
                                 where=where,
                                 group_by=group_by,
                                 having=having,
+                                order_by=order_by,
                                 limit=select.limit,
                                 offset=select.offset,
                                 )
