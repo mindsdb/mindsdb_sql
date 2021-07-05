@@ -80,6 +80,31 @@ class TestPlanJoinPredictor:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
+    def test_join_predictor_error_when_filtering_on_predictions(self):
+        """
+        Query:
+        SELECT rental_price_confidence
+        FROM postgres_90.test_data.home_rentals AS ta
+        JOIN mindsdb.hrp3 AS tb
+        WHERE ta.sqft > 1000 AND tb.rental_price_confidence > 0.5
+        LIMIT 5;
+        """
+
+        query = Select(targets=[Identifier('rental_price_confidence')],
+                       from_table=Join(left=Identifier('postgres_90.test_data.home_rentals', alias='ta'),
+                                       right=Identifier('mindsdb.hrp3', alias='tb'),
+                                       join_type=JoinType.INNER_JOIN,
+                                       implicit=True),
+                       where=BinaryOperation('and', args=[
+                           BinaryOperation('>', args=[Identifier('ta.sqft'), Constant(1000)]),
+                           BinaryOperation('>', args=[Identifier('tb.rental_price_confidence'), Constant(0.5)]),
+                       ]),
+                       limit=5
+                       )
+
+        with pytest.raises(PlanningException):
+            plan_query(query, integrations=['postgres_90'], predictor_namespace='mindsdb')
+
     def test_join_predictor_plan_group_by(self):
         query = Select(targets=[Identifier('tab.asset'), Identifier('tab.time'), Identifier('pred.predicted')],
                        from_table=Join(left=Identifier('int.tab'),

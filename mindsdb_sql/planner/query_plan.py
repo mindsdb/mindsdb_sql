@@ -101,11 +101,20 @@ class QueryPlan:
         column_table_ref = table_alias or table_path
         initial_path_str = identifier.parts_to_str()
         parts = list(identifier.parts)
-        if parts[0] == integration_name:
-            parts = parts[1:]
 
-        if not parts[0] == column_table_ref:
-            parts.insert(0, column_table_ref)
+        if len(parts) > 1:
+            if parts[0] == integration_name:
+                parts = parts[1:]
+            elif parts[0] in self.integrations:
+                raise PlanningException(f'Tried to query column {identifier.to_tree()} from integration {integration_name}, but it belongs to another integration.')
+
+        if len(parts) > 1:
+            if parts[0] != column_table_ref:
+                raise PlanningException(
+                    f'Tried to query column {identifier.to_tree()} from integration {integration_name} table {column_table_ref}, but a different table name has been specified.')
+        elif len(parts) == 1:
+            if parts[0] != column_table_ref:
+                parts.insert(0, column_table_ref)
 
         new_identifier = Identifier(parts=parts)
         if identifier.alias:
