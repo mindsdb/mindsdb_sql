@@ -182,6 +182,8 @@ class QueryPlan:
                                 where=where,
                                 group_by=group_by,
                                 having=having,
+                                limit=select.limit,
+                                offset=select.offset,
                                 )
         self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_query))
 
