@@ -4,7 +4,7 @@ from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import Select, Identifier, Join, Star, BinaryOperation, Constant, Operation
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep, \
-    ApplyPredictorRowStep, FilterStep, GroupByStep
+    ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep
 
 
 class QueryPlan:
@@ -235,7 +235,11 @@ class QueryPlan:
                                             from_table=table,
                                             where=query.where,
                                             group_by=query.group_by,
-                                            having=query.having))
+                                            having=query.having,
+                                            order_by=query.order_by,
+                                            limit=query.limit,
+                                            offset=query.offset,
+                                            ))
         fetch_table_result = self.add_last_result_reference()
         self.add_step(ApplyPredictorStep(namespace=predictor_namespace, dataframe=fetch_table_result, predictor=predictor_name))
         fetch_predictor_output_result = self.add_last_result_reference()
@@ -366,6 +370,12 @@ class QueryPlan:
                 if query.having:
                     last_result = self.add_last_result_reference()
                     self.add_step(FilterStep(dataframe=last_result, query=query.having))
+
+                if query.limit is not None or query.offset is not None:
+                    last_result = self.add_last_result_reference()
+                    limit = query.limit.value if query.limit is not None else None
+                    offset = query.offset.value if query.offset is not None else None
+                    self.add_step(LimitOffsetStep(dataframe=last_result, limit=limit, offset=offset))
 
         else:
             raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')

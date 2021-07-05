@@ -46,6 +46,15 @@ class JoinStep(PlanStep):
         self.query = query
 
 
+class LimitOffsetStep(PlanStep):
+    """Applies limit and offset to a dataframe"""
+    def __init__(self, dataframe, limit=None, offset=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dataframe = dataframe
+        self.limit = limit
+        self.offset = offset
+
+
 class FetchDataframeStep(PlanStep):
     """Fetches a dataframe from external integration"""
     def __init__(self, integration, query, *args, **kwargs):
