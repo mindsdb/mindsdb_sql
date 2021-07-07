@@ -139,8 +139,6 @@ class TestPlanIntegrationSelect:
 
         plan = plan_query(query, integrations=['int'])
 
-        print(plan.steps[0].query)
-        print(expected_plan.steps[0].query)
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
@@ -202,27 +200,27 @@ class TestPlanIntegrationSelect:
         with pytest.raises(PlanningException):
             plan = plan_query(query, integrations=[], predictor_namespace='mindsdb')
 
-    # def test_integration_select_subquery_in_target(self):
-    #     query = Select(targets=[Identifier('column1'), Select(targets=[Identifier('column2')],
-    #                                                           from_table=Identifier('int.tab'),
-    #                                                           limit=Constant(1),
-    #                                                           alias='dummy')],
-    #                    from_table=Identifier('int.tab'))
-    #     expected_plan = QueryPlan(integrations=['int'],
-    #                               steps=[
-    #                                   FetchDataframeStep(integration='int',
-    #                                                      query=Select(targets=[Identifier('tab.column1', alias='column1'),
-    #                                                                            Select(targets=[Identifier('tab.column2')],
-    #                                                                                   from_table=Identifier('int.tab'),
-    #                                                                                   limit=Constant(1),
-    #                                                                                   alias='col2')
-    #                                                                            ],
-    #                                                                   from_table=Identifier('tab'),
-    #                                                                   )),
-    #                               ])
-    #
-    #     plan = plan_query(query, integrations=['int'])
-    #
-    #     assert plan.steps == expected_plan.steps
-    #     assert plan.result_refs == expected_plan.result_refs
-    #
+    def test_integration_select_subquery_in_target(self):
+        query = Select(targets=[Identifier('column1'), Select(targets=[Identifier('column2')],
+                                                              from_table=Identifier('int.tab'),
+                                                              limit=Constant(1),
+                                                              alias='subquery')],
+                       from_table=Identifier('int.tab'))
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(targets=[Identifier('tab.column1', alias='column1'),
+                                                                               Select(targets=[Identifier('tab.column2', alias='column2')],
+                                                                                      from_table=Identifier('tab'),
+                                                                                      limit=Constant(1),
+                                                                                      alias='subquery')
+                                                                               ],
+                                                                      from_table=Identifier('tab'),
+                                                                      )),
+                                  ])
+
+        plan = plan_query(query, integrations=['int'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+

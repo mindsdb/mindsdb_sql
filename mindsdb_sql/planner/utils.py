@@ -103,52 +103,54 @@ def disambiguate_select_targets(targets, integration_name, table_path, table_ali
     return new_query_targets
 
 
+def recursively_disambiguate_identifiers_in_select(select, integration_name, table_path, table_alias):
+    select.targets = disambiguate_select_targets(select.targets, integration_name, table_path, table_alias)
+
+    if select.from_table:
+        if isinstance(select.from_table, Identifier):
+            select.from_table = Identifier(table_path, alias=table_alias)
+    if select.where:
+        if not isinstance(select.where, BinaryOperation):
+            raise PlanningException(
+                f'Unsupported where clause {type(select.where)}, only BinaryOperation is supported now.')
+
+        where = copy.deepcopy(select.where)
+        recursively_disambiguate_identifiers_in_op(where, integration_name, table_path, table_alias)
+        select.where = where
+
+    if select.group_by:
+        group_by = copy.deepcopy(select.group_by)
+        group_by = [
+            disambiguate_integration_column_identifier(id, integration_name, table_path, table_alias,
+                                                       initial_path_as_alias=False)
+            for id in group_by]
+        select.group_by = group_by
+
+    if select.having:
+        if not isinstance(select.having, BinaryOperation):
+            raise PlanningException(
+                f'Unsupported having clause {type(select.having)}, only BinaryOperation is supported now.')
+
+        having = copy.deepcopy(select.having)
+        recursively_disambiguate_identifiers_in_op(having, integration_name, table_path, table_alias)
+        select.having = having
+
+    if select.order_by:
+        order_by = []
+        for order_by_item in select.order_by:
+            new_order_item = copy.deepcopy(order_by_item)
+            new_order_item.field = disambiguate_integration_column_identifier(new_order_item.field,
+                                                                              integration_name, table_path,
+                                                                              table_alias)
+            order_by.append(new_order_item)
+        select.order_by = order_by
+
+
 def recursively_disambiguate_identifiers(obj, integration_name, table_path, table_alias):
     if isinstance(obj, Operation):
         recursively_disambiguate_identifiers_in_op(obj, integration_name, table_path, table_alias)
     elif isinstance(obj, Select):
-        select = obj
-        select.targets = disambiguate_select_targets(select.targets, integration_name, table_path, table_alias)
-
-        if select.from_table:
-            if isinstance(select.from_table, Identifier):
-                select.from_table = Identifier(table_path, alias=table_alias)
-        if select.where:
-            if not isinstance(select.where, BinaryOperation):
-                raise PlanningException(
-                    f'Unsupported where clause {type(select.where)}, only BinaryOperation is supported now.')
-
-            where = copy.deepcopy(select.where)
-            recursively_disambiguate_identifiers_in_op(where, integration_name, table_path, table_alias)
-            select.where = where
-
-        if select.group_by:
-            group_by = copy.deepcopy(select.group_by)
-            group_by = [
-                disambiguate_integration_column_identifier(id, integration_name, table_path, table_alias,
-                                                                initial_path_as_alias=False)
-                for id in group_by]
-            select.group_by = group_by
-
-        if select.having:
-            if not isinstance(select.having, BinaryOperation):
-                raise PlanningException(
-                    f'Unsupported having clause {type(select.having)}, only BinaryOperation is supported now.')
-
-            having = copy.deepcopy(select.having)
-            recursively_disambiguate_identifiers_in_op(having, integration_name, table_path, table_alias)
-            select.having = having
-
-        if select.order_by:
-            order_by = []
-            for order_by_item in select.order_by:
-                new_order_item = copy.deepcopy(order_by_item)
-                new_order_item.field = disambiguate_integration_column_identifier(new_order_item.field,
-                                                                                       integration_name, table_path,
-                                                                                       table_alias)
-                order_by.append(new_order_item)
-            select.order_by = order_by
-
+        recursively_disambiguate_identifiers_in_select(obj, integration_name, table_path, table_alias)
     else:
         raise PlanningException(f'Unsupported object for disambiguation {type(obj)}')
 
