@@ -74,19 +74,21 @@ class FetchDataframeStep(PlanStep):
 
 class ApplyPredictorStep(PlanStep):
     """Applies a mindsdb predictor on some dataframe and returns a new dataframe with predictions"""
-    def __init__(self, namespace, predictor, dataframe, *args, **kwargs):
+    def __init__(self, namespace, predictor, dataframe, alias=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.namespace = namespace
         self.predictor = predictor
         self.dataframe = dataframe
+        self.alias = alias
 
 
 class ApplyPredictorRowStep(PlanStep):
     """Applies a mindsdb predictor to one row of values and returns a dataframe of one row, the predictor."""
-    def __init__(self, namespace, predictor, row_dict, *args, **kwargs):
+    def __init__(self, namespace, predictor, row_dict, alias=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.namespace = namespace
         self.predictor = predictor
         self.row_dict = row_dict
+        self.alias = alias
 
 

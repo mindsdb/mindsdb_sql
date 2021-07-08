@@ -107,7 +107,11 @@ class QueryPlan:
 
         recursively_extract_column_values(where_clause, row_dict, predictor_name, predictor_alias)
 
-        self.add_step(ApplyPredictorRowStep(namespace=predictor_namespace, predictor=predictor_name, row_dict=row_dict))
+        self.add_step(ApplyPredictorRowStep(namespace=predictor_namespace,
+                                            predictor=predictor_name,
+                                            row_dict=row_dict,
+                                            alias=predictor_alias))
+        self.plan_project(select)
 
     def plan_join_table_and_predictor(self, query, table, predictor_namespace, predictor_name, predictor_alias):
         join = query.from_table
