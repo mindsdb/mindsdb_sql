@@ -10,7 +10,9 @@ from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        disambiguate_integration_column_identifier,
                                        disambiguate_predictor_column_identifier, recursively_disambiguate_identifiers,
                                        recursively_disambiguate_identifiers_in_op, disambiguate_select_targets,
-                                       recursively_extract_column_values, recursively_check_join_identifiers_for_ambiguity)
+                                       get_deepest_select,
+                                       recursively_extract_column_values,
+                                       recursively_check_join_identifiers_for_ambiguity)
 
 
 class QueryPlan:
@@ -83,6 +85,13 @@ class QueryPlan:
         fetch_df_select = copy.deepcopy(select)
         recursively_disambiguate_identifiers(fetch_df_select, integration_name, table_path, table_alias)
 
+        self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
+
+    def plan_integration_nested_select(self, select):
+        fetch_df_select = copy.deepcopy(select)
+        deepest_select = get_deepest_select(fetch_df_select)
+        integration_name, table_path, table_alias = self.get_integration_path_from_identifier_or_error(deepest_select.from_table)
+        recursively_disambiguate_identifiers(deepest_select, integration_name, table_path, table_alias)
         self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
     def plan_select_from_predictor(self, select):
@@ -263,6 +272,8 @@ class QueryPlan:
                 self.plan_select_from_predictor(query)
             else:
                 self.plan_integration_select(query)
+        elif isinstance(from_table, Select):
+            self.plan_integration_nested_select(query)
         elif isinstance(from_table, Join):
             self.plan_join(query)
         else:

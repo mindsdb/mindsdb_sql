@@ -224,3 +224,55 @@ class TestPlanIntegrationSelect:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
+    def test_integration_select_subquery_in_from(self):
+        query = Select(targets=[Identifier('column1')],
+                       from_table=Select(targets=[Identifier('column1')],
+                                         from_table=Identifier('int.tab'),
+                                         alias='subquery'))
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(
+                                                             targets=[Identifier('column1')],
+                                                             from_table=Select(
+                                                                 targets=[Identifier('tab.column1', alias='column1')],
+                                                                 from_table=Identifier('tab'),
+                                                                 alias='subquery'),
+                                                             )),
+                                  ])
+
+        plan = plan_query(query, integrations=['int'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_integration_select_subquery_in_where(self):
+        query = Select(targets=[Star()],
+                          from_table=Identifier('int.tab1'),
+                          where=BinaryOperation(op='in',
+                                                args=(
+                                                    Identifier(parts=['column1']),
+                                                    Select(targets=[Identifier('column2')],
+                                                           from_table=Identifier('int.tab2'),
+                                                           parentheses=True)
+                                                )))
+
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(targets=[Star()],
+                                                                      from_table=Identifier('tab1'),
+                                                                      where=BinaryOperation(op='in',
+                                                                                            args=[
+                                                                                                Identifier('tab1.column1'),
+                                                                                                Select(targets=[
+                                                                                                    Identifier('tab2.column2', alias='column2')],
+                                                                                                       from_table=Identifier('tab2'),
+                                                                                                       parentheses=True)]
+                                                                                            ))),
+                                  ])
+
+        plan = plan_query(query, integrations=['int'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs

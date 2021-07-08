@@ -83,6 +83,10 @@ def recursively_disambiguate_identifiers_in_op(op, integration_name, table_path,
             arg.alias = new_identifier.alias
         elif isinstance(arg, Operation):
             recursively_disambiguate_identifiers_in_op(arg, integration_name, table_path, table_alias)
+        elif isinstance(arg, Select):
+            arg_select_integration_name, arg_select_table_path, arg_select_table_alias = get_integration_path_from_identifier(arg.from_table)
+
+            recursively_disambiguate_identifiers_in_select(arg, arg_select_integration_name, arg_select_table_path, arg_select_table_alias)
 
 
 def disambiguate_select_targets(targets, integration_name, table_path, table_alias):
@@ -187,3 +191,8 @@ def recursively_check_join_identifiers_for_ambiguity(item):
     elif isinstance(item, list):
         for arg in item:
             recursively_check_join_identifiers_for_ambiguity(arg)
+
+def get_deepest_select(select):
+    if not select.from_table or not isinstance(select.from_table, Select):
+        return select
+    return get_deepest_select(select.from_table)
