@@ -125,7 +125,10 @@ class QueryPlan:
                                             offset=query.offset,
                                             ))
         fetch_table_result = self.add_last_result_reference()
-        self.add_step(ApplyPredictorStep(namespace=predictor_namespace, dataframe=fetch_table_result, predictor=predictor_name))
+        self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
+                                         dataframe=fetch_table_result,
+                                         predictor=predictor_name,
+                                         alias=predictor_alias))
         fetch_predictor_output_result = self.add_last_result_reference()
 
         self.add_result_reference(current_step=self.last_step_index + 1,
