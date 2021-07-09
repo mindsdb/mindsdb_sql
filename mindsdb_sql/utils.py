@@ -42,6 +42,7 @@ def ensure_select_keyword_order(select, operation):
 
 
 class JoinType:
+    JOON = 'JOIN'
     INNER_JOIN = 'INNER JOIN'
     OUTER_JOIN = 'OUTER JOIN'
     CROSS_JOIN = 'CROSS JOIN'

@@ -279,3 +279,15 @@ class TestPlanJoinPredictor:
 
         with pytest.raises(PlanningException):
             plan = plan_query(query, integrations=['int'])
+
+    def test_join_predictor_timeseries(self):
+        query = Select(targets=[Identifier('time'), Identifier('price')],
+                       from_table=Join(left=Identifier('int.tab1'),
+                                       right=Identifier('mindsdb.predictor'),
+                                       join_type=None,
+                                       implicit=True),
+                       where=BinaryOperation('and', args=[
+                           BinaryOperation('>', args=[Identifier('time'), 'LATEST']),
+                           BinaryOperation('=', args=[Identifier('asset'), Constant('bitcoin')]),
+                       ]),
+                       )

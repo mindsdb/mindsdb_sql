@@ -12,6 +12,9 @@ class MindsDBLexer(Lexer):
         VIEW, VIEWS, PREDICTOR, PREDICTORS, INTEGRATION, INTEGRATIONS,
         STREAM, STREAMS, TABLE, TABLES, PUBLICATION, PUBLICATIONS, ALL,
 
+        # Mindsdb special
+        LATEST,
+
         ENGINE, TRAIN, TEST, PREDICT, MODEL,
 
         # SELECT Keywords
@@ -78,6 +81,7 @@ class MindsDBLexer(Lexer):
     HAVING = r'\bHAVING\b'
     ORDER_BY = r'\bORDER BY\b'
     STAR = r'\*'
+    LATEST = r'\bLATEST\b'
 
     JOIN = r'\bJOIN\b'
     INNER_JOIN = r'\bINNER JOIN\b'

@@ -2,6 +2,7 @@ from sly import Parser
 
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join, NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star)
+from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.show import Show
 from mindsdb_sql.parser.dialects.mindsdb.use import Use
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
@@ -320,6 +321,7 @@ class MindsDBParser(Parser):
     def star(self, p):
         return Star()
 
+
     @_('expr BETWEEN expr AND expr')
     def expr(self, p):
         return BetweenOperation(args=(p.expr0, p.expr1, p.expr2))
@@ -377,6 +379,14 @@ class MindsDBParser(Parser):
     @_('constant')
     def expr(self, p):
         return p.constant
+
+    @_('latest')
+    def expr(self, p):
+        return p.latest
+
+    @_('LATEST')
+    def latest(self, p):
+        return Latest()
 
     @_('NULL')
     def constant(self, p):

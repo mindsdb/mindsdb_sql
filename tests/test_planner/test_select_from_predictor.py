@@ -61,7 +61,6 @@ class TestPlanSelectFromPredictor:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
-
     def test_select_from_predictor_plan_predictor_alias(self):
         query = Select(targets=[Star()],
                        from_table=Identifier('mindsdb.pred', alias='pred_alias'),
