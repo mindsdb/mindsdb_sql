@@ -2,6 +2,7 @@ import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import Select, Identifier, Join, Star, BinaryOperation, Constant, Operation, OrderBy
+from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep)
@@ -16,9 +17,16 @@ from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
 
 
 class QueryPlan:
-    def __init__(self, integrations=None, predictor_namespace=None, steps=None, results=None, result_refs=None):
+    def __init__(self,
+                 integrations=None,
+                 predictor_namespace=None,
+                 predictor_metadata=None,
+                 steps=None,
+                 results=None,
+                 result_refs=None):
         self.integrations = integrations or []
         self.predictor_namespace = predictor_namespace or 'mindsdb'
+        self.predictor_metadata = predictor_metadata or defaultdict(dict)
         self.steps = steps or []
         self.results = results or []
 
@@ -149,6 +157,72 @@ class QueryPlan:
                         join_type=join.join_type)
         self.add_step(JoinStep(left=fetch_table_result, right=fetch_predictor_output_result, query=new_join))
 
+    def plan_join_table_and_timeseries_predictor(self, query, table, predictor_namespace, predictor_name, predictor_alias):
+        predictor_time_column_name = self.predictor_metadata[predictor_name]['time_column']
+        predictor_window = self.predictor_metadata[predictor_name]['window']
+        predictor_ref = predictor_alias or predictor_name
+
+        join = query.from_table
+        for target in query.targets:
+            if isinstance(target, Identifier):
+                if not predictor_ref in target.parts_to_str():
+                    raise PlanningException(f'Can\'t request table columns when applying timeseries predictor, but found: {str(target)}. '
+                                            f'Try to request the same column from the predictor, like "SELECT pred.column".')
+
+        def is_greater_than_latest(op):
+            if isinstance(op, BinaryOperation) and Latest() in op.args:
+                if op.op == '>' and op.args[1] == Latest() and op.args[0] != Latest():
+                    return True
+                else:
+                    raise PlanningException(f'Can only use "time_column > LATEST", found: {str(op)}')
+            return False
+
+        def find_and_remove_greater_than_latest(op):
+            if isinstance(op, BinaryOperation):
+                if is_greater_than_latest(op):
+                    return None
+                elif op.op == 'and':
+                    left_arg = op.args[0]
+                    right_arg = op.args[1]
+                    if isinstance(op.args[0], BinaryOperation):
+                        left_arg = find_and_remove_greater_than_latest(op.args[0])
+                    elif isinstance(op.args[1], BinaryOperation):
+                        right_arg = find_and_remove_greater_than_latest(op.args[1])
+
+                    if not left_arg:
+                        return op.args[1]
+                    elif not right_arg:
+                        return op.args[0]
+                    return op
+            return op
+
+        integration_select = Select(targets=[Star()],
+                                    from_table=table,
+                                    where=query.where,
+                                    group_by=query.group_by,
+                                    having=query.having,
+                                    order_by=query.order_by,
+                                    limit=query.limit,
+                                    offset=query.offset,
+                                    )
+
+        integration_select.where = find_and_remove_greater_than_latest(integration_select.where)
+
+        if integration_select.order_by:
+            raise PlanningException(f'Can\'t provide ORDER BY to time series predictor, it will be taken from predictor settings. Found: {integration_select.order_by}')
+        if integration_select.limit:
+            raise PlanningException(f'Can\'t provide LIMIT to time series predictor, it will be taken from predictor settings. Found: {integration_select.limit}')
+
+        integration_select.order_by = [OrderBy(Identifier(parts=[predictor_time_column_name]), direction='DESC')]
+        integration_select.limit = Constant(predictor_window)
+
+        self.plan_integration_select(integration_select)
+        fetch_table_result = self.add_last_result_reference()
+        self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
+                                         dataframe=fetch_table_result,
+                                         predictor=predictor_name,
+                                         alias=predictor_alias))
+
     def plan_join_two_tables(self, join):
 
         self.plan_integration_select(Select(targets=[Star()], from_table=join.left))
@@ -227,7 +301,11 @@ class QueryPlan:
                 # One argument is a table, another is a predictor
                 # Apply mindsdb model to result of last dataframe fetch
                 # Then join results of applying mindsdb with table
-                self.plan_join_table_and_predictor(query, table, predictor_namespace, predictor_name, predictor_alias)
+
+                if self.predictor_metadata[predictor_name].get('timeseries'):
+                    self.plan_join_table_and_timeseries_predictor(query, table, predictor_namespace, predictor_name, predictor_alias)
+                else:
+                    self.plan_join_table_and_predictor(query, table, predictor_namespace, predictor_name, predictor_alias)
             else:
                 # Both arguments are tables, join results of 2 dataframe fetches
 

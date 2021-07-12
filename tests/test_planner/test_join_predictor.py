@@ -2,6 +2,7 @@ import pytest
 
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import *
+from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner import plan_query, QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, ApplyPredictorStep,
@@ -280,14 +281,45 @@ class TestPlanJoinPredictor:
         with pytest.raises(PlanningException):
             plan = plan_query(query, integrations=['int'])
 
-    def test_join_predictor_timeseries(self):
-        query = Select(targets=[Identifier('time'), Identifier('price')],
+    def test_join_predictor_timeseries_latest(self):
+        predictor_window = 5
+
+        query = Select(targets=[Identifier('pred.time'), Identifier('pred.price')],
                        from_table=Join(left=Identifier('int.tab1'),
-                                       right=Identifier('mindsdb.predictor'),
+                                       right=Identifier('mindsdb.pred'),
                                        join_type=None,
                                        implicit=True),
                        where=BinaryOperation('and', args=[
-                           BinaryOperation('>', args=[Identifier('time'), 'LATEST']),
-                           BinaryOperation('=', args=[Identifier('asset'), Constant('bitcoin')]),
+                           BinaryOperation('>', args=[Identifier('tab1.time'), Latest()]),
+                           BinaryOperation('=', args=[Identifier('tab1.asset'), Constant('bitcoin')]),
                        ]),
                        )
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('tab1'),
+                                                where=BinaryOperation('=', args=[Identifier('tab1.asset'), Constant('bitcoin')]),
+                                                order_by=[OrderBy(Identifier('tab1.time'), direction='DESC')],
+                                                limit=Constant(predictor_window)
+                                                )
+                                   ),
+                ApplyPredictorStep(namespace='mindsdb', predictor='pred', dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=['pred.time', 'pred.price']),
+            ],
+            result_refs={0: [1], 1: [2]},
+        )
+
+        plan = plan_query(query,
+                          integrations=['int'],
+                          predictor_namespace='mindsdb',
+                          predictor_metadata={
+                              'pred': {'timeseries': True,
+                                       'time_column': 'time',
+                                       'window': predictor_window}
+                          })
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
