@@ -181,6 +181,8 @@ class QueryPlan:
             return False
 
         def find_time_filter(op, time_column_name):
+            if not op:
+                return
             if op.op == 'and':
                 left = find_time_filter(op.args[0], time_column_name)
                 right = find_time_filter(op.args[1], time_column_name)
@@ -216,7 +218,8 @@ class QueryPlan:
 
         def validate_ts_where_condition(op, allowed_columns, allow_and=True):
             """Error if the where condition caontains invalid ops, is nested or filters on some column that's not time or partition"""
-
+            if not op:
+                return
             allowed_ops = ['and', '>', '>=', '=', '<', '<=', 'between']
             if not allow_and:
                 allowed_ops.remove('and')
@@ -278,6 +281,13 @@ class QueryPlan:
                                         limit=Constant(predictor_window),
                                         )
             integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
+            self.plan_integration_select(integration_select)
+        else:
+            integration_select = Select(targets=[Star()],
+                                        from_table=table,
+                                        where=query.where,
+                                        order_by=order_by,
+                                        )
             self.plan_integration_select(integration_select)
 
         predictor_inputs = self.add_last_result_reference()

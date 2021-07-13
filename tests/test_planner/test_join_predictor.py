@@ -282,6 +282,78 @@ class TestPlanJoinPredictor:
         with pytest.raises(PlanningException):
             plan = plan_query(query, integrations=['int'])
 
+    def test_join_predictor_timeseries(self):
+        predictor_window = 10
+        query = Select(targets=[Star()],
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
+                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                                       join_type='join'),
+                       )
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
+                                                )
+                                   ),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=['*']),
+            ],
+            result_refs={0: [1], 1: [2]},
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql'],
+                          predictor_namespace='mindsdb',
+                          predictor_metadata={
+                              'tp3': {'timeseries': True,
+                                       'order_by_column': 'pickup_hour',
+                                       'group_by_column': 'vendor_id',
+                                       'window': predictor_window}
+                          })
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_join_predictor_timeseries_filter_by_group_by_column(self):
+        predictor_window = 10
+        query = Select(targets=[Star()],
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
+                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                                       join_type='join'),
+                       where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
+                       )
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
+                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
+                                                )
+                                   ),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=['*']),
+            ],
+            result_refs={0: [1], 1: [2]},
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql'],
+                          predictor_namespace='mindsdb',
+                          predictor_metadata={
+                              'tp3': {'timeseries': True,
+                                       'order_by_column': 'pickup_hour',
+                                       'group_by_column': 'vendor_id',
+                                       'window': predictor_window}
+                          })
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
     def test_join_predictor_timeseries_latest(self):
         predictor_window = 5
 
@@ -476,4 +548,5 @@ class TestPlanJoinPredictor:
 
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
+
 
