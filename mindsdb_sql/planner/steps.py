@@ -46,6 +46,14 @@ class JoinStep(PlanStep):
         self.query = query
 
 
+class UnionStep(PlanStep):
+    """Union of two dataframes, producing a new dataframe"""
+    def __init__(self, left, right, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.left = left
+        self.right = right
+
+
 class OrderByStep(PlanStep):
     """Applies sorting to a dataframe"""
 
