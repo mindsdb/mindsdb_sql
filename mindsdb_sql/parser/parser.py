@@ -2,7 +2,8 @@ from sly import Parser
 
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
-                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star)
+                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
+                                    Union)
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.lexer import SQLLexer
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
@@ -19,9 +20,22 @@ class SQLParser(Parser):
     )
 
     # Top-level statements
+    @_('union')
+    def query(self, p):
+        return p[0]
+
     @_('select')
     def query(self, p):
         return p[0]
+
+    # UNION / UNION ALL
+    @_('select UNION select')
+    def union(self, p):
+        return Union(left=p.select0, right=p.select1, unique=True)
+
+    @_('select UNION ALL select')
+    def union(self, p):
+        return Union(left=p.select0, right=p.select1, unique=False)
 
     # SELECT
 

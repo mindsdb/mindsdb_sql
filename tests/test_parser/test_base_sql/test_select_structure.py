@@ -11,7 +11,7 @@ class TestSelectStructure:
     def test_no_select(self, dialect):
         query = ""
         with pytest.raises(ParsingException):
-            parse_sql(query)
+            parse_sql(query, dialect=dialect)
 
     def test_select_constant(self, dialect):
         for value in [1, 1.0, 'string']:
