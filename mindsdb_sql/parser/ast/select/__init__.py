@@ -1,4 +1,5 @@
 from .select import Select
+from .union import Union
 from .constant import Constant, NullConstant
 from .identifier import Identifier
 from .star import Star

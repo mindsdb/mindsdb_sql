@@ -10,7 +10,7 @@ class MindsDBLexer(Lexer):
         CREATE, SHOW, USE, DROP,
 
         VIEW, VIEWS, PREDICTOR, PREDICTORS, INTEGRATION, INTEGRATIONS,
-        STREAM, STREAMS, TABLE, TABLES, PUBLICATION, PUBLICATIONS, ALL,
+        STREAM, STREAMS, TABLE, TABLES, PUBLICATION, PUBLICATIONS,
 
         # Mindsdb special
         LATEST,
@@ -24,6 +24,8 @@ class MindsDBLexer(Lexer):
         STAR,
 
         JOIN, INNER_JOIN, OUTER_JOIN, CROSS_JOIN, LEFT_JOIN, RIGHT_JOIN, FULL_JOIN, ON,
+
+        UNION, ALL,
 
         # Special
         COMMA, LPAREN, RPAREN, PARAMETER,
@@ -54,7 +56,6 @@ class MindsDBLexer(Lexer):
     INTEGRATIONS = r'\bINTEGRATIONS\b'
     PUBLICATION = r'\bPUBLICATION\b'
     PUBLICATIONS = r'\bPUBLICATIONS\b'
-    ALL = r'\bALL\b'
     ENGINE = r'\bENGINE\b'
     TRAIN = r'\bTRAIN\b'
     TEST = r'\bTEST\b'
@@ -90,6 +91,9 @@ class MindsDBLexer(Lexer):
     LEFT_JOIN = r'\bLEFT JOIN\b'
     RIGHT_JOIN = r'\bRIGHT JOIN\b'
     FULL_JOIN = r'\bFULL JOIN\b'
+
+    UNION = r'\bUNION\b'
+    ALL = r'\bALL\b'
 
     # Special
     COMMA = r','

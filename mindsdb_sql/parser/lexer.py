@@ -17,6 +17,8 @@ class SQLLexer(Lexer):
 
         JOIN, INNER_JOIN, OUTER_JOIN, CROSS_JOIN, LEFT_JOIN, RIGHT_JOIN, FULL_JOIN, ON,
 
+        UNION, ALL,
+
         # Special
         COMMA, LPAREN, RPAREN, PARAMETER,
 
@@ -27,7 +29,7 @@ class SQLLexer(Lexer):
         IN, LIKE, CONCAT, BETWEEN, WINDOW,
 
         # Data types
-        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE }
+        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE}
 
 
     # SELECT
@@ -57,6 +59,9 @@ class SQLLexer(Lexer):
     LEFT_JOIN = r'\bLEFT JOIN\b'
     RIGHT_JOIN = r'\bRIGHT JOIN\b'
     FULL_JOIN = r'\bFULL JOIN\b'
+
+    UNION = r'\bUNION\b'
+    ALL = r'\bALL\b'
 
     # Special
     COMMA = r','

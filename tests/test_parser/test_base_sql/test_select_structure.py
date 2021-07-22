@@ -11,7 +11,7 @@ class TestSelectStructure:
     def test_no_select(self, dialect):
         query = ""
         with pytest.raises(ParsingException):
-            parse_sql(query)
+            parse_sql(query, dialect=dialect)
 
     def test_select_constant(self, dialect):
         for value in [1, 1.0, 'string']:
@@ -22,7 +22,7 @@ class TestSelectStructure:
             assert len(ast.targets) == 1
             assert isinstance(ast.targets[0], Constant)
             assert ast.targets[0].value == value
-            assert str(ast) == sql
+            assert str(ast).lower() == sql.lower()
 
     def test_select_identifier(self, dialect):
         sql = f'SELECT column'
@@ -32,7 +32,7 @@ class TestSelectStructure:
         assert len(ast.targets) == 1
         assert isinstance(ast.targets[0], Identifier)
         assert str(ast.targets[0]) == 'column'
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
     def test_select_identifier_with_dashes(self, dialect):
         sql = f'SELECT `column-with-dashes`'
@@ -43,7 +43,7 @@ class TestSelectStructure:
         assert isinstance(ast.targets[0], Identifier)
         assert ast.targets[0].parts == ['column-with-dashes']
         assert str(ast.targets[0]) == '`column-with-dashes`'
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
     def test_select_identifier_alias(self, dialect):
         sql = f'SELECT column AS column_alias'
@@ -54,7 +54,7 @@ class TestSelectStructure:
         assert isinstance(ast.targets[0], Identifier)
         assert ast.targets[0].parts == ['column']
         assert ast.targets[0].alias == 'column_alias'
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
     def test_select_multiple_identifiers(self, dialect):
         sql = f'SELECT column1, column2'
@@ -66,7 +66,7 @@ class TestSelectStructure:
         assert ast.targets[0].parts[0] == 'column1'
         assert isinstance(ast.targets[1], Identifier)
         assert ast.targets[1].parts[0] == 'column2'
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
     def test_select_from_table(self, dialect):
         sql = f'SELECT column FROM tab'
@@ -80,7 +80,7 @@ class TestSelectStructure:
         assert isinstance(ast.from_table, Identifier)
         assert ast.from_table.parts[0] == 'tab'
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
     def test_select_from_table_long(self, dialect):
         query = "SELECT 1 FROM integration.database.schema.tab"
@@ -112,7 +112,7 @@ class TestSelectStructure:
         assert isinstance(ast.from_table, Identifier)
         assert ast.from_table.parts[0] == 'tab'
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
     def test_select_from_elaborate(self, dialect):
         query = """SELECT *, column1, column1 AS aliased, column1 + column2 FROM t1"""
@@ -147,7 +147,7 @@ class TestSelectStructure:
         assert isinstance(ast.where, BinaryOperation)
         assert ast.where.op == '!='
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
     def test_select_from_where_elaborate(self, dialect):
         query = """SELECT column1, column2 FROM t1 WHERE column1 = 1"""
@@ -213,7 +213,7 @@ class TestSelectStructure:
         assert ast.where.args[0].op == '!='
         assert isinstance(ast.where.args[1], BinaryOperation)
         assert ast.where.args[1].op == '>'
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
     def test_select_where_must_be_an_op(self, dialect):
         sql = f'SELECT column FROM tab WHERE column'
@@ -226,7 +226,7 @@ class TestSelectStructure:
     def test_select_group_by(self, dialect):
         sql = f'SELECT column FROM tab WHERE column != 1 GROUP BY column1'
         ast = parse_sql(sql, dialect=dialect)
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
         sql = f'SELECT column FROM tab WHERE column != 1 GROUP BY column1, column2'
         ast = parse_sql(sql, dialect=dialect)
@@ -248,7 +248,7 @@ class TestSelectStructure:
         assert isinstance(ast.group_by[1], Identifier)
         assert ast.group_by[1].parts[0] == 'column2'
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
     def test_select_group_by_elaborate(self, dialect):
         query = """SELECT column1, column2, sum(column3) AS total FROM t1 GROUP BY column1, column2"""
@@ -271,7 +271,7 @@ class TestSelectStructure:
     def test_select_having(self, dialect):
         sql = f'SELECT column FROM tab WHERE column != 1 GROUP BY column1'
         ast = parse_sql(sql, dialect=dialect)
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
         sql = f'SELECT column FROM tab WHERE column != 1 GROUP BY column1, column2 HAVING column1 > 10'
         ast = parse_sql(sql, dialect=dialect)
@@ -283,7 +283,7 @@ class TestSelectStructure:
         assert ast.having.args[0].parts[0] == 'column1'
         assert ast.having.args[1].value == 10
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
     def test_select_group_by_having_elaborate(self, dialect):
         sql = """SELECT column1 FROM t1 GROUP BY column1 HAVING column1 != 1"""
@@ -302,7 +302,7 @@ class TestSelectStructure:
                                )
 
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
@@ -314,7 +314,7 @@ class TestSelectStructure:
                                                    limit=Constant(1),
                                                    offset=Constant(2))
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
@@ -326,7 +326,7 @@ class TestSelectStructure:
     def test_select_order_by(self, dialect):
         sql = f'SELECT column1 FROM tab ORDER BY column2'
         ast = parse_sql(sql, dialect=dialect)
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
         assert len(ast.order_by) == 1
         assert isinstance(ast.order_by[0], OrderBy)
@@ -336,7 +336,7 @@ class TestSelectStructure:
 
         sql = f'SELECT column1 FROM tab ORDER BY column2, column3 ASC, column4 DESC'
         ast = parse_sql(sql, dialect=dialect)
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
         assert len(ast.order_by) == 3
 
@@ -363,7 +363,7 @@ class TestSelectStructure:
     def test_select_limit_offset(self, dialect):
         sql = f'SELECT column FROM tab LIMIT 5 OFFSET 3'
         ast = parse_sql(sql, dialect=dialect)
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
 
         assert ast.limit == Constant(value=5)
         assert ast.offset == Constant(value=3)
@@ -495,7 +495,7 @@ class TestSelectStructure:
                                                               alias='sub',
                                                               parentheses=True))
         ast = parse_sql(sql, dialect=dialect)
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast == expected_ast
 
         sql = f"""SELECT * FROM (SELECT column1 FROM t1)"""
@@ -504,7 +504,7 @@ class TestSelectStructure:
                                                 from_table=Identifier(parts=['t1']),
                                                 parentheses=True))
         ast = parse_sql(sql, dialect=dialect)
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast == expected_ast
 
     def test_select_subquery_target(self, dialect):
@@ -512,7 +512,7 @@ class TestSelectStructure:
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Select(targets=[Star(), Select(targets=[Constant(1)], parentheses=True)],
                               from_table=Identifier(parts=['t1']))
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
@@ -520,7 +520,7 @@ class TestSelectStructure:
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Select(targets=[Star(), Select(targets=[Constant(1)], alias='ones', parentheses=True)],
                               from_table=Identifier(parts=['t1']))
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
@@ -536,7 +536,7 @@ class TestSelectStructure:
                                                                from_table=Identifier(parts=['t2']),
                                                                parentheses=True)
                                                     )))
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 

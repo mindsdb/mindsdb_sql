@@ -2,7 +2,8 @@ from sly import Parser
 
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
-                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star)
+                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
+                                    Union)
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.lexer import SQLLexer
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
@@ -15,13 +16,26 @@ class SQLParser(Parser):
         ('left', PLUS, MINUS, OR),
         ('left', STAR, DIVIDE, AND),
         ('right', UMINUS, UNOT),  # Unary minus operator, unary not
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS),
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS, IN, BETWEEN, IS, LIKE),
     )
 
     # Top-level statements
+    @_('union')
+    def query(self, p):
+        return p[0]
+
     @_('select')
     def query(self, p):
         return p[0]
+
+    # UNION / UNION ALL
+    @_('select UNION select')
+    def union(self, p):
+        return Union(left=p.select0, right=p.select1, unique=True)
+
+    @_('select UNION ALL select')
+    def union(self, p):
+        return Union(left=p.select0, right=p.select1, unique=False)
 
     # SELECT
 
@@ -127,48 +141,44 @@ class SQLParser(Parser):
         select.from_table = p.from_table
         return select
 
-    @_('table_or_subquery join_clause table_or_subquery')
+    @_('from_table join_clause from_table')
     def from_table(self, p):
-        return Join(left=p.table_or_subquery0,
-                    right=p.table_or_subquery1,
+        return Join(left=p.from_table0,
+                    right=p.from_table1,
                     join_type=p.join_clause)
 
-    @_('table_or_subquery COMMA table_or_subquery')
+    @_('from_table COMMA from_table')
     def from_table(self, p):
-        return Join(left=p.table_or_subquery0,
-                    right=p.table_or_subquery1,
+        return Join(left=p.from_table0,
+                    right=p.from_table1,
                     join_type=JoinType.INNER_JOIN,
                     implicit=True)
 
-    @_('table_or_subquery join_clause table_or_subquery ON expr')
+    @_('from_table join_clause from_table ON expr')
     def from_table(self, p):
-        return Join(left=p.table_or_subquery0,
-                    right=p.table_or_subquery1,
+        return Join(left=p.from_table0,
+                    right=p.from_table1,
                     join_type=p.join_clause,
                     condition=p.expr)
 
-    @_('table_or_subquery')
+    @_('from_table AS identifier')
     def from_table(self, p):
-        return p.table_or_subquery
-
-    @_('table_or_subquery AS identifier')
-    def table_or_subquery(self, p):
-        entity = p.table_or_subquery
+        entity = p.from_table
         entity.alias = str(p.identifier)
         return entity
 
-    @_('LPAREN select RPAREN')
-    def table_or_subquery(self, p):
-        select = p.select
-        select.parentheses = True
-        return select
+    @_('LPAREN query RPAREN')
+    def from_table(self, p):
+        query = p.query
+        query.parentheses = True
+        return query
 
     @_('identifier')
-    def table_or_subquery(self, p):
+    def from_table(self, p):
         return p.identifier
 
     @_('parameter')
-    def table_or_subquery(self, p):
+    def from_table(self, p):
         return p.parameter
 
     @_('JOIN',
@@ -248,6 +258,10 @@ class SQLParser(Parser):
         return Function(op=p.ID, args=args)
 
     # arguments are optional in functions, so that things like `select database()` are possible
+    @_('expr BETWEEN expr AND expr')
+    def expr(self, p):
+        return BetweenOperation(args=(p.expr0, p.expr1, p.expr2))
+
     @_('expr_list')
     def expr_list_or_nothing(self, p):
         return p.expr_list
@@ -278,10 +292,6 @@ class SQLParser(Parser):
     def star(self, p):
         return Star()
 
-    @_('expr BETWEEN expr AND expr')
-    def expr(self, p):
-        return BetweenOperation(args=(p.expr0, p.expr1, p.expr2))
-
     @_('expr IS NOT expr',
        'expr NOT IN expr')
     def expr(self, p):
@@ -308,6 +318,7 @@ class SQLParser(Parser):
        'expr IN expr')
     def expr(self, p):
         return BinaryOperation(op=p[1], args=(p.expr0, p.expr1))
+
 
     @_('MINUS expr %prec UMINUS',
        'NOT expr %prec UNOT', )

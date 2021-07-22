@@ -10,8 +10,8 @@ from mindsdb_sql.parser.ast import Tuple
 class TestOperations:
     def test_select_binary_operations(self, dialect):
         for op in ['+', '-', '/', '*', '%', '=', '!=', '>', '<', '>=', '<=',
-                   'is', 'is not', 'like', 'in', 'and', 'or', '||']:
-            sql = f'SELECT column1 {op} column2 FROM tab'
+                   'is', 'IS NOT', 'like', 'in', 'and', 'or', '||']:
+            sql = f'SELECT column1 {op.upper()} column2 FROM tab'
             ast = parse_sql(sql, dialect=dialect)
 
             expected_ast = Select(
@@ -23,7 +23,7 @@ class TestOperations:
                 from_table=Identifier.from_path_str('tab')
             )
 
-            assert str(ast) == sql
+            assert str(ast).lower() == sql.lower()
             assert str(ast) == str(expected_ast)
             assert ast.to_tree() == expected_ast.to_tree()
 
@@ -61,7 +61,7 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -82,7 +82,7 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast == expected_ast
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -106,12 +106,12 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_chained_and(self, dialect):
-        sql = f"""SELECT column1 and column2 and column3"""
+        sql = f"""SELECT column1 AND column2 AND column3"""
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[BinaryOperation(op='AND', args=(BinaryOperation(op='and', args=(
@@ -121,11 +121,11 @@ class TestOperations:
 
                                                                        ))])
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_precedence_or_and(self, dialect):
-        sql = f'SELECT column1 or column2 and column3'
+        sql = f'SELECT column1 OR column2 AND column3'
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
@@ -141,11 +141,11 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast == expected_ast
         assert ast.to_tree() == expected_ast.to_tree()
 
-        sql = f'SELECT column1 and column2 or column3'
+        sql = f'SELECT column1 AND column2 OR column3'
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
@@ -162,12 +162,12 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast == expected_ast
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_precedence_or_and_parentheses(self, dialect):
-        sql = f'SELECT (column1 or column2) and column3'
+        sql = f'SELECT (column1 OR column2) AND column3'
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
@@ -185,12 +185,12 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_where_and_or_precedence(self, dialect):
-        sql = "SELECT col1 FROM tab WHERE col1 and col2 or col3"
+        sql = "SELECT col1 FROM tab WHERE col1 AND col2 OR col3"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
@@ -208,11 +208,11 @@ class TestOperations:
                                   ))
         )
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
-        sql = "SELECT col1 FROM tab WHERE col1 = 1 and col2 = 1 or col3 = 1"
+        sql = "SELECT col1 FROM tab WHERE col1 = 1 AND col2 = 1 OR col3 = 1"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
@@ -242,7 +242,7 @@ class TestOperations:
                                   ))
         )
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -259,7 +259,7 @@ class TestOperations:
             assert isinstance(ast.targets[0].args[0], Identifier)
             assert ast.targets[0].args[0].parts == ['column']
 
-            assert str(ast) == sql
+            assert str(ast).lower() == sql.lower()
 
     def test_select_function_no_args(self, dialect):
         sql = f'SELECT database() FROM tab'
@@ -270,7 +270,7 @@ class TestOperations:
             from_table=Identifier.from_path_str('tab'),
         )
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -285,7 +285,7 @@ class TestOperations:
                 from_table=Identifier.from_path_str('tab'),
             )
 
-            assert str(ast) == sql
+            assert str(ast).lower() == sql.lower()
             assert str(ast) == str(expected_ast)
             assert ast.to_tree() == expected_ast.to_tree()
 
@@ -300,7 +300,7 @@ class TestOperations:
                 from_table=Identifier.from_path_str('tab'),
             )
 
-            assert str(ast) == sql
+            assert str(ast).lower() == sql.lower()
             assert str(ast) == str(expected_ast)
             assert ast.to_tree() == expected_ast.to_tree()
 
@@ -322,28 +322,28 @@ class TestOperations:
     def test_unary_is_special_values(self, dialect):
         args = [('NULL', NullConstant()), ('TRUE', Constant(value=True)), ('FALSE', Constant(value=False))]
         for sql_arg, python_obj in args:
-            sql = f"""SELECT column1 is {sql_arg}"""
+            sql = f"""SELECT column1 IS {sql_arg}"""
             ast = parse_sql(sql, dialect=dialect)
 
             expected_ast = Select(targets=[BinaryOperation(op='IS', args=(Identifier.from_path_str("column1"), python_obj))], )
 
-            assert str(ast) == sql
+            assert str(ast).lower() == sql.lower()
             assert ast.to_tree() == expected_ast.to_tree()
 
     def test_unary_is_not_special_values(self, dialect):
         args = [('NULL', NullConstant()), ('TRUE', Constant(value=True)), ('FALSE', Constant(value=False))]
         for sql_arg, python_obj in args:
-            sql = f"""SELECT column1 is not {sql_arg}"""
+            sql = f"""SELECT column1 IS NOT {sql_arg}"""
             ast = parse_sql(sql, dialect=dialect)
 
-            expected_ast = Select(targets=[BinaryOperation(op='is not', args=(Identifier.from_path_str("column1"), python_obj))], )
+            expected_ast = Select(targets=[BinaryOperation(op='IS NOT', args=(Identifier.from_path_str("column1"), python_obj))], )
 
-            assert str(ast) == sql
+            assert str(ast).lower() == sql.lower()
             assert ast.to_tree() == expected_ast.to_tree()
             assert str(ast) == str(expected_ast)
 
     def test_not_in(self, dialect):
-        sql = f"""SELECT column1 not   in column2"""
+        sql = f"""SELECT column1 NOT   IN column2"""
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[BinaryOperation(op='not in', args=(Identifier.from_path_str("column1"), Identifier.from_path_str("column2")))], )
@@ -352,7 +352,7 @@ class TestOperations:
         assert str(ast) == str(expected_ast)
 
     def test_is_null(self, dialect):
-        sql = "SELECT col1 FROM t1 WHERE col1 is NULL"
+        sql = "SELECT col1 FROM t1 WHERE col1 IS NULL"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[Identifier.from_path_str("col1")], from_table=Identifier.from_path_str('t1'),
@@ -360,41 +360,41 @@ class TestOperations:
 
         assert ast.to_tree() == expected_ast.to_tree()
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_is_not_null(self, dialect):
-        sql = "SELECT col1 FROM t1 WHERE col1 is not NULL"
+        sql = "SELECT col1 FROM t1 WHERE col1 IS NOT NULL"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[Identifier.from_path_str("col1")], from_table=Identifier.from_path_str('t1'),
-                              where=BinaryOperation('is not', args=(Identifier.from_path_str('col1'), NullConstant())))
+                              where=BinaryOperation('IS NOT', args=(Identifier.from_path_str('col1'), NullConstant())))
         assert ast.to_tree() == expected_ast.to_tree()
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_is_true(self, dialect):
-        sql = "SELECT col1 FROM t1 WHERE col1 is TRUE"
+        sql = "SELECT col1 FROM t1 WHERE col1 IS TRUE"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[Identifier.from_path_str("col1")], from_table=Identifier.from_path_str('t1'),
                               where=BinaryOperation('is', args=(Identifier.from_path_str('col1'), Constant(True))))
         assert ast.to_tree() == expected_ast.to_tree()
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_is_false(self, dialect):
-        sql = "SELECT col1 FROM t1 WHERE col1 is FALSE"
+        sql = "SELECT col1 FROM t1 WHERE col1 IS FALSE"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[Identifier.from_path_str("col1")], from_table=Identifier.from_path_str('t1'),
                               where=BinaryOperation('is', args=(Identifier.from_path_str('col1'), Constant(False))))
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
@@ -404,9 +404,28 @@ class TestOperations:
 
         expected_ast = Select(targets=[Identifier.from_path_str("col1")], from_table=Identifier.from_path_str('t1'),
                               where=BetweenOperation(args=(Identifier.from_path_str('col1'), Identifier.from_path_str('a'), Identifier.from_path_str('b'))))
-        assert ast.to_tree() == expected_ast.to_tree()
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_between_with_and(self, dialect):
+        sql = "SELECT col1 FROM t1 WHERE col2 > 1 AND col1 BETWEEN a AND b"
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(targets=[Identifier.from_path_str("col1")],
+                              from_table=Identifier.from_path_str('t1'),
+                              where=BinaryOperation('and', args=[
+                                  BinaryOperation('>', args=[
+                                      Identifier('col2'),
+                                      Constant(1),
+                                  ]),
+                                  BetweenOperation(args=(
+                                      Identifier.from_path_str('col1'), Identifier.from_path_str('a'),
+                                      Identifier.from_path_str('b'))),
+                              ])
+                              )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)

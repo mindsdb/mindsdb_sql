@@ -41,7 +41,7 @@ class BetweenOperation(Operation):
 class BinaryOperation(Operation):
     def to_string(self, *args, **kwargs):
         arg_strs = [arg.to_string() for arg in self.args]
-        return self.maybe_add_alias(self.maybe_add_parentheses(f'{arg_strs[0]} {self.op} {arg_strs[1]}'))
+        return self.maybe_add_alias(self.maybe_add_parentheses(f'{arg_strs[0]} {self.op.upper()} {arg_strs[1]}'))
 
     def assert_arguments(self):
         if len(self.args) != 2:

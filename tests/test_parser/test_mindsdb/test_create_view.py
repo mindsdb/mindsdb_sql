@@ -29,7 +29,7 @@ class TestCreateView:
                                   query=Select(targets=[Star()],
                                                from_table=Identifier('pred')))
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -40,6 +40,6 @@ class TestCreateView:
                                   query=Select(targets=[Star()],
                                                from_table=Identifier('pred')))
 
-        assert str(ast) == sql
+        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
