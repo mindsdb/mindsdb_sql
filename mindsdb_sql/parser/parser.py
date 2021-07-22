@@ -16,7 +16,7 @@ class SQLParser(Parser):
         ('left', PLUS, MINUS, OR),
         ('left', STAR, DIVIDE, AND),
         ('right', UMINUS, UNOT),  # Unary minus operator, unary not
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS),
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS, IN, BETWEEN, IS, LIKE),
     )
 
     # Top-level statements
@@ -258,6 +258,10 @@ class SQLParser(Parser):
         return Function(op=p.ID, args=args)
 
     # arguments are optional in functions, so that things like `select database()` are possible
+    @_('expr BETWEEN expr AND expr')
+    def expr(self, p):
+        return BetweenOperation(args=(p.expr0, p.expr1, p.expr2))
+
     @_('expr_list')
     def expr_list_or_nothing(self, p):
         return p.expr_list
@@ -288,10 +292,6 @@ class SQLParser(Parser):
     def star(self, p):
         return Star()
 
-    @_('expr BETWEEN expr AND expr')
-    def expr(self, p):
-        return BetweenOperation(args=(p.expr0, p.expr1, p.expr2))
-
     @_('expr IS NOT expr',
        'expr NOT IN expr')
     def expr(self, p):
@@ -318,6 +318,7 @@ class SQLParser(Parser):
        'expr IN expr')
     def expr(self, p):
         return BinaryOperation(op=p[1], args=(p.expr0, p.expr1))
+
 
     @_('MINUS expr %prec UMINUS',
        'NOT expr %prec UNOT', )

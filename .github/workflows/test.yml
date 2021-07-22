@@ -22,6 +22,6 @@ jobs:
         pip install -r requirements.txt
         pip install --no-cache-dir -e .[test]
     - name: Run unit tests
-      run: pytest
+      run: pytest -v
       shell: bash
 

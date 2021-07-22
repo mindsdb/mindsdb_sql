@@ -16,7 +16,7 @@ class TestShow:
             ast = parse_sql(sql, dialect='mindsdb')
             expected_ast = Show(value=keyword)
 
-            assert str(ast) == sql
+            assert str(ast).lower() == sql.lower()
             assert str(ast) == str(expected_ast)
             assert ast.to_tree() == expected_ast.to_tree()
 
@@ -27,7 +27,7 @@ class TestShow:
             expected_ast = Show(value=keyword, arg=Identifier("integration_name"))
 
 
-            assert str(ast) == sql
+            assert str(ast).lower() == sql.lower()
             assert str(ast) == str(expected_ast)
             assert ast.to_tree() == expected_ast.to_tree()
 

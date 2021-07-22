@@ -29,7 +29,7 @@ class SQLLexer(Lexer):
         IN, LIKE, CONCAT, BETWEEN, WINDOW,
 
         # Data types
-        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE }
+        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE}
 
 
     # SELECT

@@ -220,7 +220,7 @@ class QueryPlan:
             """Error if the where condition caontains invalid ops, is nested or filters on some column that's not time or partition"""
             if not op:
                 return
-            allowed_ops = ['and', '>', '>=', '=', '<', '<=', 'between']
+            allowed_ops = ['and', '>', '>=', '=', '<', '<=', 'between', 'in']
             if not allow_and:
                 allowed_ops.remove('and')
             if op.op not in allowed_ops:
