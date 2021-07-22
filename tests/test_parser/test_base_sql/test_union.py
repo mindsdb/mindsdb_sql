@@ -13,7 +13,7 @@ class TestUnion:
         with pytest.raises(ParsingException):
             parse_sql(sql, dialect=dialect)
 
-    def test_union(self, dialect):
+    def test_union_base(self, dialect):
         sql = """SELECT col1 FROM tab1 
         UNION 
         SELECT col1 FROM tab2"""
@@ -26,24 +26,6 @@ class TestUnion:
                              right=Select(targets=[Identifier('col1')],
                                          from_table=Identifier(parts=['tab2']),
                                          ),
-                             )
-        assert ast.to_tree() == expected_ast.to_tree()
-        assert str(ast) == str(expected_ast)
-
-    def test_union_aliased_selects(self, dialect):
-        sql = """(SELECT col1 FROM tab1) AS alias1
-        UNION 
-        (SELECT col1 FROM tab2) AS alias2"""
-
-        ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Union(unique=True,
-                             left=Select(alias='alias1',
-                                         targets=[Identifier('col1')],
-                                         from_table=Identifier(parts=['tab1']),
-                                         ),
-                             right=Select(alias='alias2', targets=[Identifier('col1')],
-                                          from_table=Identifier(parts=['tab2']),
-                                          ),
                              )
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
@@ -62,6 +44,29 @@ class TestUnion:
                                          from_table=Identifier(parts=['tab2']),
                                          ),
                              )
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+    def test_union_alias(self, dialect):
+        sql = """SELECT * FROM (
+            SELECT col1 FROM tab1
+            UNION 
+            SELECT col1 FROM tab2
+        ) AS alias"""
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[Star()],
+                              from_table=Union(unique=True,
+                                               alias='alias',
+                                               left=Select(
+                                                           targets=[Identifier('col1')],
+                                                           from_table=Identifier(parts=['tab1']),
+                                                           ),
+                                               right=Select(targets=[Identifier('col1')],
+                                                            from_table=Identifier(parts=['tab2']),
+                                                            ),
+                                               )
+                              )
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 

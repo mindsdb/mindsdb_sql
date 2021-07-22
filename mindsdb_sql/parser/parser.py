@@ -141,48 +141,44 @@ class SQLParser(Parser):
         select.from_table = p.from_table
         return select
 
-    @_('table_or_subquery join_clause table_or_subquery')
+    @_('from_table join_clause from_table')
     def from_table(self, p):
-        return Join(left=p.table_or_subquery0,
-                    right=p.table_or_subquery1,
+        return Join(left=p.from_table0,
+                    right=p.from_table1,
                     join_type=p.join_clause)
 
-    @_('table_or_subquery COMMA table_or_subquery')
+    @_('from_table COMMA from_table')
     def from_table(self, p):
-        return Join(left=p.table_or_subquery0,
-                    right=p.table_or_subquery1,
+        return Join(left=p.from_table0,
+                    right=p.from_table1,
                     join_type=JoinType.INNER_JOIN,
                     implicit=True)
 
-    @_('table_or_subquery join_clause table_or_subquery ON expr')
+    @_('from_table join_clause from_table ON expr')
     def from_table(self, p):
-        return Join(left=p.table_or_subquery0,
-                    right=p.table_or_subquery1,
+        return Join(left=p.from_table0,
+                    right=p.from_table1,
                     join_type=p.join_clause,
                     condition=p.expr)
 
-    @_('table_or_subquery')
+    @_('from_table AS identifier')
     def from_table(self, p):
-        return p.table_or_subquery
-
-    @_('table_or_subquery AS identifier')
-    def table_or_subquery(self, p):
-        entity = p.table_or_subquery
+        entity = p.from_table
         entity.alias = str(p.identifier)
         return entity
 
-    @_('LPAREN select RPAREN')
-    def table_or_subquery(self, p):
-        select = p.select
-        select.parentheses = True
-        return select
+    @_('LPAREN query RPAREN')
+    def from_table(self, p):
+        query = p.query
+        query.parentheses = True
+        return query
 
     @_('identifier')
-    def table_or_subquery(self, p):
+    def from_table(self, p):
         return p.identifier
 
     @_('parameter')
-    def table_or_subquery(self, p):
+    def from_table(self, p):
         return p.parameter
 
     @_('JOIN',
