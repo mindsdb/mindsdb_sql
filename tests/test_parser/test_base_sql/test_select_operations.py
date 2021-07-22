@@ -426,7 +426,6 @@ class TestOperations:
                               ])
                               )
 
-        print(ast.to_tree())
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)

@@ -282,6 +282,16 @@ class QueryPlan:
                                         )
             integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
             self.plan_integration_select(integration_select)
+        elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('>', '>=', '<', '<='):
+            new_time_filter_op = {'>': '<=', '>=': '<'}.get(time_filter.op, time_filter.op)
+            time_filter.op = new_time_filter_op
+            integration_select = Select(targets=[Star()],
+                                        from_table=table,
+                                        where=query.where,
+                                        order_by=order_by,
+                                        limit=Constant(predictor_window),
+                                        )
+            self.plan_integration_select(integration_select)
         else:
             integration_select = Select(targets=[Star()],
                                         from_table=table,

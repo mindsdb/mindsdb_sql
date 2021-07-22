@@ -312,7 +312,7 @@ class TestJoinTimeseriesPredictor:
                                     'window': 5}
                        })
 
-    def test_join_predictor_timeseries_real_world_query(self):
+    def test_join_predictor_timeseries_real_world_query_latest(self):
         predictor_window = 10
         sql = "select * from mysql.data.ny_output as ta join mindsdb.tp3 as tb where ta.vendor_id = 1 and ta.pickup_hour > LATEST"
         query = Select(targets=[Star()],
@@ -336,6 +336,202 @@ class TestJoinTimeseriesPredictor:
                                                                                  Constant(1)]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 limit=Constant(10)
+                                                )
+                                   ),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=['*']),
+            ],
+            result_refs={0: [1], 1: [2]},
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql'],
+                          predictor_namespace='mindsdb',
+                          predictor_metadata={
+                              'tp3': {'timeseries': True,
+                                       'order_by_column': 'pickup_hour',
+                                       'group_by_column': 'vendor_id',
+                                       'window': predictor_window}
+                          })
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_join_predictor_timeseries_concrete_date_greater(self):
+        predictor_window = 10
+        sql = "select * from mysql.data.ny_output as ta join mindsdb.tp3 as tb where ta.vendor_id = 1 and ta.pickup_hour > '2016-06-30 21:59:10'"
+        query = Select(targets=[Star()],
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
+                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                                       join_type='join'),
+                       where=BinaryOperation('and', args=[
+                           BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
+                           BinaryOperation('>', args=[Identifier('ta.pickup_hour'), Constant('2016-06-30 21:59:10')]),
+                       ]),
+                       )
+
+        assert parse_sql(sql, dialect='mindsdb').to_tree() == query.to_tree()
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                where=BinaryOperation('and', args=[
+                                                    BinaryOperation('=', args=[Identifier('ta.vendor_id'),
+                                                                               Constant(1)]),
+                                                    BinaryOperation('<=', args=[Identifier('ta.pickup_hour'),
+                                                                               Constant('2016-06-30 21:59:10')]),
+                                                ]),
+                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
+                                                limit=Constant(predictor_window)
+                                                )
+                                   ),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=['*']),
+            ],
+            result_refs={0: [1], 1: [2]},
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql'],
+                          predictor_namespace='mindsdb',
+                          predictor_metadata={
+                              'tp3': {'timeseries': True,
+                                       'order_by_column': 'pickup_hour',
+                                       'group_by_column': 'vendor_id',
+                                       'window': predictor_window}
+                          })
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_join_predictor_timeseries_concrete_date_greater_or_equal(self):
+        predictor_window = 10
+        sql = "select * from mysql.data.ny_output as ta join mindsdb.tp3 as tb where ta.vendor_id = 1 and ta.pickup_hour >= '2016-06-30 21:59:10'"
+        query = Select(targets=[Star()],
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
+                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                                       join_type='join'),
+                       where=BinaryOperation('and', args=[
+                           BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
+                           BinaryOperation('>=', args=[Identifier('ta.pickup_hour'), Constant('2016-06-30 21:59:10')]),
+                       ]),
+                       )
+
+        assert parse_sql(sql, dialect='mindsdb').to_tree() == query.to_tree()
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                where=BinaryOperation('and', args=[
+                                                    BinaryOperation('=', args=[Identifier('ta.vendor_id'),
+                                                                               Constant(1)]),
+                                                    BinaryOperation('<', args=[Identifier('ta.pickup_hour'),
+                                                                               Constant('2016-06-30 21:59:10')]),
+                                                ]),
+                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
+                                                limit=Constant(predictor_window)
+                                                )
+                                   ),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=['*']),
+            ],
+            result_refs={0: [1], 1: [2]},
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql'],
+                          predictor_namespace='mindsdb',
+                          predictor_metadata={
+                              'tp3': {'timeseries': True,
+                                       'order_by_column': 'pickup_hour',
+                                       'group_by_column': 'vendor_id',
+                                       'window': predictor_window}
+                          })
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_join_predictor_timeseries_concrete_date_less(self):
+        predictor_window = 10
+        sql = "select * from mysql.data.ny_output as ta join mindsdb.tp3 as tb where ta.vendor_id = 1 and ta.pickup_hour < '2016-06-30 21:59:10'"
+        query = Select(targets=[Star()],
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
+                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                                       join_type='join'),
+                       where=BinaryOperation('and', args=[
+                           BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
+                           BinaryOperation('<', args=[Identifier('ta.pickup_hour'), Constant('2016-06-30 21:59:10')]),
+                       ]),
+                       )
+
+        assert parse_sql(sql, dialect='mindsdb').to_tree() == query.to_tree()
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                where=BinaryOperation('and', args=[
+                                                    BinaryOperation('=', args=[Identifier('ta.vendor_id'),
+                                                                               Constant(1)]),
+                                                    BinaryOperation('<', args=[Identifier('ta.pickup_hour'),
+                                                                               Constant('2016-06-30 21:59:10')]),
+                                                ]),
+                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
+                                                limit=Constant(predictor_window)
+                                                )
+                                   ),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=['*']),
+            ],
+            result_refs={0: [1], 1: [2]},
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql'],
+                          predictor_namespace='mindsdb',
+                          predictor_metadata={
+                              'tp3': {'timeseries': True,
+                                       'order_by_column': 'pickup_hour',
+                                       'group_by_column': 'vendor_id',
+                                       'window': predictor_window}
+                          })
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_join_predictor_timeseries_concrete_date_less_or_equal(self):
+        predictor_window = 10
+        sql = "select * from mysql.data.ny_output as ta join mindsdb.tp3 as tb where ta.vendor_id = 1 and ta.pickup_hour <= '2016-06-30 21:59:10'"
+        query = Select(targets=[Star()],
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
+                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                                       join_type='join'),
+                       where=BinaryOperation('and', args=[
+                           BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
+                           BinaryOperation('<=', args=[Identifier('ta.pickup_hour'), Constant('2016-06-30 21:59:10')]),
+                       ]),
+                       )
+
+        assert parse_sql(sql, dialect='mindsdb').to_tree() == query.to_tree()
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                where=BinaryOperation('and', args=[
+                                                    BinaryOperation('=', args=[Identifier('ta.vendor_id'),
+                                                                               Constant(1)]),
+                                                    BinaryOperation('<=', args=[Identifier('ta.pickup_hour'),
+                                                                               Constant('2016-06-30 21:59:10')]),
+                                                ]),
+                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
+                                                limit=Constant(predictor_window)
                                                 )
                                    ),
                 ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
