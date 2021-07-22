@@ -482,7 +482,7 @@ class TestJoinTimeseriesPredictor:
                                                                                Constant('2016-06-30 21:59:10')]),
                                                 ]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
-                                                limit=Constant(predictor_window)
+                                                # limit=Constant(predictor_window)
                                                 )
                                    ),
                 ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
@@ -531,7 +531,7 @@ class TestJoinTimeseriesPredictor:
                                                                                Constant('2016-06-30 21:59:10')]),
                                                 ]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
-                                                limit=Constant(predictor_window)
+                                                # limit=Constant(predictor_window)
                                                 )
                                    ),
                 ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
