@@ -8,7 +8,7 @@ class Operation(ASTNode):
         super().__init__(*args_, **kwargs)
 
         self.op = op.lower()
-        self.args = args
+        self.args = list(args)
         self.assert_arguments()
 
     def assert_arguments(self):
@@ -68,7 +68,7 @@ class Function(Operation):
 
         arg_trees = [arg.to_tree(level=level+2) for arg in self.args]
         arg_trees_str = ",\n".join(arg_trees)
-        out_str = f'{ind}{self.__class__.__name__}(op={repr(self.op)}, distinct={repr(self.distinct)},alias={repr(self.alias)},\n{ind1}args=(\n{arg_trees_str}\n{ind1})\n{ind})'
+        out_str = f'{ind}{self.__class__.__name__}(op={repr(self.op)}, distinct={repr(self.distinct)},alias={repr(self.alias)},\n{ind1}args=[\n{arg_trees_str}\n{ind1}]\n{ind})'
         return out_str
 
     def to_string(self, *args, **kwargs):
