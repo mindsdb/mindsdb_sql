@@ -198,7 +198,7 @@ class TestJoinTimeseriesPredictor:
             WHERE ta.vendor_id IN ('1', '2') AND ta.pickup_datetime BETWEEN '2016-06-30 21:59:10' AND '2016-06-30 23:59:10'
         """
 
-        query = Select(targets=[Identifier('tb.trip_duration'), Identifier('tb.pickup_datetime')],
+        expected_query = Select(targets=[Identifier('tb.trip_duration'), Identifier('tb.pickup_datetime')],
                        from_table=Join(left=Identifier('singlestore2.data.ny_taxy_train', alias='ta'),
                                        right=Identifier('mindsdb.ny_p_2', alias='tb'),
                                        join_type=JoinType.JOIN,
@@ -208,8 +208,8 @@ class TestJoinTimeseriesPredictor:
                            BetweenOperation(args=[Identifier('ta.pickup_datetime'), Constant('2016-06-30 21:59:10'), Constant('2016-06-30 23:59:10')]),
                        ]),
                        )
-
-        assert parse_sql(sql, dialect='mindsdb').to_tree() == query.to_tree()
+        query = parse_sql(sql, dialect='mindsdb')
+        assert query.to_tree() == expected_query.to_tree()
 
         expected_plan = QueryPlan(
             steps=[
