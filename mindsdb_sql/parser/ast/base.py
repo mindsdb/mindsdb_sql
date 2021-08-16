@@ -22,7 +22,7 @@ class ASTNode:
         pass
 
     def to_string(self, alias=True):
-        return self.maybe_add_alias(self.maybe_add_parentheses(self.get_string()))
+        return self.maybe_add_alias(self.maybe_add_parentheses(self.get_string()), alias=alias)
 
     def __str__(self):
         return self.to_string()
