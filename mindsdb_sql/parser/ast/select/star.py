@@ -12,5 +12,5 @@ class Star(ASTNode):
     def to_tree(self, *args, level=0, **kwargs):
         return indent(level) + f'Star()'
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         return '*'

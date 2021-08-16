@@ -28,6 +28,18 @@ class TestLexer:
         assert tokens[1].type == 'ID'
         assert tokens[1].value == 'a'
 
+    def test_select_identifiers(self, lexer):
+        sql = 'SELECT abcd123, __whatisthi123s__, `spaces in id`, multiple.parts.__whoa, `multiple`.`parts`.`with brackets` '
+        tokens = list(lexer.tokenize(sql))
+        assert tokens[0].type == 'SELECT'
+
+        for i, t in enumerate(tokens[1:]):
+            print(i, t)
+            if i % 2 != 0:
+                assert t.type == 'COMMA'
+            else:
+                assert t.type == 'ID'
+
     def test_select_float(self, lexer):
         for float in [0.0, 1.000, 0.1, 1.0, 99999.9999]:
             sql = f'SELECT {float}'

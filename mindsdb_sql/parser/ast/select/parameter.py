@@ -9,5 +9,5 @@ class Parameter(ASTNode):
     def to_tree(self, *args, level=0, **kwargs):
         return '\t' * level + f'Parameter({repr(self.value)})'
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         return self.value

@@ -38,8 +38,7 @@ class Identifier(ASTNode):
         alias_str = f', alias={repr(self.alias)}' if self.alias else ''
         return indent(level) + f'Identifier(parts={repr(self.parts)}{alias_str})'
 
-    def to_string(self, *args, **kwargs):
-        value_str = self.parts_to_str()
-        return self.maybe_add_alias(value_str)
+    def get_string(self, *args, **kwargs):
+        return self.parts_to_str()
 
 

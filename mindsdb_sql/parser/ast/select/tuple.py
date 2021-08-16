@@ -13,7 +13,7 @@ class Tuple(ASTNode):
         out_str = indent(level) + f'Tuple(items=({item_trees}))'
         return out_str
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         item_strs = []
         for item in self.items:
             item_strs.append(str(item))

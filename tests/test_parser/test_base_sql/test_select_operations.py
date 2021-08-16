@@ -317,6 +317,11 @@ class TestOperations:
                                              Identifier.from_path_str('col1'),
                                              Tuple(items=[Constant('a'), Constant("b")]),
                                          ])
+        print(ast.where.to_tree())
+        print(expected_where.to_tree())
+        print(ast.where)
+        print(expected_where)
+        assert ast.where.to_tree() == expected_where.to_tree()
         assert ast.where == expected_where
 
     def test_unary_is_special_values(self, dialect):

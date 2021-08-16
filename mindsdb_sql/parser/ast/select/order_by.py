@@ -12,7 +12,7 @@ class OrderBy(ASTNode):
     def to_tree(self, *args, level=0, **kwargs):
         return indent(level) + f'OrderBy(field={self.field.to_tree()}, direction={repr(self.direction)}, nulls={repr(self.nulls)})'
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         out_str = self.field.to_string()
         if self.direction != 'default':
             out_str += f' {self.direction}'

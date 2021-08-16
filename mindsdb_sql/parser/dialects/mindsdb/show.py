@@ -22,6 +22,6 @@ class Show(ASTNode):
                   f'\n{ind})'
         return out_str
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         arg_str = f' {str(self.arg)}' if self.arg else ''
         return f'SHOW {str(self.value)}{arg_str}'

@@ -11,14 +11,14 @@ class Constant(ASTNode):
         alias_str = f', alias={repr(self.alias)}' if self.alias else ''
         return indent(level) + f'Constant(value={repr(self.value)}{alias_str})'
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         if isinstance(self.value, str):
             out_str = f"\"{self.value}\""
         elif isinstance(self.value, bool):
             out_str = 'TRUE' if self.value else 'FALSE'
         else:
             out_str = str(self.value)
-        return self.maybe_add_alias(out_str)
+        return out_str
 
 
 class NullConstant(Constant):
@@ -28,5 +28,5 @@ class NullConstant(Constant):
     def to_tree(self, *args, level=0, **kwargs):
         return '\t'*level +  'NullConstant()'
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         return 'NULL'

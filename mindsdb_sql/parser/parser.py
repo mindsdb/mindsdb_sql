@@ -116,10 +116,6 @@ class SQLParser(Parser):
         if not isinstance(group_by, list):
             group_by = [group_by]
 
-        if not all([isinstance(g, Identifier) for g in group_by]):
-            raise ParsingException(
-                f"GROUP BY must contain a list identifiers, got: {str(group_by)}")
-
         select.group_by = group_by
         return select
 
@@ -285,7 +281,6 @@ class SQLParser(Parser):
     @_('LPAREN enumeration RPAREN')
     def expr(self, p):
         tup = Tuple(items=p.enumeration)
-        tup.parentheses = True
         return tup
 
     @_('STAR')
