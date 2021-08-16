@@ -23,25 +23,26 @@ class Operation(ASTNode):
         out_str = f'{ind}{self.__class__.__name__}(op={repr(self.op)},\n{ind1}args=(\n{arg_trees_str}\n{ind1})\n{ind})'
         return out_str
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, alias=True, **kwargs):
         arg_strs = [arg.to_string() for arg in self.args]
         args_str = ','.join(arg_strs)
-        return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.op}({args_str})'))
+
+        return f'{self.op}({args_str})'
 
 
 class BetweenOperation(Operation):
     def __init__(self, *args, **kwargs):
         super().__init__(op='between', *args, **kwargs)
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         arg_strs = [arg.to_string() for arg in self.args]
-        return self.maybe_add_alias(self.maybe_add_parentheses(f'{arg_strs[0]} BETWEEN {arg_strs[1]} AND {arg_strs[2]}'))
+        return f'{arg_strs[0]} BETWEEN {arg_strs[1]} AND {arg_strs[2]}'
 
 
 class BinaryOperation(Operation):
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         arg_strs = [arg.to_string() for arg in self.args]
-        return self.maybe_add_alias(self.maybe_add_parentheses(f'{arg_strs[0]} {self.op.upper()} {arg_strs[1]}'))
+        return f'{arg_strs[0]} {self.op.upper()} {arg_strs[1]}'
 
     def assert_arguments(self):
         if len(self.args) != 2:
@@ -49,8 +50,8 @@ class BinaryOperation(Operation):
 
 
 class UnaryOperation(Operation):
-    def to_string(self, *args, **kwargs):
-        return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.op} {self.args[0].to_string()}'))
+    def get_string(self, *args, **kwargs):
+        return f'{self.op} {self.args[0].to_string()}'
 
     def assert_arguments(self):
         if len(self.args) != 1:
@@ -71,7 +72,7 @@ class Function(Operation):
         out_str = f'{ind}{self.__class__.__name__}(op={repr(self.op)}, distinct={repr(self.distinct)},alias={repr(self.alias)},\n{ind1}args=[\n{arg_trees_str}\n{ind1}]\n{ind})'
         return out_str
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         args_str = ', '.join([arg.to_string() for arg in self.args])
         distinct_str = 'DISTINCT ' if self.distinct else ''
-        return self.maybe_add_alias(self.maybe_add_parentheses(f'{self.op}({distinct_str}{args_str})'))
+        return f'{self.op}({distinct_str}{args_str})'

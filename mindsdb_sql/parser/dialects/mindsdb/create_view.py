@@ -27,7 +27,7 @@ class CreateView(ASTNode):
                   f'\n{ind})'
         return out_str
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         from_str = f'FROM {str(self.from_table)} ' if self.from_table else ''
         out_str = f'CREATE VIEW {str(self.name)} {from_str}AS ( {str(self.query)} )'
 

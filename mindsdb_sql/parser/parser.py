@@ -281,7 +281,6 @@ class SQLParser(Parser):
     @_('LPAREN enumeration RPAREN')
     def expr(self, p):
         tup = Tuple(items=p.enumeration)
-        tup.parentheses = True
         return tup
 
     @_('STAR')

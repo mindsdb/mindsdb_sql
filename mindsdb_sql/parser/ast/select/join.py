@@ -22,7 +22,7 @@ class Join(ASTNode):
         out_str = f'{ind}Join({args},{left_str},{right_str},{condition_str}\n{ind})'
         return out_str
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         join_type_str = f' {self.join_type} ' if not self.implicit else ', '
         condition_str = f' ON {self.condition.to_string()}' if self.condition else ''
         return f'{self.left.to_string()}{join_type_str}{self.right.to_string()}{condition_str}'

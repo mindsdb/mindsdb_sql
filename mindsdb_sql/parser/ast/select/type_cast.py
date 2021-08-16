@@ -13,5 +13,5 @@ class TypeCast(ASTNode):
         out_str = indent(level) + f'TypeCast(type_name={repr(self.type_name)}, arg=\n{indent(level+1)}{self.arg.to_tree()})'
         return out_str
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         return f'CAST({str(self.arg)} AS {self.type_name})'

@@ -3,8 +3,8 @@ class ASTNode:
         self.alias = alias
         self.parentheses = parentheses
 
-    def maybe_add_alias(self, some_str):
-        if self.alias:
+    def maybe_add_alias(self, some_str, alias=True):
+        if self.alias and alias:
             return f'{some_str} AS {self.alias}'
         else:
             return some_str
@@ -18,8 +18,11 @@ class ASTNode:
     def to_tree(self, *args, **kwargs):
         pass
 
-    def to_string(self, *args, level=0, **kwargs):
+    def get_string(self):
         pass
+
+    def to_string(self, alias=True):
+        return self.maybe_add_alias(self.maybe_add_parentheses(self.get_string()))
 
     def __str__(self):
         return self.to_string()

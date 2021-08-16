@@ -26,6 +26,9 @@ class Select(ASTNode):
         self.limit = limit
         self.offset = offset
 
+        if self.alias:
+            self.parentheses = True
+
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
         ind1 = indent(level+1)
@@ -69,15 +72,9 @@ class Select(ASTNode):
                   f'\n{ind})'
         return out_str
 
-    def maybe_add_alias(self, some_str):
-        if self.alias:
-            return f'({some_str}) AS {self.alias}'
-        elif self.parentheses:
-            return f'({some_str})'
-        else:
-            return some_str
 
-    def to_string(self, *args, **kwargs):
+
+    def get_string(self, *args, **kwargs):
         out_str = """SELECT"""
 
         if self.distinct:
@@ -110,4 +107,4 @@ class Select(ASTNode):
 
         if self.offset is not None:
             out_str += f' OFFSET {self.offset.to_string()}'
-        return self.maybe_add_alias(out_str)
+        return out_str

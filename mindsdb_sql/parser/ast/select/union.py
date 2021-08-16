@@ -14,6 +14,9 @@ class Union(ASTNode):
         self.right = right
         self.unique = unique
 
+        if self.alias:
+            self.parentheses = True
+
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
         ind1 = indent(level+1)
@@ -35,10 +38,10 @@ class Union(ASTNode):
         else:
             return some_str
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         left_str = str(self.left)
         right_str = str(self.right)
         keyword = 'UNION' if self.unique else 'UNION ALL'
         out_str = f"""{left_str}\n{keyword}\n{right_str}"""
 
-        return self.maybe_add_alias(out_str)
+        return out_str

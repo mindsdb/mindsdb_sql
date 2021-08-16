@@ -19,5 +19,5 @@ class Use(ASTNode):
                   f'\n{ind})'
         return out_str
 
-    def to_string(self, *args, **kwargs):
+    def get_string(self, *args, **kwargs):
         return f'USE {str(self.value)}'
