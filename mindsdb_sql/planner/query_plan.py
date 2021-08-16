@@ -172,14 +172,6 @@ class QueryPlan:
                     raise PlanningException(f'Can\'t request table columns when applying timeseries predictor, but found: {str(target)}. '
                                             f'Try to request the same column from the predictor, like "SELECT pred.column".')
 
-        def is_greater_than_latest(op):
-            if isinstance(op, BinaryOperation) and Latest() in op.args:
-                if op.op == '>' and op.args[1] == Latest() and op.args[0] != Latest():
-                    return True
-                else:
-                    raise PlanningException(f'Can only use "<predictor order_by column> > LATEST", found: {str(op)}')
-            return False
-
         def find_time_filter(op, time_column_name):
             if not op:
                 return
