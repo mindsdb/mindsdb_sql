@@ -30,14 +30,6 @@ class Union(ASTNode):
                   f'\n{ind})'
         return out_str
 
-    def maybe_add_alias(self, some_str):
-        if self.alias:
-            return f'({some_str}) AS {self.alias}'
-        elif self.parentheses:
-            return f'({some_str})'
-        else:
-            return some_str
-
     def get_string(self, *args, **kwargs):
         left_str = str(self.left)
         right_str = str(self.right)
