@@ -117,10 +117,6 @@ class MySQLParser(SQLParser):
         if not isinstance(group_by, list):
             group_by = [group_by]
 
-        if not all([isinstance(g, Identifier) for g in group_by]):
-            raise ParsingException(
-                f"GROUP BY must contain a list identifiers, got: {str(group_by)}")
-
         select.group_by = group_by
         return select
 
