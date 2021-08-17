@@ -13,7 +13,7 @@ class Constant(ASTNode):
 
     def get_string(self, *args, **kwargs):
         if isinstance(self.value, str):
-            out_str = f"\"{self.value}\""
+            out_str = f"\'{self.value}\'"
         elif isinstance(self.value, bool):
             out_str = 'TRUE' if self.value else 'FALSE'
         else:

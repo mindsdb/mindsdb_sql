@@ -13,9 +13,9 @@ class TestSelectStructure:
         with pytest.raises(ParsingException):
             parse_sql(query, dialect=dialect)
 
-    def test_select_constant(self, dialect):
-        for value in [1, 1.0, 'string']:
-            sql = f'SELECT {value}' if not isinstance(value, str) else f"SELECT \"{value}\""
+    def test_select_number(self, dialect):
+        for value in [1, 1.0]:
+            sql = f'SELECT {value}'
             ast = parse_sql(sql, dialect=dialect)
 
             assert isinstance(ast, Select)
@@ -23,6 +23,16 @@ class TestSelectStructure:
             assert isinstance(ast.targets[0], Constant)
             assert ast.targets[0].value == value
             assert str(ast).lower() == sql.lower()
+
+    def test_select_string(self, dialect):
+        sql = f"SELECT 'string'"
+        ast = parse_sql(sql, dialect=dialect)
+
+        assert isinstance(ast, Select)
+        assert len(ast.targets) == 1
+        assert isinstance(ast.targets[0], Constant)
+        assert ast.targets[0].value == 'string'
+        assert str(ast) == sql
 
     def test_select_identifier(self, dialect):
         sql = f'SELECT column'
@@ -160,7 +170,7 @@ class TestSelectStructure:
                                                                          args=(Identifier(parts=['column1']), Constant(1))
                                                                          )))
 
-        query = """SELECT column1, column2 FROM t1 WHERE column1 = \"1\""""
+        query = """SELECT column1, column2 FROM t1 WHERE column1 = \'1\'"""
 
         assert str(parse_sql(query)) == query
 
@@ -373,7 +383,7 @@ class TestSelectStructure:
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
-        sql = "SELECT column FROM tab LIMIT \"string\""
+        sql = "SELECT column FROM tab LIMIT \'string\'"
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect=dialect)
 
@@ -587,7 +597,7 @@ class TestSelectStructure:
         assert str(ast) == str(expected_ast)
 
     def test_where_not_order(self, dialect):
-        sql = "SELECT col1 FROM tab WHERE NOT col1 = \"FAMILY\""
+        sql = "SELECT col1 FROM tab WHERE NOT col1 = \'FAMILY\'"
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(targets=[Identifier(parts=['col1'])],
