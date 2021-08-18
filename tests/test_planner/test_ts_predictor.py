@@ -15,8 +15,8 @@ class TestJoinTimeseriesPredictor:
     def test_join_predictor_timeseries(self):
         predictor_window = 10
         query = Select(targets=[Star()],
-                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
-                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias=Identifier('ta')),
+                                       right=Identifier('mindsdb.tp3', alias=Identifier('tb')),
                                        join_type='join'),
                        )
 
@@ -24,11 +24,11 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
                 ProjectStep(dataframe=Result(1), columns=['*']),
             ],
             result_refs={0: [1], 1: [2]},
@@ -50,8 +50,8 @@ class TestJoinTimeseriesPredictor:
     def test_join_predictor_timeseries_filter_by_group_by_column(self):
         predictor_window = 10
         query = Select(targets=[Star()],
-                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
-                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias=Identifier('ta')),
+                                       right=Identifier('mindsdb.tp3', alias=Identifier('tb')),
                                        join_type='join'),
                        where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
                        )
@@ -60,12 +60,12 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
                 ProjectStep(dataframe=Result(1), columns=['*']),
             ],
             result_refs={0: [1], 1: [2]},
@@ -199,8 +199,8 @@ class TestJoinTimeseriesPredictor:
         """
 
         expected_query = Select(targets=[Identifier('tb.trip_duration'), Identifier('tb.pickup_datetime')],
-                       from_table=Join(left=Identifier('singlestore2.data.ny_taxy_train', alias='ta'),
-                                       right=Identifier('mindsdb.ny_p_2', alias='tb'),
+                       from_table=Join(left=Identifier('singlestore2.data.ny_taxy_train', alias=Identifier('ta')),
+                                       right=Identifier('mindsdb.ny_p_2', alias=Identifier('tb')),
                                        join_type=JoinType.JOIN,
                                        implicit=False),
                        where=BinaryOperation('and', args=[
@@ -215,7 +215,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='singlestore2',
                                    query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_taxy_train', alias='ta'),
+                                                from_table=Identifier('data.ny_taxy_train', alias=Identifier('ta')),
                                                 where=BinaryOperation('and', args=[
                                                     BinaryOperation('in', args=[Identifier('ta.vendor_id'),
                                                                                 Tuple(items=[Constant('1'),
@@ -229,7 +229,7 @@ class TestJoinTimeseriesPredictor:
                                    ),
                 FetchDataframeStep(integration='singlestore2',
                                    query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_taxy_train', alias='ta'),
+                                                from_table=Identifier('data.ny_taxy_train', alias=Identifier('ta')),
                                                 where=BinaryOperation('and', args=[
                                                     BinaryOperation('in', args=[Identifier('ta.vendor_id'),
                                                                                 Tuple(items=[Constant('1'),
@@ -247,7 +247,7 @@ class TestJoinTimeseriesPredictor:
                                                 )
                                    ),
                 UnionStep(left=Result(0), right=Result(1)),
-                ApplyPredictorStep(namespace='mindsdb', predictor='ny_p_2', alias='tb', dataframe=Result(2)),
+                ApplyPredictorStep(namespace='mindsdb', predictor='ny_p_2', alias=Identifier('tb'), dataframe=Result(2)),
                 ProjectStep(dataframe=Result(3), columns=['tb.trip_duration', 'tb.pickup_datetime']),
             ],
             result_refs={0: [1], 1: [2], 2: [3], 3: [4]},
@@ -316,8 +316,8 @@ class TestJoinTimeseriesPredictor:
         predictor_window = 10
         sql = "select * from mysql.data.ny_output as ta join mindsdb.tp3 as tb where ta.vendor_id = 1 and ta.pickup_hour > LATEST"
         query = Select(targets=[Star()],
-                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
-                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias=Identifier('ta')),
+                                       right=Identifier('mindsdb.tp3', alias=Identifier('tb')),
                                        join_type='join'),
                        where=BinaryOperation('and', args=[
                            BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
@@ -331,14 +331,14 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 where=BinaryOperation('=', args=[Identifier('ta.vendor_id'),
                                                                                  Constant(1)]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 limit=Constant(10)
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
                 ProjectStep(dataframe=Result(1), columns=['*']),
             ],
             result_refs={0: [1], 1: [2]},
@@ -361,8 +361,8 @@ class TestJoinTimeseriesPredictor:
         predictor_window = 10
         sql = "select * from mysql.data.ny_output as ta join mindsdb.tp3 as tb where ta.vendor_id = 1 and ta.pickup_hour > '2016-06-30 21:59:10'"
         query = Select(targets=[Star()],
-                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
-                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias=Identifier('ta')),
+                                       right=Identifier('mindsdb.tp3', alias=Identifier('tb')),
                                        join_type='join'),
                        where=BinaryOperation('and', args=[
                            BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
@@ -376,7 +376,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 where=BinaryOperation('and', args=[
                                                     BinaryOperation('=', args=[Identifier('ta.vendor_id'),
                                                                                Constant(1)]),
@@ -387,7 +387,7 @@ class TestJoinTimeseriesPredictor:
                                                 limit=Constant(predictor_window)
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
                 ProjectStep(dataframe=Result(1), columns=['*']),
             ],
             result_refs={0: [1], 1: [2]},
@@ -410,8 +410,8 @@ class TestJoinTimeseriesPredictor:
         predictor_window = 10
         sql = "select * from mysql.data.ny_output as ta join mindsdb.tp3 as tb where ta.vendor_id = 1 and ta.pickup_hour >= '2016-06-30 21:59:10'"
         query = Select(targets=[Star()],
-                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
-                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias=Identifier('ta')),
+                                       right=Identifier('mindsdb.tp3', alias=Identifier('tb')),
                                        join_type='join'),
                        where=BinaryOperation('and', args=[
                            BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
@@ -425,7 +425,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 where=BinaryOperation('and', args=[
                                                     BinaryOperation('=', args=[Identifier('ta.vendor_id'),
                                                                                Constant(1)]),
@@ -436,7 +436,7 @@ class TestJoinTimeseriesPredictor:
                                                 limit=Constant(predictor_window)
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
                 ProjectStep(dataframe=Result(1), columns=['*']),
             ],
             result_refs={0: [1], 1: [2]},
@@ -459,8 +459,8 @@ class TestJoinTimeseriesPredictor:
         predictor_window = 10
         sql = "select * from mysql.data.ny_output as ta join mindsdb.tp3 as tb where ta.vendor_id = 1 and ta.pickup_hour < '2016-06-30 21:59:10'"
         query = Select(targets=[Star()],
-                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
-                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias=Identifier('ta')),
+                                       right=Identifier('mindsdb.tp3', alias=Identifier('tb')),
                                        join_type='join'),
                        where=BinaryOperation('and', args=[
                            BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
@@ -474,7 +474,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 where=BinaryOperation('and', args=[
                                                     BinaryOperation('=', args=[Identifier('ta.vendor_id'),
                                                                                Constant(1)]),
@@ -485,7 +485,7 @@ class TestJoinTimeseriesPredictor:
                                                 # limit=Constant(predictor_window)
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
                 ProjectStep(dataframe=Result(1), columns=['*']),
             ],
             result_refs={0: [1], 1: [2]},
@@ -508,8 +508,8 @@ class TestJoinTimeseriesPredictor:
         predictor_window = 10
         sql = "select * from mysql.data.ny_output as ta join mindsdb.tp3 as tb where ta.vendor_id = 1 and ta.pickup_hour <= '2016-06-30 21:59:10'"
         query = Select(targets=[Star()],
-                       from_table=Join(left=Identifier('mysql.data.ny_output', alias='ta'),
-                                       right=Identifier('mindsdb.tp3', alias='tb'),
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias=Identifier('ta')),
+                                       right=Identifier('mindsdb.tp3', alias=Identifier('tb')),
                                        join_type='join'),
                        where=BinaryOperation('and', args=[
                            BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
@@ -523,7 +523,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_output', alias='ta'),
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 where=BinaryOperation('and', args=[
                                                     BinaryOperation('=', args=[Identifier('ta.vendor_id'),
                                                                                Constant(1)]),
@@ -534,7 +534,7 @@ class TestJoinTimeseriesPredictor:
                                                 # limit=Constant(predictor_window)
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias='tb', dataframe=Result(0)),
+                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
                 ProjectStep(dataframe=Result(1), columns=['*']),
             ],
             result_refs={0: [1], 1: [2]},

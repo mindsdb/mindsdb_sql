@@ -14,7 +14,9 @@ def get_integration_path_from_identifier(identifier):
 
     integration_name = parts[0]
 
-    table_path = '.'.join(parts[1:])
+    new_identifier = copy.deepcopy(identifier)
+    new_identifier.parts = parts[1:]
+    table_path = new_identifier.parts_to_str()
     table_alias = identifier.alias
     return integration_name, table_path, table_alias
 
@@ -37,7 +39,7 @@ def get_predictor_namespace_and_name_from_identifier(identifier):
 def disambiguate_integration_column_identifier(identifier, integration_name, table_path, table_alias,
                                                initial_path_as_alias=False):
     """Removes integration name from column if it's present, adds table path if it's absent"""
-    column_table_ref = table_alias or table_path
+    column_table_ref = table_alias.parts_to_str() if table_alias else table_path
     initial_path_str = identifier.parts_to_str()
     parts = list(identifier.parts)
 
@@ -57,14 +59,14 @@ def disambiguate_integration_column_identifier(identifier, integration_name, tab
     if identifier.alias:
         new_identifier.alias = identifier.alias
     elif initial_path_as_alias:
-        new_identifier.alias = initial_path_str
+        new_identifier.alias = Identifier(initial_path_str)
 
     return new_identifier
 
 
 def disambiguate_predictor_column_identifier(identifier, predictor_name, predictor_alias):
     """Removes integration name from column if it's present, adds table path if it's absent"""
-    table_ref = predictor_alias or predictor_name
+    table_ref = predictor_alias.parts_to_str() if predictor_alias else predictor_name
     parts = list(identifier.parts)
     if parts[0] == table_ref:
         parts = parts[1:]

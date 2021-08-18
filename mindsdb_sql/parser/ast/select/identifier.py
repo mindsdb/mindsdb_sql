@@ -35,7 +35,7 @@ class Identifier(ASTNode):
         return '.'.join(out_parts)
 
     def to_tree(self, *args, level=0, **kwargs):
-        alias_str = f', alias={repr(self.alias)}' if self.alias else ''
+        alias_str = f', alias={self.alias.to_tree()}' if self.alias else ''
         return indent(level) + f'Identifier(parts={repr(self.parts)}{alias_str})'
 
     def get_string(self, *args, **kwargs):

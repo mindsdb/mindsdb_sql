@@ -39,7 +39,7 @@ class TestPlanJoinTables:
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
                                       ProjectStep(dataframe=Result(2),
-                                                  columns=['tab1.column1', 'tab2.column1', 'tab2.column2']),
+                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
                                   ],
                                   result_refs={0: [2], 1: [2], 2: [3]})
 
@@ -125,7 +125,7 @@ class TestPlanJoinTables:
                                                                        ]
                                                                        )),
                                       ProjectStep(dataframe=Result(3),
-                                                  columns=['tab1.column1', 'tab2.column1', 'tab2.column2']),
+                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
                                   ],
                                   result_refs={0: [2], 1: [2], 2: [3], 3: [4]})
 
@@ -136,7 +136,7 @@ class TestPlanJoinTables:
         query = Select(targets=[
             Identifier('tab1.column1'),
             Identifier('tab2.column1'),
-            Function('sum', args=[Identifier('tab2.column2')], alias='total')],
+            Function('sum', args=[Identifier('tab2.column2')], alias=Identifier('total'))],
             from_table=Join(left=Identifier('int.tab1'),
                             right=Identifier('int.tab2'),
                             condition=BinaryOperation(op='=',
@@ -172,10 +172,13 @@ class TestPlanJoinTables:
                                                             Function('sum', args=[Identifier('tab2.column2')])],
                                                   columns=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
                                       FilterStep(dataframe=Result(3), query=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Constant(0)])),
-                                      ProjectStep(dataframe=Result(4), columns=['tab1.column1', 'tab2.column1', 'sum(tab2.column2)'], aliases={'sum(tab2.column2)': 'total'}),
+                                      ProjectStep(dataframe=Result(4),
+                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'),
+                                                           Identifier('sum(tab2.column2)', alias=Identifier('total'))]),
                                   ],
                                   result_refs={0: [2], 1: [2], 2: [3], 3: [4], 4: [5]})
-        assert plan == expected_plan
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
 
     def test_join_tables_plan_limit_offset(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
@@ -209,7 +212,7 @@ class TestPlanJoinTables:
                                                           )),
                                       LimitOffsetStep(dataframe=Result(2), limit=10, offset=15),
                                       ProjectStep(dataframe=Result(3),
-                                                  columns=['tab1.column1', 'tab2.column1', 'tab2.column2']),
+                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
                                   ],
                                   result_refs={0: [2], 1: [2], 2: [3], 3: [4]})
 
@@ -250,7 +253,7 @@ class TestPlanJoinTables:
                                       OrderByStep(dataframe=Result(2), order_by=[OrderBy(field=Identifier('tab1.column1'))]),
                                       LimitOffsetStep(dataframe=Result(3), limit=10, offset=15),
                                       ProjectStep(dataframe=Result(4),
-                                                  columns=['tab1.column1', 'tab2.column1', 'tab2.column2']),
+                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
                                   ],
                                   result_refs={0: [2], 1: [2], 2: [3], 3: [4], 4: [5]})
 
@@ -319,7 +322,7 @@ class TestPlanJoinTables:
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
                                       ProjectStep(dataframe=Result(2),
-                                                  columns=['tab1.column1', 'tab2.column1', 'tab2.column2']),
+                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
                                   ],
                                   result_refs={0: [2], 1: [2], 2: [3]})
 

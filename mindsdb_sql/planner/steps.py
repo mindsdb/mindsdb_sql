@@ -12,11 +12,10 @@ class PlanStep:
 
 class ProjectStep(PlanStep):
     """Selects columns from a dataframe"""
-    def __init__(self, columns, dataframe, aliases=None, *args, **kwargs):
+    def __init__(self, columns, dataframe, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.columns = columns
         self.dataframe = dataframe
-        self.aliases = aliases or {}
 
 
 class FilterStep(PlanStep):

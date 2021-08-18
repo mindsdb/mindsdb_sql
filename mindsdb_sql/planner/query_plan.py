@@ -154,8 +154,8 @@ class QueryPlan:
                                   ref_step_index=fetch_table_result.step_num)
 
         integration_name, table_path, table_alias = self.get_integration_path_from_identifier_or_error(table)
-        new_join = Join(left=Identifier(fetch_table_result.ref_name, alias=table.alias or table_path),
-                        right=Identifier(fetch_predictor_output_result.ref_name, alias=predictor_alias or predictor_name),
+        new_join = Join(left=Identifier(fetch_table_result.ref_name, alias=table.alias or Identifier(table_path)),
+                        right=Identifier(fetch_predictor_output_result.ref_name, alias=predictor_alias or Identifier(predictor_name)),
                         join_type=join.join_type)
         self.add_step(JoinStep(left=fetch_table_result, right=fetch_predictor_output_result, query=new_join))
 
@@ -163,7 +163,7 @@ class QueryPlan:
         predictor_time_column_name = self.predictor_metadata[predictor_name]['order_by_column']
         predictor_group_by_name = self.predictor_metadata[predictor_name]['group_by_column']
         predictor_window = self.predictor_metadata[predictor_name]['window']
-        predictor_ref = predictor_alias or predictor_name
+        predictor_ref = predictor_alias.parts_to_str() if predictor_alias else predictor_name
 
         join = query.from_table
         for target in query.targets:
@@ -343,15 +343,14 @@ class QueryPlan:
 
     def plan_project(self, query):
         last_step_result = self.add_last_result_reference()
-        out_aliases = {}
-        out_columns = []
+        out_identifiers = []
         for target in query.targets:
-            target_no_alias_copy = copy.deepcopy(target)
-            target_no_alias_copy.alias = None
-            if target.alias:
-                out_aliases[str(target_no_alias_copy)] = target.alias
-            out_columns.append(str(target_no_alias_copy))
-        self.add_step(ProjectStep(dataframe=last_step_result, columns=out_columns, aliases=out_aliases))
+            if isinstance(target, Identifier) or isinstance(target, Star):
+                out_identifiers.append(target)
+            else:
+                new_identifier = Identifier(str(target.to_string(alias=False)), alias=target.alias)
+                out_identifiers.append(new_identifier)
+        self.add_step(ProjectStep(dataframe=last_step_result, columns=out_identifiers))
 
     def plan_join(self, query):
         join = query.from_table
