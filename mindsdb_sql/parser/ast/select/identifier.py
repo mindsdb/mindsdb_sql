@@ -3,7 +3,7 @@ from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.utils import indent
 import re
 
-no_wrap_identifier_regex = re.compile(r'[a-zA-Z][a-zA-Z_.0-9]*')
+no_wrap_identifier_regex = re.compile(r'[a-zA-Z_][a-zA-Z_0-9]*')
 
 
 def path_str_to_parts(path_str):
