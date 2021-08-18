@@ -19,7 +19,7 @@ class TestPlanSelectFromPredictor:
                                              ))
         expected_plan = QueryPlan(predictor_namespace='mindsdb',
                                   steps=[
-                                      ApplyPredictorRowStep(namespace='mindsdb', predictor='pred',
+                                      ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('pred'),
                                                             row_dict={'x1': 1, 'x2': '2'}),
                                       ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
@@ -46,8 +46,7 @@ class TestPlanSelectFromPredictor:
         expected_plan = QueryPlan(predictor_namespace='mindsdb',
                                   steps=[
                                       ApplyPredictorRowStep(namespace='mindsdb',
-                                                            predictor='pred',
-                                                            alias=Identifier('tb'),
+                                                            predictor=Identifier('pred', alias=Identifier('tb')),
                                                             row_dict={'x1': 1, 'x2': '2'}),
                                       ProjectStep(dataframe=Result(0),
                                                   columns=[Identifier('tb.x1', alias=Identifier('col1')),
@@ -72,8 +71,7 @@ class TestPlanSelectFromPredictor:
                                              ))
         expected_plan = QueryPlan(predictor_namespace='mindsdb',
                                   steps=[
-                                      ApplyPredictorRowStep(namespace='mindsdb', predictor='pred',
-                                                            alias='pred_alias',
+                                      ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('pred', alias=Identifier('pred_alias')),
                                                             row_dict={'x1': 1, 'x2': '2'}),
                                       ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
@@ -93,7 +91,7 @@ class TestPlanSelectFromPredictor:
                                              ))
         expected_plan = QueryPlan(predictor_namespace='mindsdb',
                                   steps=[
-                                      ApplyPredictorRowStep(namespace='mindsdb', predictor='pred',
+                                      ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('pred'),
                                                             row_dict={'x1': 1, 'x2': '2'}),
                                       ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],

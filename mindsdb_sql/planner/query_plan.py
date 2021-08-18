@@ -83,34 +83,34 @@ class QueryPlan:
         return False
 
     def get_integration_path_from_identifier_or_error(self, identifier):
-        integration_name, table_path, table_alias = get_integration_path_from_identifier(identifier)
+        integration_name, table = get_integration_path_from_identifier(identifier)
         if not integration_name in self.integrations:
             raise PlanningException(f'Unknown integration {integration_name} for table {str(identifier)}')
-        return integration_name, table_path, table_alias
+        return integration_name, table
 
     def plan_integration_select(self, select):
         """Plan for a select query that can be fully executed in an integration"""
-        integration_name, table_path, table_alias = self.get_integration_path_from_identifier_or_error(select.from_table)
+        integration_name, table = self.get_integration_path_from_identifier_or_error(select.from_table)
 
         fetch_df_select = copy.deepcopy(select)
-        recursively_disambiguate_identifiers(fetch_df_select, integration_name, table_path, table_alias)
+        recursively_disambiguate_identifiers(fetch_df_select, integration_name, table)
 
         self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
     def plan_integration_nested_select(self, select):
         fetch_df_select = copy.deepcopy(select)
         deepest_select = get_deepest_select(fetch_df_select)
-        integration_name, table_path, table_alias = self.get_integration_path_from_identifier_or_error(deepest_select.from_table)
-        recursively_disambiguate_identifiers(deepest_select, integration_name, table_path, table_alias)
+        integration_name, table = self.get_integration_path_from_identifier_or_error(deepest_select.from_table)
+        recursively_disambiguate_identifiers(deepest_select, integration_name, table)
         self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
     def plan_select_from_predictor(self, select):
-        predictor_namespace, predictor_name, predictor_alias = get_predictor_namespace_and_name_from_identifier(select.from_table)
+        predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(select.from_table)
         new_query_targets = []
         for target in select.targets:
             if isinstance(target, Identifier):
                 new_query_targets.append(
-                    disambiguate_predictor_column_identifier(target, predictor_name, predictor_alias))
+                    disambiguate_predictor_column_identifier(target, predictor))
             elif isinstance(target, Star):
                 new_query_targets.append(target)
             else:
@@ -124,15 +124,14 @@ class QueryPlan:
         if not where_clause:
             raise PlanningException(f'WHERE clause required when selecting from predictor')
 
-        recursively_extract_column_values(where_clause, row_dict, predictor_name, predictor_alias)
+        recursively_extract_column_values(where_clause, row_dict, predictor)
 
         self.add_step(ApplyPredictorRowStep(namespace=predictor_namespace,
-                                            predictor=predictor_name,
-                                            row_dict=row_dict,
-                                            alias=predictor_alias))
+                                            predictor=predictor,
+                                            row_dict=row_dict))
         self.plan_project(select)
 
-    def plan_join_table_and_predictor(self, query, table, predictor_namespace, predictor_name, predictor_alias):
+    def plan_join_table_and_predictor(self, query, table, predictor_namespace, predictor):
         join = query.from_table
         self.plan_integration_select(Select(targets=[Star()],
                                             from_table=table,
@@ -146,24 +145,26 @@ class QueryPlan:
         fetch_table_result = self.add_last_result_reference()
         self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
                                          dataframe=fetch_table_result,
-                                         predictor=predictor_name,
-                                         alias=predictor_alias))
+                                         predictor=predictor))
         fetch_predictor_output_result = self.add_last_result_reference()
 
         self.add_result_reference(current_step=self.last_step_index + 1,
                                   ref_step_index=fetch_table_result.step_num)
 
-        integration_name, table_path, table_alias = self.get_integration_path_from_identifier_or_error(table)
-        new_join = Join(left=Identifier(fetch_table_result.ref_name, alias=table.alias or Identifier(table_path)),
-                        right=Identifier(fetch_predictor_output_result.ref_name, alias=predictor_alias or Identifier(predictor_name)),
+        integration_name, table = self.get_integration_path_from_identifier_or_error(table)
+        new_join = Join(left=Identifier(fetch_table_result.ref_name, alias=table.alias or Identifier(table.to_string(alias=False))),
+                        right=Identifier(fetch_predictor_output_result.ref_name, alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
                         join_type=join.join_type)
         self.add_step(JoinStep(left=fetch_table_result, right=fetch_predictor_output_result, query=new_join))
 
-    def plan_join_table_and_timeseries_predictor(self, query, table, predictor_namespace, predictor_name, predictor_alias):
+    def plan_join_table_and_timeseries_predictor(self, query, table, predictor_namespace, predictor):
+        predictor_name = predictor.to_string(alias=False)
+        predictor_alias = predictor.alias
+        predictor_ref = predictor_alias.to_string() if predictor_alias else predictor_name
+
         predictor_time_column_name = self.predictor_metadata[predictor_name]['order_by_column']
         predictor_group_by_name = self.predictor_metadata[predictor_name]['group_by_column']
         predictor_window = self.predictor_metadata[predictor_name]['window']
-        predictor_ref = predictor_alias.parts_to_str() if predictor_alias else predictor_name
 
         join = query.from_table
         for target in query.targets:
@@ -302,8 +303,7 @@ class QueryPlan:
         predictor_inputs = self.add_last_result_reference()
         self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
                                          dataframe=predictor_inputs,
-                                         predictor=predictor_name,
-                                         alias=predictor_alias))
+                                         predictor=predictor))
 
     def plan_join_two_tables(self, join):
 
@@ -314,22 +314,21 @@ class QueryPlan:
         fetch_right_result = self.add_result_reference(current_step=self.last_step_index + 1,
                                                        ref_step_index=self.last_step_index)
 
-        left_integration_name, left_table_path, left_table_alias = self.get_integration_path_from_identifier_or_error(
-            join.left)
-        right_integration_name, right_table_path, right_table_alias = self.get_integration_path_from_identifier_or_error(
-            join.right)
+        left_integration_name, left_table = self.get_integration_path_from_identifier_or_error(join.left)
+        right_integration_name, right_table = self.get_integration_path_from_identifier_or_error(join.right)
+
+        left_table_path = left_table.to_string(alias=False)
+        right_table_path = right_table.to_string(alias=False)
 
         new_condition_args = []
         for arg in join.condition.args:
             if isinstance(arg, Identifier):
                 if left_table_path in arg.parts:
                     new_condition_args.append(
-                        disambiguate_integration_column_identifier(arg, left_integration_name, left_table_path,
-                                                            left_table_alias, initial_path_as_alias=False))
+                        disambiguate_integration_column_identifier(arg, left_integration_name, left_table, initial_path_as_alias=False))
                 elif right_table_path in arg.parts:
                     new_condition_args.append(
-                        disambiguate_integration_column_identifier(arg, right_integration_name, right_table_path,
-                                                            right_table_alias, initial_path_as_alias=False))
+                        disambiguate_integration_column_identifier(arg, right_integration_name, right_table, initial_path_as_alias=False))
                 else:
                     raise PlanningException(
                         f'Wrong table or no source table in join condition for column: {str(arg)}')
@@ -337,8 +336,8 @@ class QueryPlan:
                 new_condition_args.append(arg)
         new_join = copy.deepcopy(join)
         new_join.condition.args = new_condition_args
-        new_join.left = Identifier(left_table_path, alias=left_table_alias)
-        new_join.right = Identifier(right_table_path, alias=right_table_alias)
+        new_join.left = Identifier(left_table_path, alias=left_table.alias)
+        new_join.right = Identifier(right_table_path, alias=right_table.alias)
         self.add_step(JoinStep(left=fetch_left_result, right=fetch_right_result, query=new_join))
 
     def plan_project(self, query):
@@ -365,28 +364,27 @@ class QueryPlan:
                 raise PlanningException(f'Can\'t join two predictors {str(join.left.parts[0])} and {str(join.left.parts[1])}')
 
             predictor_namespace = None
-            predictor_name = None
-            predictor_alias = None
+            predictor = None
             table = None
             if self.is_predictor(join.left):
-                predictor_namespace, predictor_name, predictor_alias = get_predictor_namespace_and_name_from_identifier(join.left)
+                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join.left)
             else:
                 table = join.left
 
             if self.is_predictor(join.right):
-                predictor_namespace, predictor_name, predictor_alias = get_predictor_namespace_and_name_from_identifier(join.right)
+                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join.right)
             else:
                 table = join.right
 
-            if predictor_name:
+            if predictor:
                 # One argument is a table, another is a predictor
                 # Apply mindsdb model to result of last dataframe fetch
                 # Then join results of applying mindsdb with table
 
-                if self.predictor_metadata[predictor_name].get('timeseries'):
-                    self.plan_join_table_and_timeseries_predictor(query, table, predictor_namespace, predictor_name, predictor_alias)
+                if self.predictor_metadata[predictor.to_string(alias=False)].get('timeseries'):
+                    self.plan_join_table_and_timeseries_predictor(query, table, predictor_namespace, predictor)
                 else:
-                    self.plan_join_table_and_predictor(query, table, predictor_namespace, predictor_name, predictor_alias)
+                    self.plan_join_table_and_predictor(query, table, predictor_namespace, predictor)
             else:
                 # Both arguments are tables, join results of 2 dataframe fetches
 

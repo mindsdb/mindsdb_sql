@@ -28,8 +28,8 @@ class TestJoinTimeseriesPredictor:
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
-                ProjectStep(dataframe=Result(1), columns=['*']),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=[Star()]),
             ],
             result_refs={0: [1], 1: [2]},
         )
@@ -65,8 +65,8 @@ class TestJoinTimeseriesPredictor:
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
-                ProjectStep(dataframe=Result(1), columns=['*']),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=[Star()]),
             ],
             result_refs={0: [1], 1: [2]},
         )
@@ -108,8 +108,8 @@ class TestJoinTimeseriesPredictor:
                                                 limit=Constant(predictor_window)
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='pred', dataframe=Result(0)),
-                ProjectStep(dataframe=Result(1), columns=['pred.time', 'pred.price']),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('pred'), dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=[Identifier('pred.time'), Identifier('pred.price')]),
             ],
             result_refs={0: [1], 1: [2]},
         )
@@ -169,8 +169,8 @@ class TestJoinTimeseriesPredictor:
                                                 )
                                    ),
                 UnionStep(left=Result(0), right=Result(1)),
-                ApplyPredictorStep(namespace='mindsdb', predictor='pred', dataframe=Result(2)),
-                ProjectStep(dataframe=Result(3), columns=['pred.time', 'pred.price']),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('pred'), dataframe=Result(2)),
+                ProjectStep(dataframe=Result(3), columns=[Identifier('pred.time'), Identifier('pred.price')]),
             ],
             result_refs={0: [1], 1: [2], 2: [3], 3: [4]},
         )
@@ -247,8 +247,8 @@ class TestJoinTimeseriesPredictor:
                                                 )
                                    ),
                 UnionStep(left=Result(0), right=Result(1)),
-                ApplyPredictorStep(namespace='mindsdb', predictor='ny_p_2', alias=Identifier('tb'), dataframe=Result(2)),
-                ProjectStep(dataframe=Result(3), columns=['tb.trip_duration', 'tb.pickup_datetime']),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('ny_p_2', alias=Identifier('tb')), dataframe=Result(2)),
+                ProjectStep(dataframe=Result(3), columns=[Identifier('tb.trip_duration'), Identifier('tb.pickup_datetime')]),
             ],
             result_refs={0: [1], 1: [2], 2: [3], 3: [4]},
         )
@@ -338,8 +338,8 @@ class TestJoinTimeseriesPredictor:
                                                 limit=Constant(10)
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
-                ProjectStep(dataframe=Result(1), columns=['*']),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=[Star()]),
             ],
             result_refs={0: [1], 1: [2]},
         )
@@ -387,8 +387,8 @@ class TestJoinTimeseriesPredictor:
                                                 limit=Constant(predictor_window)
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
-                ProjectStep(dataframe=Result(1), columns=['*']),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=[Star()]),
             ],
             result_refs={0: [1], 1: [2]},
         )
@@ -436,8 +436,8 @@ class TestJoinTimeseriesPredictor:
                                                 limit=Constant(predictor_window)
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
-                ProjectStep(dataframe=Result(1), columns=['*']),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=[Star()]),
             ],
             result_refs={0: [1], 1: [2]},
         )
@@ -485,8 +485,8 @@ class TestJoinTimeseriesPredictor:
                                                 # limit=Constant(predictor_window)
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
-                ProjectStep(dataframe=Result(1), columns=['*']),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=[Star()]),
             ],
             result_refs={0: [1], 1: [2]},
         )
@@ -534,8 +534,8 @@ class TestJoinTimeseriesPredictor:
                                                 # limit=Constant(predictor_window)
                                                 )
                                    ),
-                ApplyPredictorStep(namespace='mindsdb', predictor='tp3', alias=Identifier('tb'), dataframe=Result(0)),
-                ProjectStep(dataframe=Result(1), columns=['*']),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(0)),
+                ProjectStep(dataframe=Result(1), columns=[Star()]),
             ],
             result_refs={0: [1], 1: [2]},
         )
