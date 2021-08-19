@@ -3,7 +3,7 @@ from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.utils import indent
 import re
 
-no_wrap_identifier_regex = re.compile(r'[a-zA-Z][a-zA-Z_.0-9]*')
+no_wrap_identifier_regex = re.compile(r'[a-zA-Z_][a-zA-Z_0-9]*')
 
 
 def path_str_to_parts(path_str):
@@ -35,7 +35,7 @@ class Identifier(ASTNode):
         return '.'.join(out_parts)
 
     def to_tree(self, *args, level=0, **kwargs):
-        alias_str = f', alias={repr(self.alias)}' if self.alias else ''
+        alias_str = f', alias={self.alias.to_tree()}' if self.alias else ''
         return indent(level) + f'Identifier(parts={repr(self.parts)}{alias_str})'
 
     def get_string(self, *args, **kwargs):

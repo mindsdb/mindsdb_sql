@@ -33,7 +33,7 @@ class Select(ASTNode):
         ind = indent(level)
         ind1 = indent(level+1)
 
-        alias_str = f'\n{ind1}alias={repr(self.alias)},' if self.alias else ''
+        alias_str = f'\n{ind1}alias={self.alias.to_tree()},' if self.alias else ''
         distinct_str = f'\n{ind1}distinct={repr(self.distinct)},' if self.distinct else ''
         parentheses_str = f'\n{ind1}parentheses={repr(self.parentheses)},' if self.parentheses else ''
 

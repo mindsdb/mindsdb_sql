@@ -8,7 +8,7 @@ class Constant(ASTNode):
         self.value = value
 
     def to_tree(self, *args, level=0, **kwargs):
-        alias_str = f', alias={repr(self.alias)}' if self.alias else ''
+        alias_str = f', alias={self.alias.to_tree()}' if self.alias else ''
         return indent(level) + f'Constant(value={repr(self.value)}{alias_str})'
 
     def get_string(self, *args, **kwargs):

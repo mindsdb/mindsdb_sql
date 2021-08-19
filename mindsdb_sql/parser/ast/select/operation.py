@@ -69,7 +69,8 @@ class Function(Operation):
 
         arg_trees = [arg.to_tree(level=level+2) for arg in self.args]
         arg_trees_str = ",\n".join(arg_trees)
-        out_str = f'{ind}{self.__class__.__name__}(op={repr(self.op)}, distinct={repr(self.distinct)},alias={repr(self.alias)},\n{ind1}args=[\n{arg_trees_str}\n{ind1}]\n{ind})'
+        alias_str = f'alias={self.alias.to_tree()},' if self.alias else ''
+        out_str = f'{ind}{self.__class__.__name__}(op={repr(self.op)}, distinct={repr(self.distinct)},{alias_str}\n{ind1}args=[\n{arg_trees_str}\n{ind1}]\n{ind})'
         return out_str
 
     def get_string(self, *args, **kwargs):

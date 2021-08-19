@@ -5,7 +5,7 @@ class ASTNode:
 
     def maybe_add_alias(self, some_str, alias=True):
         if self.alias and alias:
-            return f'{some_str} AS {self.alias}'
+            return f'{some_str} AS {self.alias.to_string(alias=False)}'
         else:
             return some_str
 

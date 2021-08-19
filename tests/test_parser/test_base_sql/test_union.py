@@ -57,7 +57,7 @@ class TestUnion:
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Select(targets=[Star()],
                               from_table=Union(unique=True,
-                                               alias='alias',
+                                               alias=Identifier('alias'),
                                                left=Select(
                                                            targets=[Identifier('col1')],
                                                            from_table=Identifier(parts=['tab1']),

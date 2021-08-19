@@ -63,7 +63,18 @@ class TestSelectStructure:
         assert len(ast.targets) == 1
         assert isinstance(ast.targets[0], Identifier)
         assert ast.targets[0].parts == ['column']
-        assert ast.targets[0].alias == 'column_alias'
+        assert ast.targets[0].alias.parts[0] == 'column_alias'
+        assert str(ast).lower() == sql.lower()
+
+    def test_select_identifier_alias_complex(self, dialect):
+        sql = f'SELECT column AS `column alias spaces`'
+        ast = parse_sql(sql, dialect=dialect)
+
+        assert isinstance(ast, Select)
+        assert len(ast.targets) == 1
+        assert isinstance(ast.targets[0], Identifier)
+        assert ast.targets[0].parts == ['column']
+        assert ast.targets[0].alias.parts[0] == 'column alias spaces'
         assert str(ast).lower() == sql.lower()
 
     def test_select_multiple_identifiers(self, dialect):
@@ -117,7 +128,7 @@ class TestSelectStructure:
         assert ast.targets[0].parts[0] == 'column1'
         assert ast.targets[1].parts[0] == 'column2'
         assert ast.targets[2].value == 1
-        assert ast.targets[2].alias == 'renamed_constant'
+        assert ast.targets[2].alias.parts[0] == 'renamed_constant'
 
         assert isinstance(ast.from_table, Identifier)
         assert ast.from_table.parts[0] == 'tab'
@@ -130,7 +141,7 @@ class TestSelectStructure:
         assert str(parse_sql(query)) == query
         assert str(parse_sql(query)) == str(Select(targets=[Star(),
                                                             Identifier(parts=["column1"]),
-                                                            Identifier(parts=["column1"], alias='aliased'),
+                                                            Identifier(parts=["column1"], alias=Identifier('aliased')),
                                                             BinaryOperation(op="+",
                                                                             args=(Identifier(parts=['column1']),
                                                                                    Identifier(parts=['column2']))
@@ -269,7 +280,7 @@ class TestSelectStructure:
                                                             Identifier(parts=["column2"]),
                                                             Function(op="sum",
                                                                          args=[Identifier(parts=["column3"])],
-                                                                         alias='total')],
+                                                                         alias=Identifier('total'))],
                                                    from_table=Identifier(parts=['t1']),
                                                    group_by=[Identifier(parts=["column1"]), Identifier(parts=["column2"])]))
 
@@ -502,10 +513,11 @@ class TestSelectStructure:
         expected_ast = Select(targets=[Star()],
                                                    from_table=Select(targets=[Identifier(parts=['column1'])],
                                                               from_table=Identifier(parts=['t1']),
-                                                              alias='sub',
+                                                              alias=Identifier('sub'),
                                                               parentheses=True))
         ast = parse_sql(sql, dialect=dialect)
         assert str(ast).lower() == sql.lower()
+        assert ast.to_tree() == expected_ast.to_tree()
         assert ast == expected_ast
 
         sql = f"""SELECT * FROM (SELECT column1 FROM t1)"""
@@ -528,7 +540,7 @@ class TestSelectStructure:
 
         sql = f"""SELECT *, (SELECT 1) AS ones FROM t1"""
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Select(targets=[Star(), Select(targets=[Constant(1)], alias='ones', parentheses=True)],
+        expected_ast = Select(targets=[Star(), Select(targets=[Constant(1)], alias=Identifier('ones'), parentheses=True)],
                               from_table=Identifier(parts=['t1']))
         assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
@@ -553,20 +565,20 @@ class TestSelectStructure:
     def test_type_cast(self, dialect):
         sql = f"""SELECT CAST(4 AS int64) AS result"""
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Select(targets=[TypeCast(type_name='int64', arg=Constant(4), alias='result')])
+        expected_ast = Select(targets=[TypeCast(type_name='int64', arg=Constant(4), alias=Identifier('result'))])
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
         sql = f"""SELECT CAST(column1 AS float) AS result"""
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Select(targets=[TypeCast(type_name='float', arg=Identifier(parts=['column1']), alias='result')])
+        expected_ast = Select(targets=[TypeCast(type_name='float', arg=Identifier(parts=['column1']), alias=Identifier('result'))])
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
         sql = f"""SELECT CAST((column1 + column2) AS float) AS result"""
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Select(targets=[TypeCast(type_name='float', arg=BinaryOperation(op='+', parentheses=True, args=[
-            Identifier(parts=['column1']), Identifier(parts=['column2'])]), alias='result')])
+            Identifier(parts=['column1']), Identifier(parts=['column2'])]), alias=Identifier('result'))])
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
@@ -589,7 +601,7 @@ class TestSelectStructure:
 
         expected_ast = Select(
             targets=[Function(op='COUNT', distinct=True,
-                              args=(Identifier(parts=['survived']),), alias='uniq_survived')],
+                              args=(Identifier(parts=['survived']),), alias=Identifier('uniq_survived'))],
             from_table=Identifier(parts=['titanic'])
         )
 

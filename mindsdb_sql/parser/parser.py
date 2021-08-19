@@ -160,7 +160,7 @@ class SQLParser(Parser):
     @_('from_table AS identifier')
     def from_table(self, p):
         entity = p.from_table
-        entity.alias = str(p.identifier)
+        entity.alias = p.identifier
         return entity
 
     @_('LPAREN query RPAREN')
@@ -211,7 +211,7 @@ class SQLParser(Parser):
         col = p.result_column
         if col.alias:
             raise ParsingException(f'Attempt to provide two aliases for {str(col)}')
-        col.alias = str(p.identifier)
+        col.alias = p.identifier
         return col
 
     @_('LPAREN select RPAREN')
@@ -266,9 +266,9 @@ class SQLParser(Parser):
     def expr_list_or_nothing(self, p):
         pass
 
-    @_('CAST LPAREN expr AS identifier RPAREN')
+    @_('CAST LPAREN expr AS ID RPAREN')
     def expr(self, p):
-        return TypeCast(arg=p.expr, type_name=str(p.identifier))
+        return TypeCast(arg=p.expr, type_name=str(p.ID))
 
     @_('enumeration')
     def expr_list(self, p):
