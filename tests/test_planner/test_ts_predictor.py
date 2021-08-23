@@ -7,7 +7,7 @@ from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner import plan_query, QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, ApplyPredictorStep,
-                                       ApplyPredictorRowStep, GroupByStep, UnionStep)
+                                       ApplyPredictorRowStep, GroupByStep, UnionStep, LimitOffsetStep)
 from mindsdb_sql.utils import JoinType
 
 
@@ -333,7 +333,7 @@ class TestJoinTimeseriesPredictor:
                                                 where=BinaryOperation('=', args=[Identifier('ta.vendor_id'),
                                                                                  Constant(1)]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
-                                                limit=Constant(10)
+                                                limit=Constant(predictor_window)
                                                 )
                                    ),
                 ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(0)),
@@ -480,7 +480,6 @@ class TestJoinTimeseriesPredictor:
                                                                                Constant('2016-06-30 21:59:10')]),
                                                 ]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
-                                                # limit=Constant(predictor_window)
                                                 )
                                    ),
                 ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(0)),
@@ -529,13 +528,49 @@ class TestJoinTimeseriesPredictor:
                                                                                Constant('2016-06-30 21:59:10')]),
                                                 ]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
-                                                # limit=Constant(predictor_window)
                                                 )
                                    ),
                 ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(0)),
                 ProjectStep(dataframe=Result(1), columns=[Star()]),
             ],
             result_refs={0: [1], 1: [2]},
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql'],
+                          predictor_namespace='mindsdb',
+                          predictor_metadata={
+                              'tp3': {'timeseries': True,
+                                       'order_by_column': 'pickup_hour',
+                                       'group_by_column': 'vendor_id',
+                                       'window': predictor_window}
+                          })
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
+    def test_join_predictor_timeseries_query_with_limit(self):
+        predictor_window = 10
+        query = Select(targets=[Star()],
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias=Identifier('ta')),
+                                       right=Identifier('mindsdb.tp3', alias=Identifier('tb')),
+                                       join_type='join'),
+                       limit=Constant(1000),
+                       )
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
+                                                )
+                                   ),
+                ApplyPredictorStep(dataframe=Result(0), namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb'))),
+                LimitOffsetStep(dataframe=Result(1), limit=query.limit),
+                ProjectStep(dataframe=Result(2), columns=[Star()]),
+            ],
+            result_refs={0: [1], 1: [2], 2: [3]},
         )
 
         plan = plan_query(query,
