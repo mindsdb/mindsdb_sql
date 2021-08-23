@@ -166,7 +166,6 @@ class QueryPlan:
         predictor_group_by_name = self.predictor_metadata[predictor_name]['group_by_column']
         predictor_window = self.predictor_metadata[predictor_name]['window']
 
-        join = query.from_table
         for target in query.targets:
             if isinstance(target, Identifier):
                 if not predictor_ref in target.parts_to_str():
@@ -232,12 +231,11 @@ class QueryPlan:
         if query.order_by:
             raise PlanningException(
                 f'Can\'t provide ORDER BY to time series predictor, it will be taken from predictor settings. Found: {query.order_by}')
-        if query.limit:
-            raise PlanningException(
-                f'Can\'t provide LIMIT to time series predictor, it will be taken from predictor settings. Found: {query.limit}')
+
+        saved_limit = query.limit
 
         if query.group_by or query.having or query.offset:
-            raise PlanningException(f'Unsupported query to timeseries predictor.4')
+            raise PlanningException(f'Unsupported query to timeseries predictor: {str(query)}')
 
         validate_ts_where_condition(query.where, allowed_columns=[predictor_time_column_name, predictor_group_by_name])
 
@@ -258,8 +256,7 @@ class QueryPlan:
             integration_select_2 = Select(targets=[Star()],
                                           from_table=table,
                                           where=query.where,
-                                          order_by=order_by,
-                                          limit=Constant(predictor_window))
+                                          order_by=order_by)
 
             self.plan_integration_select(integration_select_1)
             fetch1_result = self.add_last_result_reference()
@@ -304,6 +301,10 @@ class QueryPlan:
         self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
                                          dataframe=predictor_inputs,
                                          predictor=predictor))
+
+        if saved_limit:
+            predictor_outputs= self.add_last_result_reference()
+            self.add_step(LimitOffsetStep(dataframe=predictor_outputs, limit=saved_limit))
 
     def plan_join_two_tables(self, join):
 
