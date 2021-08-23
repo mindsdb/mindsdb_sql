@@ -166,7 +166,6 @@ class QueryPlan:
         predictor_group_by_name = self.predictor_metadata[predictor_name]['group_by_column']
         predictor_window = self.predictor_metadata[predictor_name]['window']
 
-        join = query.from_table
         for target in query.targets:
             if isinstance(target, Identifier):
                 if not predictor_ref in target.parts_to_str():
@@ -258,8 +257,7 @@ class QueryPlan:
             integration_select_2 = Select(targets=[Star()],
                                           from_table=table,
                                           where=query.where,
-                                          order_by=order_by,
-                                          limit=Constant(predictor_window))
+                                          order_by=order_by)
 
             self.plan_integration_select(integration_select_1)
             fetch1_result = self.add_last_result_reference()

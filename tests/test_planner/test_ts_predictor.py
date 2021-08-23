@@ -164,8 +164,7 @@ class TestJoinTimeseriesPredictor:
                                                     BinaryOperation('=', args=[Identifier('tab1.asset'),
                                                                                Constant('bitcoin')]),
                                                 ]),
-                                                order_by=[OrderBy(Identifier('tab1.time'), direction='DESC')],
-                                                limit=Constant(predictor_window)
+                                                order_by=[OrderBy(Identifier('tab1.time'), direction='DESC')]
                                                 )
                                    ),
                 UnionStep(left=Result(0), right=Result(1)),
@@ -243,7 +242,6 @@ class TestJoinTimeseriesPredictor:
                                                                            ]),
                                                 ]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_datetime'), direction='DESC')],
-                                                limit=Constant(predictor_window)
                                                 )
                                    ),
                 UnionStep(left=Result(0), right=Result(1)),
