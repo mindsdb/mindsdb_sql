@@ -2,7 +2,7 @@ import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import Select, Identifier, Join, Star, BinaryOperation, Constant, Operation, OrderBy, \
-    BetweenOperation
+    BetweenOperation, Union
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
@@ -118,7 +118,7 @@ class QueryPlan:
             if isinstance(target, Identifier):
                 new_query_targets.append(
                     disambiguate_predictor_column_identifier(target, predictor))
-            elif isinstance(target, Star):
+            elif type(target) in (Star, Constant):
                 new_query_targets.append(target)
             else:
                 raise PlanningException(f'Unknown select target {type(target)}')
@@ -435,9 +435,19 @@ class QueryPlan:
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 
+    def plan_union(self, query):
+        self.plan_select(query.left)
+        query1_result = self.add_last_result_reference()
+        self.plan_select(query.right)
+        query2_result = self.add_last_result_reference()
+
+        self.add_step(UnionStep(left=query1_result, right=query2_result, unique=query.unique))
+
     def from_query(self, query):
         if isinstance(query, Select):
             self.plan_select(query)
+        elif isinstance(query, Union):
+            self.plan_union(query)
         else:
             raise PlanningException(f'Unsupported query type {type(query)}')
 

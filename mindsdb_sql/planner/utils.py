@@ -95,7 +95,7 @@ def disambiguate_select_targets(targets, integration_name, table):
             new_query_targets.append(
                 disambiguate_integration_column_identifier(target, integration_name, table,
                                                                 initial_path_as_alias=True))
-        elif isinstance(target, Star):
+        elif type(target) in (Star, Constant):
             new_query_targets.append(target)
         elif isinstance(target, Operation) or isinstance(target, Select):
             new_op = copy.deepcopy(target)
