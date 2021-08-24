@@ -7,7 +7,9 @@ from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
-                                       UnionStep)
+                                       UnionStep, MapReduceStep, MultipleSteps)
+from mindsdb_sql.planner.ts_utils import validate_ts_where_condition, find_time_filter, replace_time_filter, \
+    find_and_remove_time_filter
 from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        get_predictor_namespace_and_name_from_identifier,
                                        disambiguate_integration_column_identifier,
@@ -88,14 +90,18 @@ class QueryPlan:
             raise PlanningException(f'Unknown integration {integration_name} for table {str(identifier)}')
         return integration_name, table
 
-    def plan_integration_select(self, select):
-        """Plan for a select query that can be fully executed in an integration"""
+    def get_integration_select_step(self, select):
         integration_name, table = self.get_integration_path_from_identifier_or_error(select.from_table)
 
         fetch_df_select = copy.deepcopy(select)
         recursively_disambiguate_identifiers(fetch_df_select, integration_name, table)
 
-        self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
+        return FetchDataframeStep(integration=integration_name, query=fetch_df_select)
+
+    def plan_integration_select(self, select):
+        """Plan for a select query that can be fully executed in an integration"""
+
+        self.add_step(self.get_integration_select_step(select))
 
     def plan_integration_nested_select(self, select):
         fetch_df_select = copy.deepcopy(select)
@@ -157,6 +163,15 @@ class QueryPlan:
                         join_type=join.join_type)
         self.add_step(JoinStep(left=fetch_table_result, right=fetch_predictor_output_result, query=new_join))
 
+    def plan_fetch_timeseries_partitions(self, query, table, predictor_group_by_name):
+        query = Select(
+            distinct=True,
+            targets=[Identifier(predictor_group_by_name)],
+            from_table=table,
+            where=query.where,
+        )
+        self.plan_integration_select(query)
+
     def plan_join_table_and_timeseries_predictor(self, query, table, predictor_namespace, predictor):
         predictor_name = predictor.to_string(alias=False)
         predictor_alias = predictor.alias
@@ -172,62 +187,6 @@ class QueryPlan:
                     raise PlanningException(f'Can\'t request table columns when applying timeseries predictor, but found: {str(target)}. '
                                             f'Try to request the same column from the predictor, like "SELECT pred.column".')
 
-        def find_time_filter(op, time_column_name):
-            if not op:
-                return
-            if op.op == 'and':
-                left = find_time_filter(op.args[0], time_column_name)
-                right = find_time_filter(op.args[1], time_column_name)
-                if left and right:
-                    raise PlanningException('Can provide only one filter by predictor order_by column, found two')
-
-                return left or right
-            elif ((isinstance(op.args[0], Identifier) and op.args[0].parts[-1] == time_column_name) or
-                 (isinstance(op.args[1], Identifier) and op.args[1].parts[-1] == time_column_name)):
-                return op
-
-        def replace_time_filter(op, time_filter, new_filter):
-            if op == time_filter:
-                return new_filter
-            elif op.args[0] == time_filter:
-                op.args[0] = new_filter
-            elif op.args[1] == time_filter:
-                op.args[1] = new_filter
-
-        def find_and_remove_time_filter(op, time_filter):
-            if isinstance(op, BinaryOperation):
-                if op == time_filter:
-                    return None
-                elif op.op == 'and':
-                    left_arg = op.args[0] if op.args[0] != time_filter else None
-                    right_arg = op.args[1] if op.args[1] != time_filter else None
-                    if not left_arg:
-                        return op.args[1]
-                    elif not right_arg:
-                        return op.args[0]
-                    return op
-            return op
-
-        def validate_ts_where_condition(op, allowed_columns, allow_and=True):
-            """Error if the where condition caontains invalid ops, is nested or filters on some column that's not time or partition"""
-            if not op:
-                return
-            allowed_ops = ['and', '>', '>=', '=', '<', '<=', 'between', 'in']
-            if not allow_and:
-                allowed_ops.remove('and')
-            if op.op not in allowed_ops:
-                raise PlanningException(f'For time series predictors only the following operations are allowed in WHERE: {str(allowed_ops)}, found instead: {str(op)}.')
-
-            for arg in op.args:
-                if isinstance(arg, Identifier):
-                    if arg.parts[-1] not in allowed_columns:
-                        raise PlanningException(f'For time series predictor only the following columns are allowed in WHERE: {str(allowed_columns)}, found instead: {str(arg)}.')
-
-            if isinstance(op.args[0], Operation):
-                validate_ts_where_condition(op.args[0], allowed_columns, allow_and=False)
-            if isinstance(op.args[1], Operation):
-                validate_ts_where_condition(op.args[1], allowed_columns, allow_and=False)
-
         if query.order_by:
             raise PlanningException(
                 f'Can\'t provide ORDER BY to time series predictor, it will be taken from predictor settings. Found: {query.order_by}')
@@ -241,7 +200,14 @@ class QueryPlan:
 
         time_filter = find_time_filter(query.where, time_column_name=predictor_time_column_name)
 
+        no_time_filter_query = copy.deepcopy(query)
+        no_time_filter_query.where = find_and_remove_time_filter(no_time_filter_query.where, time_filter)
+        self.plan_fetch_timeseries_partitions(no_time_filter_query, table, predictor_group_by_name)
+        fetch_partitions_result = self.add_last_result_reference()
+
         order_by = [OrderBy(Identifier(parts=[predictor_time_column_name]), direction='DESC')]
+
+        # Obtain integration selects
         if isinstance(time_filter, BetweenOperation):
             between_from = time_filter.args[1]
             preparation_time_filter = BinaryOperation('<', args=[Identifier(predictor_time_column_name), between_from])
@@ -258,11 +224,25 @@ class QueryPlan:
                                           where=query.where,
                                           order_by=order_by)
 
-            self.plan_integration_select(integration_select_1)
-            fetch1_result = self.add_last_result_reference()
-            self.plan_integration_select(integration_select_2)
-            fetch2_result = self.add_last_result_reference()
-            self.add_step(UnionStep(left=fetch1_result, right=fetch2_result))
+            integration_selects = [integration_select_1, integration_select_2]
+
+        # elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('>', '>='):
+        #     new_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
+        #     time_filter.op = new_time_filter_op
+        #     integration_select = Select(targets=[Star()],
+        #                                 from_table=table,
+        #                                 where=query.where,
+        #                                 order_by=order_by,
+        #                                 limit=Constant(predictor_window),
+        #                                 )
+        #     self.plan_integration_select(integration_select)
+        # elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('<', '<='):
+        #     integration_select = Select(targets=[Star()],
+        #                                 from_table=table,
+        #                                 where=query.where,
+        #                                 order_by=order_by,
+        #                                 )
+        #     self.plan_integration_select(integration_select)
         elif isinstance(time_filter, BinaryOperation) and time_filter.op == '>' and time_filter.args[1] == Latest():
             integration_select = Select(targets=[Star()],
                                         from_table=table,
@@ -271,31 +251,30 @@ class QueryPlan:
                                         limit=Constant(predictor_window),
                                         )
             integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
-            self.plan_integration_select(integration_select)
-        elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('>', '>='):
-            new_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
-            time_filter.op = new_time_filter_op
-            integration_select = Select(targets=[Star()],
-                                        from_table=table,
-                                        where=query.where,
-                                        order_by=order_by,
-                                        limit=Constant(predictor_window),
-                                        )
-            self.plan_integration_select(integration_select)
-        elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('<', '<='):
-            integration_select = Select(targets=[Star()],
-                                        from_table=table,
-                                        where=query.where,
-                                        order_by=order_by,
-                                        )
-            self.plan_integration_select(integration_select)
+            integration_selects = [integration_select]
         else:
             integration_select = Select(targets=[Star()],
                                         from_table=table,
                                         where=query.where,
                                         order_by=order_by,
                                         )
-            self.plan_integration_select(integration_select)
+            integration_selects = [integration_select]
+
+        # Obtain map step for all partitions
+        for integration_select in integration_selects:
+            if not integration_select.where:
+                integration_select.where = BinaryOperation('=', args=[Identifier(predictor_group_by_name), Constant('$var')])
+            else:
+                integration_select.where = BinaryOperation('and', args=[integration_select.where,
+                                                           BinaryOperation('=', args=[Identifier(predictor_group_by_name),
+                                                                                  Constant('$var')])])
+
+        if len(integration_selects) == 1:
+            select_partition_step = self.get_integration_select_step(integration_selects[0])
+        else:
+            select_partition_step = MultipleSteps(steps=[self.get_integration_select_step(s) for s in integration_selects], reduce='union')
+
+        self.add_step(MapReduceStep(values=fetch_partitions_result, reduce='union', step=select_partition_step))
 
         predictor_inputs = self.add_last_result_reference()
         self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
@@ -303,11 +282,10 @@ class QueryPlan:
                                          predictor=predictor))
 
         if saved_limit:
-            predictor_outputs= self.add_last_result_reference()
+            predictor_outputs = self.add_last_result_reference()
             self.add_step(LimitOffsetStep(dataframe=predictor_outputs, limit=saved_limit))
 
     def plan_join_two_tables(self, join):
-
         self.plan_integration_select(Select(targets=[Star()], from_table=join.left))
         self.plan_integration_select(Select(targets=[Star()], from_table=join.right))
         fetch_left_result = self.add_result_reference(current_step=self.last_step_index + 1,
