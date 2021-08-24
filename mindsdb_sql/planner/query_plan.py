@@ -285,21 +285,17 @@ class QueryPlan:
                                          predictor=predictor))
 
         predictor_apply_result = self.add_last_result_reference()
-        fetch_table_columns_query = Select(
-            targets=[Star()],
-            from_table=table,
-            where=query.where
-        )
-        self.plan_integration_select(select=fetch_table_columns_query)
-        fetch_table_result = self.add_last_result_reference()
+
+        # Update reference
+        predictor_inputs = self.add_result_reference(current_step=self.last_step_index+1, ref_step_index=predictor_inputs.step_num)
         integration_name, table = self.get_integration_path_from_identifier_or_error(table)
         join = Join(
             left=Identifier(predictor_apply_result.ref_name,
                              alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
-            right=Identifier(fetch_table_result.ref_name,
+            right=Identifier(predictor_inputs.ref_name,
                              alias=table.alias or Identifier(table.to_string(alias=False))),
             join_type=JoinType.LEFT_JOIN)
-        self.add_step(JoinStep(left=predictor_apply_result, right=fetch_table_result, query=join))
+        self.add_step(JoinStep(left=predictor_apply_result, right=predictor_inputs, query=join))
 
         if saved_limit:
             predictor_outputs = self.add_last_result_reference()
