@@ -88,7 +88,6 @@ class ApplyPredictorStep(PlanStep):
         self.dataframe = dataframe
 
 
-
 class ApplyPredictorRowStep(PlanStep):
     """Applies a mindsdb predictor to one row of values and returns a dataframe of one row, the predictor."""
     def __init__(self, namespace, predictor, row_dict, *args, **kwargs):
@@ -97,5 +96,21 @@ class ApplyPredictorRowStep(PlanStep):
         self.predictor = predictor
         self.row_dict = row_dict
 
+
+class MapReduceStep(PlanStep):
+    """Applies a step for each value in a list, and then reduces results to a single dataframe"""
+    def __init__(self, values, step, reduce, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.values = values
+        self.step = step
+        self.reduce = reduce
+
+
+class MultipleSteps(PlanStep):
+    def __init__(self, steps, reduce, *args, **kwargs):
+        """Runs multiple steps and reduces results to a single dataframe"""
+        super().__init__(*args, **kwargs)
+        self.steps = steps
+        self.reduce = reduce
 
 
