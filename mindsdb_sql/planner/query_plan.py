@@ -18,6 +18,7 @@ from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        get_deepest_select,
                                        recursively_extract_column_values,
                                        recursively_check_join_identifiers_for_ambiguity)
+from mindsdb_sql.utils import JoinType
 
 
 class QueryPlan:
@@ -252,6 +253,8 @@ class QueryPlan:
                                         )
             integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
             integration_selects = [integration_select]
+
+            query.where = find_and_remove_time_filter(query.where, time_filter)
         else:
             integration_select = Select(targets=[Star()],
                                         from_table=table,
@@ -280,6 +283,23 @@ class QueryPlan:
         self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
                                          dataframe=predictor_inputs,
                                          predictor=predictor))
+
+        predictor_apply_result = self.add_last_result_reference()
+        fetch_table_columns_query = Select(
+            targets=[Star()],
+            from_table=table,
+            where=query.where
+        )
+        self.plan_integration_select(select=fetch_table_columns_query)
+        fetch_table_result = self.add_last_result_reference()
+        integration_name, table = self.get_integration_path_from_identifier_or_error(table)
+        join = Join(
+            left=Identifier(predictor_apply_result.ref_name,
+                             alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
+            right=Identifier(fetch_table_result.ref_name,
+                             alias=table.alias or Identifier(table.to_string(alias=False))),
+            join_type=JoinType.LEFT_JOIN)
+        self.add_step(JoinStep(left=predictor_apply_result, right=fetch_table_result, query=join))
 
         if saved_limit:
             predictor_outputs = self.add_last_result_reference()

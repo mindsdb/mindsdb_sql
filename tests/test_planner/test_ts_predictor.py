@@ -7,7 +7,7 @@ from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner import plan_query, QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, ApplyPredictorStep,
-                                       LimitOffsetStep, MapReduceStep, MultipleSteps)
+                                       LimitOffsetStep, MapReduceStep, MultipleSteps, JoinStep)
 from mindsdb_sql.utils import JoinType
 
 
@@ -40,9 +40,21 @@ class TestJoinTimeseriesPredictor:
                                    ),
                               ),
                 ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(1)),
-                ProjectStep(dataframe=Result(2), columns=[Star()]),
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                                ),
+                                   ),
+                JoinStep(left=Result(2),
+                         right=Result(3),
+                         query=Join(
+                             left=Identifier('result_2', alias=Identifier('tb')),
+                             right=Identifier('result_3', alias=Identifier('ta')),
+                             join_type=JoinType.LEFT_JOIN)
+                         ),
+                ProjectStep(dataframe=Result(4), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2], 2: [3]},
+            result_refs={0: [1], 1: [2], 2: [3], 3: [4], 4: [5]},
         )
 
         plan = plan_query(query,
@@ -55,7 +67,8 @@ class TestJoinTimeseriesPredictor:
                                        'window': predictor_window}
                           })
 
-        assert plan.steps == expected_plan.steps
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
         assert plan.result_refs == expected_plan.result_refs
 
     def test_join_predictor_timeseries_query_with_limit(self):
@@ -92,10 +105,22 @@ class TestJoinTimeseriesPredictor:
                               ),
                 ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
                                    dataframe=Result(1)),
-                LimitOffsetStep(dataframe=Result(2), limit=query.limit),
-                ProjectStep(dataframe=Result(3), columns=[Star()]),
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                                ),
+                                   ),
+                JoinStep(left=Result(2),
+                         right=Result(3),
+                         query=Join(
+                             left=Identifier('result_2', alias=Identifier('tb')),
+                             right=Identifier('result_3', alias=Identifier('ta')),
+                             join_type=JoinType.LEFT_JOIN)
+                         ),
+                LimitOffsetStep(dataframe=Result(4), limit=query.limit),
+                ProjectStep(dataframe=Result(5), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2], 2: [3], 3: [4]},
+            result_refs={0: [1], 1: [2], 2: [3], 3: [4], 4: [5], 5: [6]},
         )
 
         plan = plan_query(query,
@@ -108,7 +133,8 @@ class TestJoinTimeseriesPredictor:
                                        'window': predictor_window}
                           })
 
-        assert plan.steps == expected_plan.steps
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
         assert plan.result_refs == expected_plan.result_refs
 
     def test_join_predictor_timeseries_filter_by_group_by_column(self):
@@ -152,9 +178,22 @@ class TestJoinTimeseriesPredictor:
                               ),
                 ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
                                    dataframe=Result(1)),
-                ProjectStep(dataframe=Result(2), columns=[Star()]),
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
+                                                ),
+                                   ),
+                JoinStep(left=Result(2),
+                         right=Result(3),
+                         query=Join(
+                             left=Identifier('result_2', alias=Identifier('tb')),
+                             right=Identifier('result_3', alias=Identifier('ta')),
+                             join_type=JoinType.LEFT_JOIN)
+                         ),
+                ProjectStep(dataframe=Result(4), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2], 2: [3]},
+            result_refs={0: [1], 1: [2], 2: [3], 3: [4], 4: [5]},
         )
 
         plan = plan_query(query,
@@ -217,9 +256,23 @@ class TestJoinTimeseriesPredictor:
                               ),
                 ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
                                    dataframe=Result(1)),
-                ProjectStep(dataframe=Result(2), columns=[Star()]),
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                                where=BinaryOperation('=',
+                                                                      args=[Identifier('ta.vendor_id'), Constant(1)]),
+                                                ),
+                                   ),
+                JoinStep(left=Result(2),
+                         right=Result(3),
+                         query=Join(
+                             left=Identifier('result_2', alias=Identifier('tb')),
+                             right=Identifier('result_3', alias=Identifier('ta')),
+                             join_type=JoinType.LEFT_JOIN)
+                         ),
+                ProjectStep(dataframe=Result(4), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2], 2: [3]},
+            result_refs={0: [1], 1: [2], 2: [3], 3: [4], 4: [5]},
         )
 
         plan = plan_query(query,
@@ -317,9 +370,27 @@ class TestJoinTimeseriesPredictor:
                               )),
                 ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
                                    dataframe=Result(1)),
-                ProjectStep(dataframe=Result(2), columns=[Star()]),
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                                where=BinaryOperation('and', args=[
+                                                    BetweenOperation(
+                                                        args=[Identifier('ta.pickup_hour'), Constant(1), Constant(10)]),
+                                                    BinaryOperation('=',
+                                                                    args=[Identifier('ta.vendor_id'), Constant(1)]),
+                                                ]),
+                                                ),
+                                   ),
+                JoinStep(left=Result(2),
+                         right=Result(3),
+                         query=Join(
+                             left=Identifier('result_2', alias=Identifier('tb')),
+                             right=Identifier('result_3', alias=Identifier('ta')),
+                             join_type=JoinType.LEFT_JOIN)
+                         ),
+                ProjectStep(dataframe=Result(4), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2], 2: [3]},
+            result_refs={0: [1], 1: [2], 2: [3], 3: [4], 4: [5]},
         )
 
         plan = plan_query(query,
