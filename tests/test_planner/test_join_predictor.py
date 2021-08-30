@@ -39,6 +39,34 @@ class TestPlanJoinPredictor:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
+    def test_predictor_namespace_is_case_insensitive(self):
+        query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
+                       from_table=Join(left=Identifier('int.tab1'),
+                                       right=Identifier('mindsdb.pred'),
+                                       join_type=JoinType.INNER_JOIN,
+                                       implicit=True)
+                       )
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('tab1')),
+                                   ),
+                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(0), predictor=Identifier('pred')),
+                JoinStep(left=Result(0), right=Result(1),
+                         query=Join(left=Identifier('result_0', alias=Identifier('tab1')),
+                                    right=Identifier('result_1', alias=Identifier('pred')),
+                                    join_type=JoinType.INNER_JOIN)),
+                ProjectStep(dataframe=Result(2), columns=[Identifier('tab1.column1'), Identifier('pred.predicted')]),
+            ],
+            results=[0, 1, 2],
+            result_refs={0: [1, 2], 1: [2], 2: [3]},
+        )
+        plan = plan_query(query, integrations=['int'], predictor_namespace='MINDSDB')
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
     def test_join_predictor_plan_aliases(self):
         query = Select(targets=[Identifier('ta.column1'), Identifier('tb.predicted')],
                        from_table=Join(left=Identifier('int.tab1', alias=Identifier('ta')),

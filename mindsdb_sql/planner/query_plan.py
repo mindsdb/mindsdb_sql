@@ -29,8 +29,8 @@ class QueryPlan:
                  steps=None,
                  results=None,
                  result_refs=None):
-        self.integrations = integrations or []
-        self.predictor_namespace = predictor_namespace or 'mindsdb'
+        self.integrations = [int.lower() for int in integrations] if integrations else []
+        self.predictor_namespace = predictor_namespace.lower() if predictor_namespace else 'mindsdb'
         self.predictor_metadata = predictor_metadata or defaultdict(dict)
         self.steps = steps or []
         self.results = results or []
@@ -75,20 +75,20 @@ class QueryPlan:
 
     def is_predictor(self, identifier):
         parts = identifier.parts
-        if parts[0] == self.predictor_namespace:
+        if parts[0].lower() == self.predictor_namespace:
             return True
         return False
 
     def is_integration_table(self, identifier):
         parts = identifier.parts
-        if parts[0] in self.integrations:
+        if parts[0].lower() in self.integrations:
             return True
         return False
 
     def get_integration_path_from_identifier_or_error(self, identifier):
         integration_name, table = get_integration_path_from_identifier(identifier)
-        if not integration_name in self.integrations:
-            raise PlanningException(f'Unknown integration {integration_name} for table {str(identifier)}')
+        if not integration_name.lower() in self.integrations:
+            raise PlanningException(f'Unknown integration {integration_name} for table {str(identifier)}. Available integrations: {", ".join(self.integrations)}')
         return integration_name, table
 
     def get_integration_select_step(self, select):

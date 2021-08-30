@@ -37,6 +37,34 @@ class TestPlanIntegrationSelect:
         assert plan.steps == expected_plan.steps
         assert plan.result_refs == expected_plan.result_refs
 
+    def test_integration_name_is_case_insensitive(self):
+        query = Select(targets=[Identifier('column1')],
+                       from_table=Identifier('int.tab'),
+                       where=BinaryOperation('and', args=[
+                           BinaryOperation('=', args=[Identifier('column1'), Identifier('column2')]),
+                           BinaryOperation('>', args=[Identifier('column3'), Constant(0)]),
+                       ]))
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(targets=[Identifier('tab.column1', alias=Identifier('column1'))],
+                                                                      from_table=Identifier('tab'),
+                                                                      where=BinaryOperation('and', args=[
+                                                                              BinaryOperation('=',
+                                                                                              args=[Identifier('tab.column1'),
+                                                                                                    Identifier('tab.column2')]),
+                                                                              BinaryOperation('>',
+                                                                                              args=[Identifier('tab.column3'),
+                                                                                                    Constant(0)]),
+                                                                          ])
+                                                                      )),
+                                  ])
+
+        plan = plan_query(query, integrations=['INT'])
+
+        assert plan.steps == expected_plan.steps
+        assert plan.result_refs == expected_plan.result_refs
+
     def test_integration_select_limit_offset(self):
         query = Select(targets=[Identifier('column1')],
                        from_table=Identifier('int.tab'),
