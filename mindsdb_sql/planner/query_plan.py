@@ -227,23 +227,25 @@ class QueryPlan:
 
             integration_selects = [integration_select_1, integration_select_2]
 
-        # elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('>', '>='):
-        #     new_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
-        #     time_filter.op = new_time_filter_op
-        #     integration_select = Select(targets=[Star()],
-        #                                 from_table=table,
-        #                                 where=query.where,
-        #                                 order_by=order_by,
-        #                                 limit=Constant(predictor_window),
-        #                                 )
-        #     self.plan_integration_select(integration_select)
-        # elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('<', '<='):
-        #     integration_select = Select(targets=[Star()],
-        #                                 from_table=table,
-        #                                 where=query.where,
-        #                                 order_by=order_by,
-        #                                 )
-        #     self.plan_integration_select(integration_select)
+        elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('>', '>='):
+            time_filter_date = time_filter.args[1]
+            preparation_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
+
+            preparation_time_filter = BinaryOperation(preparation_time_filter_op, args=[Identifier(predictor_time_column_name), time_filter_date])
+            preparation_where = copy.deepcopy(query.where)
+            replace_time_filter(preparation_where, time_filter, preparation_time_filter)
+            integration_select_1 = Select(targets=[Star()],
+                                          from_table=table,
+                                          where=preparation_where,
+                                          order_by=order_by,
+                                          limit=Constant(predictor_window))
+
+            integration_select_2 = Select(targets=[Star()],
+                                          from_table=table,
+                                          where=query.where,
+                                          order_by=order_by)
+
+            integration_selects = [integration_select_1, integration_select_2]
         elif isinstance(time_filter, BinaryOperation) and time_filter.op == '>' and time_filter.args[1] == Latest():
             integration_select = Select(targets=[Star()],
                                         from_table=table,
