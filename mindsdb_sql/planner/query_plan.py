@@ -226,7 +226,17 @@ class QueryPlan:
                                           order_by=order_by)
 
             integration_selects = [integration_select_1, integration_select_2]
+        elif isinstance(time_filter, BinaryOperation) and time_filter.op == '>' and time_filter.args[1] == Latest():
+            integration_select = Select(targets=[Star()],
+                                        from_table=table,
+                                        where=query.where,
+                                        order_by=order_by,
+                                        limit=Constant(predictor_window),
+                                        )
+            integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
+            integration_selects = [integration_select]
 
+            query.where = find_and_remove_time_filter(query.where, time_filter)
         elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('>', '>='):
             time_filter_date = time_filter.args[1]
             preparation_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
@@ -246,17 +256,6 @@ class QueryPlan:
                                           order_by=order_by)
 
             integration_selects = [integration_select_1, integration_select_2]
-        elif isinstance(time_filter, BinaryOperation) and time_filter.op == '>' and time_filter.args[1] == Latest():
-            integration_select = Select(targets=[Star()],
-                                        from_table=table,
-                                        where=query.where,
-                                        order_by=order_by,
-                                        limit=Constant(predictor_window),
-                                        )
-            integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
-            integration_selects = [integration_select]
-
-            query.where = find_and_remove_time_filter(query.where, time_filter)
         else:
             integration_select = Select(targets=[Star()],
                                         from_table=table,
