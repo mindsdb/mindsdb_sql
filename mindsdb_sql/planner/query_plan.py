@@ -182,12 +182,6 @@ class QueryPlan:
         predictor_group_by_name = self.predictor_metadata[predictor_name]['group_by_column']
         predictor_window = self.predictor_metadata[predictor_name]['window']
 
-        for target in query.targets:
-            if isinstance(target, Identifier):
-                if not predictor_ref in target.parts_to_str():
-                    raise PlanningException(f'Can\'t request table columns when applying timeseries predictor, but found: {str(target)}. '
-                                            f'Try to request the same column from the predictor, like "SELECT pred.column".')
-
         if query.order_by:
             raise PlanningException(
                 f'Can\'t provide ORDER BY to time series predictor, it will be taken from predictor settings. Found: {query.order_by}')
