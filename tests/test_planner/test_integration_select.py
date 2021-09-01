@@ -32,14 +32,16 @@ class TestPlanIntegrationSelect:
                                                                                               args=[Identifier('tab.column3'),
                                                                                                     Constant(0)]),
                                                                           ])
-                                                                      )),
+                                                                      ),
+                                                         step_num=0,
+                                                         references=None,
+                                                         ),
                                   ])
 
         plan = plan_query(query, integrations=['int'])
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
 
     def test_integration_name_is_case_insensitive(self):
         query = Select(targets=[Identifier('column1')],
@@ -67,7 +69,7 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['INT'])
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_integration_select_limit_offset(self):
         query = Select(targets=[Identifier('column1')],
@@ -94,7 +96,7 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_integration_select_order_by(self):
         query = Select(targets=[Identifier('column1')],
@@ -123,7 +125,7 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_integration_select_plan_star(self):
         query = Select(targets=[Star()],
@@ -136,7 +138,7 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_integration_select_plan_complex_path(self):
         query = Select(targets=[Identifier(parts=['int', 'tab', 'a column with spaces'])],
@@ -153,7 +155,7 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_integration_select_table_alias(self):
         query = Select(targets=[Identifier('col1')],
@@ -172,7 +174,7 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_integration_select_column_alias(self):
         query = Select(targets=[Identifier('col1', alias=Identifier('column_alias'))],
@@ -190,7 +192,7 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_integration_select_plan_group_by(self):
         query = Select(targets=[Identifier('column1'),
@@ -224,7 +226,7 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_no_integration_error(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
@@ -254,7 +256,7 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_integration_select_subquery_in_from(self):
         query = Select(targets=[Identifier('column1')],
@@ -276,7 +278,7 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_integration_select_subquery_in_where(self):
         query = Select(targets=[Star()],
@@ -307,4 +309,4 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        

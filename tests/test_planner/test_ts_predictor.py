@@ -49,7 +49,6 @@ class TestJoinTimeseriesPredictor:
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2, 3], 2: [3], 3: [4]},
         )
 
         plan = plan_query(query,
@@ -64,7 +63,7 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
+        
         
     def test_join_predictor_timeseries_select_table_columns(self):
         predictor_window = 10
@@ -103,7 +102,6 @@ class TestJoinTimeseriesPredictor:
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Identifier('ta.target', alias=Identifier('y_true')), Identifier('tb.target', alias=Identifier('y_pred'))]),
             ],
-            result_refs={0: [1], 1: [2, 3], 2: [3], 3: [4]},
         )
 
         plan = plan_query(query,
@@ -118,7 +116,7 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_timeseries_query_with_limit(self):
         predictor_window = 10
@@ -164,7 +162,6 @@ class TestJoinTimeseriesPredictor:
                 LimitOffsetStep(dataframe=Result(3), limit=query.limit),
                 ProjectStep(dataframe=Result(4), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2, 3], 2: [3], 3: [4], 4: [5]},
         )
 
         plan = plan_query(query,
@@ -179,7 +176,7 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_timeseries_filter_by_group_by_column(self):
         predictor_window = 10
@@ -231,7 +228,6 @@ class TestJoinTimeseriesPredictor:
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
             ],
-            result_refs= {0: [1], 1: [2, 3], 2: [3], 3: [4]}
         )
 
         plan = plan_query(query,
@@ -246,7 +242,7 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_timeseries_latest(self):
         predictor_window = 5
@@ -303,7 +299,6 @@ class TestJoinTimeseriesPredictor:
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
             ],
-            result_refs= {0: [1], 1: [2, 3], 2: [3], 3: [4]}
         )
 
         plan = plan_query(query,
@@ -318,7 +313,7 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_timeseries_between(self):
         predictor_window = 5
@@ -410,7 +405,6 @@ class TestJoinTimeseriesPredictor:
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2, 3], 2: [3], 3: [4]}
         )
 
         plan = plan_query(query,
@@ -425,7 +419,7 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_timeseries_concrete_date_greater(self):
         predictor_window = 10
@@ -521,7 +515,6 @@ class TestJoinTimeseriesPredictor:
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2, 3], 2: [3], 3: [4]}
         )
 
         plan = plan_query(query,
@@ -536,7 +529,7 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_timeseries_concrete_date_greater_or_equal(self):
         predictor_window = 10
@@ -632,7 +625,6 @@ class TestJoinTimeseriesPredictor:
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2, 3], 2: [3], 3: [4]}
         )
 
         plan = plan_query(query,
@@ -647,7 +639,7 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_timeseries_concrete_date_less(self):
         predictor_window = 10
@@ -713,7 +705,6 @@ class TestJoinTimeseriesPredictor:
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2, 3], 2: [3], 3: [4]}
         )
 
         plan = plan_query(query,
@@ -728,7 +719,7 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_timeseries_concrete_date_less_or_equal(self):
         predictor_window = 10
@@ -794,7 +785,6 @@ class TestJoinTimeseriesPredictor:
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
             ],
-            result_refs={0: [1], 1: [2, 3], 2: [3], 3: [4]}
         )
 
         plan = plan_query(query,
@@ -809,7 +799,7 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_timeseries_error_on_nested_where(self):
         query = Select(targets=[Identifier('pred.time'), Identifier('pred.price')],

@@ -1,4 +1,18 @@
+from mindsdb_sql.exceptions import PlanningException
+from mindsdb_sql.planner.step_result import Result
+
+
 class PlanStep:
+    def __init__(self, step_num=None, references=None):
+        self.step_num = step_num
+        self.references = references or []
+
+    @property
+    def result(self):
+        if self.step_num is None:
+            raise PlanningException(f'Can\'t reference a step with no assigned step number. Tried to reference: {type(self)}')
+        return Result(self.step_num)
+
     def __eq__(self, other):
         if type(self) != type(other):
             return False
@@ -9,6 +23,11 @@ class PlanStep:
 
         return True
 
+    def __repr__(self):
+        attrs_dict = vars(self)
+        attrs_str = ', '.join([f'{k}={str(v)}' for k, v in attrs_dict.items()])
+        return f'{self.__class__.__name__}({attrs_str})'
+
 
 class ProjectStep(PlanStep):
     """Selects columns from a dataframe"""
@@ -17,6 +36,9 @@ class ProjectStep(PlanStep):
         self.columns = columns
         self.dataframe = dataframe
 
+        if isinstance(dataframe, Result):
+            self.references.append(dataframe)
+
 
 class FilterStep(PlanStep):
     """Filters some dataframe according to a query"""
@@ -24,6 +46,9 @@ class FilterStep(PlanStep):
         super().__init__(*args, **kwargs)
         self.dataframe = dataframe
         self.query = query
+
+        if isinstance(dataframe, Result):
+            self.references.append(dataframe)
 
 
 class GroupByStep(PlanStep):
@@ -35,6 +60,9 @@ class GroupByStep(PlanStep):
         self.columns = columns
         self.targets = targets
 
+        if isinstance(dataframe, Result):
+            self.references.append(dataframe)
+
 
 class JoinStep(PlanStep):
     """Joins two dataframes, producing a new dataframe"""
@@ -43,6 +71,12 @@ class JoinStep(PlanStep):
         self.left = left
         self.right = right
         self.query = query
+
+        if isinstance(left, Result):
+            self.references.append(left)
+
+        if isinstance(right, Result):
+            self.references.append(right)
 
 
 class UnionStep(PlanStep):
@@ -53,6 +87,12 @@ class UnionStep(PlanStep):
         self.right = right
         self.unique = unique
 
+        if isinstance(left, Result):
+            self.references.append(left)
+
+        if isinstance(right, Result):
+            self.references.append(right)
+
 
 class OrderByStep(PlanStep):
     """Applies sorting to a dataframe"""
@@ -62,6 +102,9 @@ class OrderByStep(PlanStep):
         self.dataframe = dataframe
         self.order_by = order_by
 
+        if isinstance(dataframe, Result):
+            self.references.append(dataframe)
+
 
 class LimitOffsetStep(PlanStep):
     """Applies limit and offset to a dataframe"""
@@ -70,6 +113,9 @@ class LimitOffsetStep(PlanStep):
         self.dataframe = dataframe
         self.limit = limit
         self.offset = offset
+
+        if isinstance(dataframe, Result):
+            self.references.append(dataframe)
 
 
 class FetchDataframeStep(PlanStep):
@@ -88,6 +134,9 @@ class ApplyPredictorStep(PlanStep):
         self.predictor = predictor
         self.dataframe = dataframe
 
+        if isinstance(dataframe, Result):
+            self.references.append(dataframe)
+
 
 class ApplyPredictorRowStep(PlanStep):
     """Applies a mindsdb predictor to one row of values and returns a dataframe of one row, the predictor."""
@@ -105,6 +154,9 @@ class MapReduceStep(PlanStep):
         self.values = values
         self.step = step
         self.reduce = reduce
+
+        if isinstance(values, Result):
+            self.references.append(values)
 
 
 class MultipleSteps(PlanStep):

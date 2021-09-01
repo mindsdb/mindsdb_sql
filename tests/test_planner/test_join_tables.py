@@ -41,10 +41,10 @@ class TestPlanJoinTables:
                                       ProjectStep(dataframe=Result(2),
                                                   columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
                                   ],
-                                  result_refs={0: [2], 1: [2], 2: [3]})
+        )
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_tables_where_plan(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
@@ -127,10 +127,10 @@ class TestPlanJoinTables:
                                       ProjectStep(dataframe=Result(3),
                                                   columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
                                   ],
-                                  result_refs={0: [2], 1: [2], 2: [3], 3: [4]})
+                                  )
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_tables_plan_groupby(self):
         query = Select(targets=[
@@ -176,9 +176,9 @@ class TestPlanJoinTables:
                                                   columns=[Identifier('tab1.column1'), Identifier('tab2.column1'),
                                                            Identifier('sum(tab2.column2)', alias=Identifier('total'))]),
                                   ],
-                                  result_refs={0: [2], 1: [2], 2: [3], 3: [4], 4: [5]})
+                                  )
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_tables_plan_limit_offset(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
@@ -214,10 +214,10 @@ class TestPlanJoinTables:
                                       ProjectStep(dataframe=Result(3),
                                                   columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
                                   ],
-                                  result_refs={0: [2], 1: [2], 2: [3], 3: [4]})
+                                  )
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_tables_plan_order_by(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
@@ -255,10 +255,10 @@ class TestPlanJoinTables:
                                       ProjectStep(dataframe=Result(4),
                                                   columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
                                   ],
-                                  result_refs={0: [2], 1: [2], 2: [3], 3: [4], 4: [5]})
+                                  )
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_tables_where_ambigous_column_error(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
@@ -324,10 +324,10 @@ class TestPlanJoinTables:
                                       ProjectStep(dataframe=Result(2),
                                                   columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
                                   ],
-                                  result_refs={0: [2], 1: [2], 2: [3]})
+                                  )
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_tables_error_on_unspecified_table_in_condition(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],

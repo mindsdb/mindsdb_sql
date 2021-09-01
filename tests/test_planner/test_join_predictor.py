@@ -31,13 +31,12 @@ class TestPlanJoinPredictor:
                                     join_type=JoinType.INNER_JOIN)),
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab1.column1'), Identifier('pred.predicted')]),
             ],
-            results=[0, 1, 2],
-            result_refs={0: [1, 2], 1: [2], 2: [3]},
         )
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
 
-        assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+        
 
     def test_predictor_namespace_is_case_insensitive(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
@@ -59,13 +58,11 @@ class TestPlanJoinPredictor:
                                     join_type=JoinType.INNER_JOIN)),
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab1.column1'), Identifier('pred.predicted')]),
             ],
-            results=[0, 1, 2],
-            result_refs={0: [1, 2], 1: [2], 2: [3]},
         )
         plan = plan_query(query, integrations=['int'], predictor_namespace='MINDSDB')
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_plan_aliases(self):
         query = Select(targets=[Identifier('ta.column1'), Identifier('tb.predicted')],
@@ -87,13 +84,11 @@ class TestPlanJoinPredictor:
                                     join_type=JoinType.INNER_JOIN)),
                 ProjectStep(dataframe=Result(2), columns=[Identifier('ta.column1'), Identifier('tb.predicted')]),
             ],
-            results=[0, 1, 2],
-            result_refs={0: [1, 2], 1: [2], 2: [3]},
         )
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_plan_where(self):
         query = Select(targets=[Identifier('tab.column1'), Identifier('pred.predicted')],
@@ -129,13 +124,11 @@ class TestPlanJoinPredictor:
                                     join_type=JoinType.INNER_JOIN)),
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab.column1'), Identifier('pred.predicted')]),
             ],
-            results=[0, 1, 2],
-            result_refs={0: [1, 2], 1: [2], 2: [3]},
         )
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_error_when_filtering_on_predictions(self):
         """
@@ -189,12 +182,11 @@ class TestPlanJoinPredictor:
                                     join_type=JoinType.INNER_JOIN)),
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab.asset'), Identifier('tab.time'), Identifier('pred.predicted')]),
             ],
-            result_refs={0: [1, 2], 1: [2], 2: [3]},
         )
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_plan_limit_offset(self):
         query = Select(targets=[Identifier('tab.column1'), Identifier('pred.predicted')],
@@ -224,13 +216,11 @@ class TestPlanJoinPredictor:
                                     join_type=JoinType.INNER_JOIN)),
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab.column1'), Identifier('pred.predicted')]),
             ],
-            results=[0, 1, 2],
-            result_refs={0: [1, 2], 1: [2], 2: [3]},
         )
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_plan_order_by(self):
         query = Select(targets=[Identifier('tab.column1'), Identifier('pred.predicted')],
@@ -262,13 +252,11 @@ class TestPlanJoinPredictor:
                                     join_type=JoinType.INNER_JOIN)),
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab.column1'), Identifier('pred.predicted')]),
             ],
-            results=[0, 1, 2],
-            result_refs={0: [1, 2], 1: [2], 2: [3]},
         )
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_join_predictor_plan_predictor_alias(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred_alias.predicted')],
@@ -290,13 +278,11 @@ class TestPlanJoinPredictor:
                                     join_type=JoinType.INNER_JOIN)),
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab1.column1'), Identifier('pred_alias.predicted')]),
             ],
-            results=[0, 1, 2],
-            result_refs={0: [1, 2], 1: [2], 2: [3]},
         )
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_no_predictor_error(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
