@@ -59,11 +59,10 @@ class TestPlanUnion:
                 UnionStep(left=Result(0), right=Result(4), unique=False),
 
             ],
-            result_refs={0: [1], 1: [2, 3], 2: [3], 3: [4], 4: [5]}
         )
 
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        assert plan.result_refs == expected_plan.result_refs
+        

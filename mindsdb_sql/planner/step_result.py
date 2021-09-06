@@ -4,7 +4,7 @@ class Result:
         self.step_num = step_num
 
     def __hash__(self):
-        return self.step_num.__hash__()
+        return 'Result' + self.step_num.__hash__()
 
     def __eq__(self, other):
         if isinstance(other, Result):

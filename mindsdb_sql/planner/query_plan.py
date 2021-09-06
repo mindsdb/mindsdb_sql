@@ -26,18 +26,15 @@ class QueryPlan:
                  integrations=None,
                  predictor_namespace=None,
                  predictor_metadata=None,
-                 steps=None,
-                 results=None,
-                 result_refs=None):
+                 steps=None):
         self.integrations = [int.lower() for int in integrations] if integrations else []
         self.predictor_namespace = predictor_namespace.lower() if predictor_namespace else 'mindsdb'
         self.predictor_metadata = predictor_metadata or defaultdict(dict)
-        self.steps = steps or []
-        self.results = results or []
+        self.steps = []
 
-        # key: step index
-        # value: list of steps that reference the result from step key
-        self.result_refs = result_refs or defaultdict(list)
+        if steps:
+            for step in steps:
+                self.add_step(step)
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -59,19 +56,10 @@ class QueryPlan:
         return len(self.steps) - 1
 
     def add_step(self, step):
+        if not step.step_num:
+            step.step_num = len(self.steps)
         self.steps.append(step)
-        self.results.append(self.last_step_index)
-
-    def add_result_reference(self, current_step, ref_step_index):
-        if ref_step_index in self.results:
-            self.result_refs[ref_step_index].append(current_step)
-            return Result(ref_step_index)
-        else:
-            raise PlanningException(f'Can\'t obtain Result for plan step {ref_step_index}.')
-
-    def add_last_result_reference(self):
-        return self.add_result_reference(current_step=self.last_step_index+1,
-                                        ref_step_index=self.last_step_index)
+        return self.steps[-1]
 
     def is_predictor(self, identifier):
         parts = identifier.parts
@@ -102,14 +90,14 @@ class QueryPlan:
     def plan_integration_select(self, select):
         """Plan for a select query that can be fully executed in an integration"""
 
-        self.add_step(self.get_integration_select_step(select))
+        return self.add_step(self.get_integration_select_step(select))
 
     def plan_integration_nested_select(self, select):
         fetch_df_select = copy.deepcopy(select)
         deepest_select = get_deepest_select(fetch_df_select)
         integration_name, table = self.get_integration_path_from_identifier_or_error(deepest_select.from_table)
         recursively_disambiguate_identifiers(deepest_select, integration_name, table)
-        self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
+        return self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
     def plan_select_from_predictor(self, select):
         predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(select.from_table)
@@ -133,14 +121,18 @@ class QueryPlan:
 
         recursively_extract_column_values(where_clause, row_dict, predictor)
 
-        self.add_step(ApplyPredictorRowStep(namespace=predictor_namespace,
+        predictor_step = self.add_step(
+            ApplyPredictorRowStep(namespace=predictor_namespace,
                                             predictor=predictor,
-                                            row_dict=row_dict))
-        self.plan_project(select)
+                                            row_dict=row_dict)
+        )
+        project_step = self.plan_project(select, predictor_step.result)
+        return predictor_step, project_step
 
     def plan_join_table_and_predictor(self, query, table, predictor_namespace, predictor):
         join = query.from_table
-        self.plan_integration_select(Select(targets=[Star()],
+        integration_select_step = self.plan_integration_select(
+            Select(targets=[Star()],
                                             from_table=table,
                                             where=query.where,
                                             group_by=query.group_by,
@@ -148,21 +140,18 @@ class QueryPlan:
                                             order_by=query.order_by,
                                             limit=query.limit,
                                             offset=query.offset,
-                                            ))
-        fetch_table_result = self.add_last_result_reference()
-        self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
-                                         dataframe=fetch_table_result,
+                                            )
+        )
+        predictor_step = self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
+                                         dataframe=integration_select_step.result,
                                          predictor=predictor))
-        fetch_predictor_output_result = self.add_last_result_reference()
-
-        self.add_result_reference(current_step=self.last_step_index + 1,
-                                  ref_step_index=fetch_table_result.step_num)
 
         integration_name, table = self.get_integration_path_from_identifier_or_error(table)
-        new_join = Join(left=Identifier(fetch_table_result.ref_name, alias=table.alias or Identifier(table.to_string(alias=False))),
-                        right=Identifier(fetch_predictor_output_result.ref_name, alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
+        new_join = Join(left=Identifier(integration_select_step.result.ref_name, alias=table.alias or Identifier(table.to_string(alias=False))),
+                        right=Identifier(predictor_step.result.ref_name, alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
                         join_type=join.join_type)
-        self.add_step(JoinStep(left=fetch_table_result, right=fetch_predictor_output_result, query=new_join))
+        join_step = self.add_step(JoinStep(left=integration_select_step.result, right=predictor_step.result, query=new_join))
+        return join_step
 
     def plan_fetch_timeseries_partitions(self, query, table, predictor_group_by_name):
         query = Select(
@@ -171,12 +160,11 @@ class QueryPlan:
             from_table=table,
             where=query.where,
         )
-        self.plan_integration_select(query)
+        select_step = self.plan_integration_select(query)
+        return select_step
 
     def plan_join_table_and_timeseries_predictor(self, query, table, predictor_namespace, predictor):
         predictor_name = predictor.to_string(alias=False)
-        predictor_alias = predictor.alias
-        predictor_ref = predictor_alias.to_string() if predictor_alias else predictor_name
 
         predictor_time_column_name = self.predictor_metadata[predictor_name]['order_by_column']
         predictor_group_by_name = self.predictor_metadata[predictor_name]['group_by_column']
@@ -197,8 +185,7 @@ class QueryPlan:
 
         no_time_filter_query = copy.deepcopy(query)
         no_time_filter_query.where = find_and_remove_time_filter(no_time_filter_query.where, time_filter)
-        self.plan_fetch_timeseries_partitions(no_time_filter_query, table, predictor_group_by_name)
-        fetch_partitions_result = self.add_last_result_reference()
+        select_partitions_step = self.plan_fetch_timeseries_partitions(no_time_filter_query, table, predictor_group_by_name)
 
         order_by = [OrderBy(Identifier(parts=[predictor_time_column_name]), direction='DESC')]
 
@@ -272,37 +259,30 @@ class QueryPlan:
         else:
             select_partition_step = MultipleSteps(steps=[self.get_integration_select_step(s) for s in integration_selects], reduce='union')
 
-        self.add_step(MapReduceStep(values=fetch_partitions_result, reduce='union', step=select_partition_step))
+        map_reduce_step = self.add_step(MapReduceStep(values=select_partitions_step.result, reduce='union', step=select_partition_step))
 
-        predictor_inputs = self.add_last_result_reference()
-        self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
+        predictor_inputs = map_reduce_step.result
+        predictor_step = self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
                                          dataframe=predictor_inputs,
                                          predictor=predictor))
 
-        predictor_apply_result = self.add_last_result_reference()
-
         # Update reference
-        predictor_inputs = self.add_result_reference(current_step=self.last_step_index+1, ref_step_index=predictor_inputs.step_num)
         integration_name, table = self.get_integration_path_from_identifier_or_error(table)
         join = Join(
-            left=Identifier(predictor_apply_result.ref_name,
+            left=Identifier(predictor_step.result.ref_name,
                              alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
             right=Identifier(predictor_inputs.ref_name,
                              alias=table.alias or Identifier(table.to_string(alias=False))),
             join_type=JoinType.LEFT_JOIN)
-        self.add_step(JoinStep(left=predictor_apply_result, right=predictor_inputs, query=join))
+        final_step = self.add_step(JoinStep(left=predictor_step.result, right=predictor_inputs, query=join))
 
         if saved_limit:
-            predictor_outputs = self.add_last_result_reference()
-            self.add_step(LimitOffsetStep(dataframe=predictor_outputs, limit=saved_limit))
+            final_step = self.add_step(LimitOffsetStep(dataframe=final_step.result, limit=saved_limit))
+        return final_step
 
     def plan_join_two_tables(self, join):
-        self.plan_integration_select(Select(targets=[Star()], from_table=join.left))
-        self.plan_integration_select(Select(targets=[Star()], from_table=join.right))
-        fetch_left_result = self.add_result_reference(current_step=self.last_step_index + 1,
-                                                      ref_step_index=self.last_step_index - 1)
-        fetch_right_result = self.add_result_reference(current_step=self.last_step_index + 1,
-                                                       ref_step_index=self.last_step_index)
+        select_left_step = self.plan_integration_select(Select(targets=[Star()], from_table=join.left))
+        select_right_step = self.plan_integration_select(Select(targets=[Star()], from_table=join.right))
 
         left_integration_name, left_table = self.get_integration_path_from_identifier_or_error(join.left)
         right_integration_name, right_table = self.get_integration_path_from_identifier_or_error(join.right)
@@ -328,10 +308,9 @@ class QueryPlan:
         new_join.condition.args = new_condition_args
         new_join.left = Identifier(left_table_path, alias=left_table.alias)
         new_join.right = Identifier(right_table_path, alias=right_table.alias)
-        self.add_step(JoinStep(left=fetch_left_result, right=fetch_right_result, query=new_join))
+        return self.add_step(JoinStep(left=select_left_step.result, right=select_right_step.result, query=new_join))
 
-    def plan_project(self, query):
-        last_step_result = self.add_last_result_reference()
+    def plan_project(self, query, dataframe):
         out_identifiers = []
         for target in query.targets:
             if isinstance(target, Identifier) or isinstance(target, Star):
@@ -339,7 +318,7 @@ class QueryPlan:
             else:
                 new_identifier = Identifier(str(target.to_string(alias=False)), alias=target.alias)
                 out_identifiers.append(new_identifier)
-        self.add_step(ProjectStep(dataframe=last_step_result, columns=out_identifiers))
+        return self.add_step(ProjectStep(dataframe=dataframe, columns=out_identifiers))
 
     def plan_join(self, query):
         join = query.from_table
@@ -366,73 +345,67 @@ class QueryPlan:
             else:
                 table = join.right
 
+            last_step = None
             if predictor:
                 # One argument is a table, another is a predictor
                 # Apply mindsdb model to result of last dataframe fetch
                 # Then join results of applying mindsdb with table
 
                 if self.predictor_metadata[predictor.to_string(alias=False)].get('timeseries'):
-                    self.plan_join_table_and_timeseries_predictor(query, table, predictor_namespace, predictor)
+                    last_step = self.plan_join_table_and_timeseries_predictor(query, table, predictor_namespace, predictor)
                 else:
-                    self.plan_join_table_and_predictor(query, table, predictor_namespace, predictor)
+                    last_step = self.plan_join_table_and_predictor(query, table, predictor_namespace, predictor)
             else:
                 # Both arguments are tables, join results of 2 dataframe fetches
 
-                self.plan_join_two_tables(join)
-
+                join_step = self.plan_join_two_tables(join)
+                last_step = join_step
                 if query.where:
-                    last_result = self.add_last_result_reference()
-                    self.add_step(FilterStep(dataframe=last_result, query=query.where))
+                    last_step = self.add_step(FilterStep(dataframe=last_step.result, query=query.where))
 
                 if query.group_by:
-                    last_result = self.add_last_result_reference()
                     group_by_targets = []
                     for t in query.targets:
                         target_copy = copy.deepcopy(t)
                         target_copy.alias = None
                         group_by_targets.append(target_copy)
-                    self.add_step(GroupByStep(dataframe=last_result, columns=query.group_by, targets=group_by_targets))
+                    last_step = self.add_step(GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets))
 
                 if query.having:
-                    last_result = self.add_last_result_reference()
-                    self.add_step(FilterStep(dataframe=last_result, query=query.having))
+                    last_step = self.add_step(FilterStep(dataframe=last_step.result, query=query.having))
 
                 if query.order_by:
-                    last_result = self.add_last_result_reference()
-                    self.add_step(OrderByStep(dataframe=last_result, order_by=query.order_by))
+                    last_step = self.add_step(OrderByStep(dataframe=last_step.result, order_by=query.order_by))
 
                 if query.limit is not None or query.offset is not None:
-                    last_result = self.add_last_result_reference()
                     limit = query.limit.value if query.limit is not None else None
                     offset = query.offset.value if query.offset is not None else None
-                    self.add_step(LimitOffsetStep(dataframe=last_result, limit=limit, offset=offset))
+                    last_step = self.add_step(LimitOffsetStep(dataframe=last_step.result, limit=limit, offset=offset))
 
         else:
             raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')
-        self.plan_project(query)
+        return self.plan_project(query, last_step.result)
 
     def plan_select(self, query):
         from_table = query.from_table
 
         if isinstance(from_table, Identifier):
             if self.is_predictor(from_table):
-                self.plan_select_from_predictor(query)
+                return self.plan_select_from_predictor(query)
             else:
-                self.plan_integration_select(query)
+                return self.plan_integration_select(query)
         elif isinstance(from_table, Select):
-            self.plan_integration_nested_select(query)
+            return self.plan_integration_nested_select(query)
         elif isinstance(from_table, Join):
-            self.plan_join(query)
+            return self.plan_join(query)
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 
     def plan_union(self, query):
-        self.plan_select(query.left)
-        query1_result = self.add_last_result_reference()
-        self.plan_select(query.right)
-        query2_result = self.add_last_result_reference()
+        query1 = self.plan_select(query.left)
+        query2 = self.plan_select(query.right)
 
-        self.add_step(UnionStep(left=query1_result, right=query2_result, unique=query.unique))
+        return self.add_step(UnionStep(left=query1.result, right=query2.result, unique=query.unique))
 
     def from_query(self, query):
         if isinstance(query, Select):

@@ -23,13 +23,13 @@ class TestPlanSelectFromPredictor:
                                                             row_dict={'x1': 1, 'x2': '2'}),
                                       ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
-                                  result_refs={0: [1]}
+
                                   )
 
         plan = plan_query(query, predictor_namespace='mindsdb')
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_select_from_predictor_aliases_in_project(self):
         query = Select(targets=[Identifier('tb.x1', alias=Identifier('col1')),
@@ -53,13 +53,13 @@ class TestPlanSelectFromPredictor:
                                                            Identifier('tb.x2', alias=Identifier('col2')),
                                                            Identifier('tb.y', alias=Identifier('predicted'))]),
                                   ],
-                                  result_refs={0: [1]}
+
                                   )
 
         plan = plan_query(query, predictor_namespace='mindsdb')
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_select_from_predictor_plan_predictor_alias(self):
         query = Select(targets=[Star()],
@@ -75,12 +75,12 @@ class TestPlanSelectFromPredictor:
                                                             row_dict={'x1': 1, 'x2': '2'}),
                                       ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
-                                  result_refs={0: [1]})
+                                  )
 
         plan = plan_query(query, predictor_namespace='mindsdb')
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
     def test_select_from_predictor_plan_verbose_col_names(self):
         query = Select(targets=[Star()],
@@ -95,12 +95,12 @@ class TestPlanSelectFromPredictor:
                                                             row_dict={'x1': 1, 'x2': '2'}),
                                       ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
-                                  result_refs={0: [1]})
+                                  )
 
         plan = plan_query(query, predictor_namespace='mindsdb')
 
         assert plan.steps == expected_plan.steps
-        assert plan.result_refs == expected_plan.result_refs
+        
 
 
 
