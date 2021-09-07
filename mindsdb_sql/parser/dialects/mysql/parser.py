@@ -5,7 +5,7 @@ from mindsdb_sql.parser.dialects.mysql.variable import Variable
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union)
+                                    Union, Use)
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
@@ -21,13 +21,18 @@ class MySQLParser(SQLParser):
     )
 
     # Top-level statements
-    @_('union')
+
+    @_('use',
+       'select',
+       'union')
     def query(self, p):
         return p[0]
 
-    @_('select')
-    def query(self, p):
-        return p[0]
+    # USE
+
+    @_('USE identifier')
+    def use(self, p):
+        return Use(value=p.identifier)
 
     # UNION / UNION ALL
     @_('select UNION select')

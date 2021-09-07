@@ -1,15 +1,15 @@
 import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
-from mindsdb_sql.parser.ast import Select, Identifier, Join, Star, BinaryOperation, Constant, Operation, OrderBy, \
-    BetweenOperation, Union
+from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, Operation, OrderBy,
+                                    BetweenOperation, Union, Use)
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps)
-from mindsdb_sql.planner.ts_utils import validate_ts_where_condition, find_time_filter, replace_time_filter, \
-    find_and_remove_time_filter
+from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
+                                          find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        get_predictor_namespace_and_name_from_identifier,
                                        disambiguate_integration_column_identifier,
@@ -412,6 +412,8 @@ class QueryPlan:
             self.plan_select(query)
         elif isinstance(query, Union):
             self.plan_union(query)
+        elif isinstance(query, Use):
+            pass
         else:
             raise PlanningException(f'Unsupported query type {type(query)}')
 
