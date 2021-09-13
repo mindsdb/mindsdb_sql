@@ -14,6 +14,7 @@ class Select(ASTNode):
                  order_by=None,
                  limit=None,
                  offset=None,
+                 cte=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.targets = targets
@@ -25,6 +26,7 @@ class Select(ASTNode):
         self.order_by = order_by
         self.limit = limit
         self.offset = offset
+        self.cte = cte
 
         if self.alias:
             self.parentheses = True
@@ -32,6 +34,11 @@ class Select(ASTNode):
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
         ind1 = indent(level+1)
+
+        cte_str = ''
+        if self.cte:
+            cte_trees = ',\n'.join([t.to_tree(level=level + 2) for t in self.cte])
+            cte_str = f'\n{ind1}cte=[\n{cte_trees}\n{ind1}],'
 
         alias_str = f'\n{ind1}alias={self.alias.to_tree()},' if self.alias else ''
         distinct_str = f'\n{ind1}distinct={repr(self.distinct)},' if self.distinct else ''
@@ -58,6 +65,7 @@ class Select(ASTNode):
         offset_str = f'\n{ind1}offset={self.offset.to_tree(level=0)},' if self.offset else ''
 
         out_str = f'{ind}Select(' \
+                  f'{cte_str}' \
                   f'{alias_str}' \
                   f'{distinct_str}' \
                   f'{parentheses_str}' \
@@ -72,10 +80,13 @@ class Select(ASTNode):
                   f'\n{ind})'
         return out_str
 
-
-
     def get_string(self, *args, **kwargs):
-        out_str = """SELECT"""
+        out_str = ''
+        if self.cte is not None:
+            cte_str = ', '.join([out.to_string() for out in self.cte])
+            out_str += f'WITH {cte_str} '
+
+        out_str += "SELECT"
 
         if self.distinct:
             out_str += ' DISTINCT'
