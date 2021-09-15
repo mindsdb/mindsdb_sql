@@ -6,7 +6,7 @@ from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.utils import JoinType
 
 
-@pytest.mark.parametrize('dialect', ['sqlite'])
+@pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
 class TestCommonTableExpression:
 
     def test_cte_select_number(self, dialect):
