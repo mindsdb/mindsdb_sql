@@ -1,3 +1,6 @@
+from mindsdb_sql.utils import to_single_line
+
+
 class ASTNode:
     def __init__(self, alias=None, parentheses=False):
         self.alias = alias
@@ -29,6 +32,6 @@ class ASTNode:
 
     def __eq__(self, other):
         if isinstance(other, ASTNode):
-            return self.to_tree() == other.to_tree() and str(self) == str(other)
+            return self.to_tree() == other.to_tree() and to_single_line(str(self)) == to_single_line(str(other))
         else:
             return False

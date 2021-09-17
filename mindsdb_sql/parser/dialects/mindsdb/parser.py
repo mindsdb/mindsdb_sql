@@ -4,11 +4,12 @@ from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, Binar
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
                                     Union)
+from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_integration import CreateIntegration
+from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.show import Show
 from mindsdb_sql.parser.dialects.mindsdb.use import Use
-from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
@@ -27,6 +28,7 @@ class MindsDBParser(Parser):
     # Top-level statements
     @_('show',
        'use',
+       'create_predictor',
        'create_integration',
        'create_view',
        'select',
@@ -50,7 +52,6 @@ class MindsDBParser(Parser):
         return Show(value=p[1], arg=p[2])
 
     # USE
-
     @_('USE identifier')
     def use(self, p):
         return Use(value=p.identifier)
@@ -69,6 +70,50 @@ class MindsDBParser(Parser):
     @_('empty')
     def create_view_from_table_or_nothing(self, p):
         pass
+
+    # CREATE PREDICTOR
+    @_('create_predictor USING STRING')
+    def create_predictor(self, p):
+        try:
+            using = json.loads(p.STRING)
+            p.create_predictor.using = using
+            return p.create_predictor
+        except ValueError as err:
+            raise ParsingException(f'Predictor USING must be a valid json, got error: {str(err)}')
+
+    @_('create_predictor HORIZON INTEGER')
+    def create_predictor(self, p):
+        p.create_predictor.horizon = p.INTEGER
+        return p.create_predictor
+
+    @_('create_predictor WINDOW INTEGER')
+    def create_predictor(self, p):
+        p.create_predictor.window = p.INTEGER
+        return p.create_predictor
+
+    @_('create_predictor GROUP_BY expr_list')
+    def create_predictor(self, p):
+        group_by = p.expr_list
+        if not isinstance(group_by, list):
+            group_by = [group_by]
+
+        p.create_predictor.group_by = group_by
+        return p.create_predictor
+
+    @_('create_predictor ORDER_BY ordering_terms')
+    def create_predictor(self, p):
+        p.create_predictor.order_by = p.ordering_terms
+        return p.create_predictor
+
+    @_('CREATE PREDICTOR ID FROM ID WITH LPAREN STRING RPAREN AS ID PREDICT result_columns')
+    def create_predictor(self, p):
+        return CreatePredictor(
+            name=p.ID0,
+            integration_name=p.ID1,
+            query=p.STRING,
+            datasource_name=p.ID2,
+            targets=p.result_columns
+        )
 
     # CREATE INTEGRATION
     @_('CREATE INTEGRATION ID WITH ENGINE EQUALS STRING COMMA PARAMETERS EQUALS STRING')

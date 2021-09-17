@@ -13,7 +13,7 @@ class MindsDBLexer(Lexer):
         STREAM, STREAMS, TABLE, TABLES, PUBLICATION, PUBLICATIONS, PARAMETERS,
 
         # Mindsdb special
-        LATEST,
+        LATEST, HORIZON, USING,
 
         ENGINE, TRAIN, TEST, PREDICT, MODEL,
 
@@ -63,6 +63,8 @@ class MindsDBLexer(Lexer):
     MODEL = r'\bMODEL\b'
     DROP = r'\bDROP\b'
     PARAMETERS = r'\bPARAMETERS\b'
+    HORIZON = r'\bHORIZON\b'
+    USING = r'\bUSING\b'
 
     # SELECT
 

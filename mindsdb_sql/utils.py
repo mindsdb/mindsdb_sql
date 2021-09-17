@@ -50,3 +50,9 @@ class JoinType:
     RIGHT_JOIN = 'RIGHT JOIN'
     FULL_JOIN = 'FULL JOIN'
 
+
+def to_single_line(text):
+    text = '\t'.join([line.strip() for line in text.split('\n')])
+    text = text.replace('\t', ' ')
+    text = ' '.join(text.split())
+    return text
