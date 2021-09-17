@@ -10,7 +10,7 @@ class MindsDBLexer(Lexer):
         CREATE, SHOW, USE, DROP,
 
         VIEW, VIEWS, PREDICTOR, PREDICTORS, INTEGRATION, INTEGRATIONS,
-        STREAM, STREAMS, TABLE, TABLES, PUBLICATION, PUBLICATIONS,
+        STREAM, STREAMS, TABLE, TABLES, PUBLICATION, PUBLICATIONS, PARAMETERS,
 
         # Mindsdb special
         LATEST,
@@ -18,7 +18,7 @@ class MindsDBLexer(Lexer):
         ENGINE, TRAIN, TEST, PREDICT, MODEL,
 
         # SELECT Keywords
-        SELECT, DISTINCT, FROM, WHERE, AS,
+        WITH, SELECT, DISTINCT, FROM, WHERE, AS,
         LIMIT, OFFSET, ASC, DESC, NULLS_FIRST, NULLS_LAST,
         GROUP_BY, HAVING, ORDER_BY,
         STAR,
@@ -62,6 +62,7 @@ class MindsDBLexer(Lexer):
     PREDICT = r'\bPREDICT\b'
     MODEL = r'\bMODEL\b'
     DROP = r'\bDROP\b'
+    PARAMETERS = r'\bPARAMETERS\b'
 
     # SELECT
 
@@ -71,6 +72,7 @@ class MindsDBLexer(Lexer):
     DESC = r'\bDESC\b'
     NULLS_FIRST = r'\bNULLS FIRST\b'
     NULLS_LAST = r'\bNULLS LAST\b'
+    WITH = r'\bWITH\b'
     SELECT = r'\bSELECT\b'
     DISTINCT = r'\bDISTINCT\b'
     FROM = r'\bFROM\b'

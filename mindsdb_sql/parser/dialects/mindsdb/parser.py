@@ -1,9 +1,10 @@
+import json
 from sly import Parser
-
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
                                     Union)
+from mindsdb_sql.parser.dialects.mindsdb.create_integration import CreateIntegration
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.show import Show
 from mindsdb_sql.parser.dialects.mindsdb.use import Use
@@ -26,6 +27,7 @@ class MindsDBParser(Parser):
     # Top-level statements
     @_('show',
        'use',
+       'create_integration',
        'create_view',
        'select',
        'union')
@@ -54,7 +56,6 @@ class MindsDBParser(Parser):
         return Use(value=p.identifier)
 
     # CREATE VIEW
-
     @_('CREATE VIEW ID create_view_from_table_or_nothing AS LPAREN select RPAREN')
     def create_view(self, p):
         return CreateView(name=p.ID,
@@ -68,6 +69,18 @@ class MindsDBParser(Parser):
     @_('empty')
     def create_view_from_table_or_nothing(self, p):
         pass
+
+    # CREATE INTEGRATION
+    @_('CREATE INTEGRATION ID WITH ENGINE EQUALS STRING COMMA PARAMETERS EQUALS STRING')
+    def create_integration(self, p):
+        try:
+            parameters = json.loads(p.STRING1)
+            return CreateIntegration(name=p.ID,
+                                     engine=p.STRING0,
+                                     parameters=parameters)
+        except ValueError as err:
+            raise ParsingException(f'Integration args must be a valid json, got error: {str(err)}')
+
 
     # UNION / UNION ALL
     @_('select UNION select')
