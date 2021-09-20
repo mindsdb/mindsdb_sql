@@ -3,9 +3,9 @@ from sly import Parser
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union)
+                                    Union, Show)
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
-from mindsdb_sql.parser.dialects.mindsdb.show import Show
+from mindsdb_sql.parser.ast.show import Show
 from mindsdb_sql.parser.dialects.mindsdb.use import Use
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.exceptions import ParsingException
@@ -34,18 +34,54 @@ class MindsDBParser(Parser):
 
     # Show
 
-    @_('SHOW STREAMS',
-       'SHOW PREDICTORS',
-       'SHOW INTEGRATIONS',
-       'SHOW PUBLICATIONS',
-       'SHOW ALL')
+    @_('SHOW show_category show_condition_or_nothing')
     def show(self, p):
-        return Show(value=p[1])
+        condition = p.show_condition_or_nothing['condition'] if p.show_condition_or_nothing else None
+        expression = p.show_condition_or_nothing['expression'] if p.show_condition_or_nothing else None
+        return Show(category=p.show_category,
+                    condition=condition,
+                    expression=expression)
 
-    @_('SHOW TABLES identifier',
-       'SHOW VIEWS identifier')
-    def show(self, p):
-        return Show(value=p[1], arg=p[2])
+    @_('show_condition_token expr',
+       'empty')
+    def show_condition_or_nothing(self, p):
+        if not p[0]:
+            return None
+        return dict(condition=p[0], expression=p[1])
+
+    @_('WHERE',
+       'FROM',
+       'LIKE', )
+    def show_condition_token(self, p):
+        return p[0]
+
+    @_('SCHEMAS',
+       'DATABASES',
+       'TABLES',
+       'FULL TABLES',
+       'VARIABLES',
+       'SESSION VARIABLES',
+       'SESSION STATUS',
+       'GLOBAL VARIABLES',
+       'PROCEDURE STATUS',
+       'FUNCTION STATUS',
+       'INDEX',
+       'CREATE TABLE',
+       'WARNINGS',
+       'ENGINES',
+       'CHARSET',
+       'COLLATION',
+       'TABLE STATUS',
+       # Mindsdb specific
+       'VIEWS',
+       'STREAMS',
+       'PREDICTORS',
+       'INTEGRATIONS',
+       'PUBLICATIONS',
+       'ALL')
+    def show_category(self, p):
+        return ' '.join([x for x in p])
+
 
     # USE
 
@@ -219,14 +255,15 @@ class MindsDBParser(Parser):
         return p.parameter
 
     @_('JOIN',
-       'LEFT_JOIN',
-       'RIGHT_JOIN',
-       'INNER_JOIN',
-       'FULL_JOIN',
-       'CROSS_JOIN',
-       'OUTER_JOIN')
+       'LEFT JOIN',
+       'RIGHT JOIN',
+       'INNER JOIN',
+       'FULL JOIN',
+       'CROSS JOIN',
+       'OUTER JOIN',
+       )
     def join_clause(self, p):
-        return p[0]
+        return ' '.join([x for x in p])
 
     @_('SELECT DISTINCT result_columns')
     def select(self, p):
