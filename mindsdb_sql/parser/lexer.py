@@ -4,7 +4,7 @@ from sly import Lexer
 
 class SQLLexer(Lexer):
     reflags = re.IGNORECASE
-    ignore = ' \t\n'
+    ignore = ' \t\n\r'
 
     tokens = {
         USE,
