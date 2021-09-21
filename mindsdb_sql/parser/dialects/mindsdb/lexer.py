@@ -4,7 +4,7 @@ from sly import Lexer
 
 class MindsDBLexer(Lexer):
     reflags = re.IGNORECASE
-    ignore = ' \t\n'
+    ignore = ' \t\n\r'
 
     tokens = {
         CREATE, SHOW, USE, DROP,
