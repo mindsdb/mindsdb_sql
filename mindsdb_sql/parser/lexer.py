@@ -7,7 +7,7 @@ class SQLLexer(Lexer):
     ignore = ' \t\n'
 
     tokens = {
-        # Mindsdb Commands
+        USE,
 
         # SELECT Keywords
         SELECT, DISTINCT, FROM, WHERE, AS,

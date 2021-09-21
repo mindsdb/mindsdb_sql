@@ -848,3 +848,110 @@ class TestJoinTimeseriesPredictor:
                                     'window': 5}
                        })
 
+    def test_join_predictor_timeseries_default_namespace_predictor(self):
+        predictor_window = 10
+        group_by_column = 'vendor_id'
+        query = Select(targets=[Star()],
+                       from_table=Join(left=Identifier('mysql.data.ny_output', alias=Identifier('ta')),
+                                       right=Identifier('tp3', alias=Identifier('tb')),
+                                       join_type='join'),
+                       )
+
+        expected_plan = QueryPlan(
+            default_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                                distinct=True,
+                                                )
+                                   ),
+                MapReduceStep(values=Result(0),
+                              reduce='union',
+                              step=FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var')]),
+                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
+                                                )
+                                   ),
+                              ),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(1)),
+                JoinStep(left=Result(2),
+                         right=Result(1),
+                         query=Join(
+                             left=Identifier('result_2', alias=Identifier('tb')),
+                             right=Identifier('result_1', alias=Identifier('ta')),
+                             join_type=JoinType.LEFT_JOIN)
+                         ),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
+            ],
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql'],
+                          predictor_namespace='mindsdb',
+                          default_namespace='mindsdb',
+                          predictor_metadata={
+                              'tp3': {'timeseries': True,
+                                       'order_by_column': 'pickup_hour',
+                                       'group_by_column': group_by_column,
+                                       'window': predictor_window}
+                          })
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_join_predictor_timeseries_default_namespace_integration(self):
+        predictor_window = 10
+        group_by_column = 'vendor_id'
+        query = Select(targets=[Star()],
+                       from_table=Join(left=Identifier('data.ny_output', alias=Identifier('ta')),
+                                       right=Identifier('mindsdb.tp3', alias=Identifier('tb')),
+                                       join_type='join'),
+                       )
+
+        expected_plan = QueryPlan(
+            default_namespace='mysql',
+            steps=[
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                                distinct=True,
+                                                )
+                                   ),
+                MapReduceStep(values=Result(0),
+                              reduce='union',
+                              step=FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[Star()],
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var')]),
+                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
+                                                )
+                                   ),
+                              ),
+                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(1)),
+                JoinStep(left=Result(2),
+                         right=Result(1),
+                         query=Join(
+                             left=Identifier('result_2', alias=Identifier('tb')),
+                             right=Identifier('result_1', alias=Identifier('ta')),
+                             join_type=JoinType.LEFT_JOIN)
+                         ),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
+            ],
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql'],
+                          predictor_namespace='mindsdb',
+                          default_namespace='mysql',
+                          predictor_metadata={
+                              'tp3': {'timeseries': True,
+                                       'order_by_column': 'pickup_hour',
+                                       'group_by_column': group_by_column,
+                                       'window': predictor_window}
+                          })
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
