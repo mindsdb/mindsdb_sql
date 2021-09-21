@@ -18,7 +18,7 @@ class MindsDBLexer(Lexer):
         ENGINE, TRAIN, TEST, PREDICT, MODEL,
 
         # SELECT Keywords
-        SELECT, DISTINCT, FROM, WHERE, AS,
+        WITH, SELECT, DISTINCT, FROM, WHERE, AS,
         LIMIT, OFFSET, ASC, DESC, NULLS_FIRST, NULLS_LAST,
         GROUP_BY, HAVING, ORDER_BY,
         STAR,
@@ -71,6 +71,7 @@ class MindsDBLexer(Lexer):
     DESC = r'\bDESC\b'
     NULLS_FIRST = r'\bNULLS FIRST\b'
     NULLS_LAST = r'\bNULLS LAST\b'
+    WITH = r'\bWITH\b'
     SELECT = r'\bSELECT\b'
     DISTINCT = r'\bDISTINCT\b'
     FROM = r'\bFROM\b'
