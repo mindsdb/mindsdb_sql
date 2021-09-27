@@ -6,31 +6,35 @@ from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryO
 
 def get_integration_path_from_identifier(identifier):
     parts = identifier.parts
+    integration_name = parts[0]
+    new_parts = parts[1:]
 
     if len(parts) == 1:
         raise PlanningException(f'No integration specified for table: {str(identifier)}')
     elif len(parts) > 4:
         raise PlanningException(f'Too many parts (dots) in table identifier: {str(identifier)}')
 
-    integration_name = parts[0]
-
     new_identifier = copy.deepcopy(identifier)
-    new_identifier.parts = parts[1:]
+    new_identifier.parts = new_parts
+
     return integration_name, new_identifier
 
 
-def get_predictor_namespace_and_name_from_identifier(identifier):
+def get_predictor_namespace_and_name_from_identifier(identifier, default_namespace):
     parts = identifier.parts
-
+    namespace = parts[0]
+    new_parts = parts[1:]
     if len(parts) == 1:
-        raise PlanningException(f'No predictor name specified for predictor: {str(identifier)}')
+        if default_namespace:
+            namespace = default_namespace
+            new_parts = [parts[0]]
+        else:
+            raise PlanningException(f'No predictor name specified for predictor: {str(identifier)}')
     elif len(parts) > 4:
         raise PlanningException(f'Too many parts (dots) in predictor identifier: {str(identifier)}')
 
-    namespace = parts[0]
-
     new_identifier = copy.deepcopy(identifier)
-    new_identifier.parts = parts[1:]
+    new_identifier.parts = new_parts
     return namespace, new_identifier
 
 
@@ -83,7 +87,7 @@ def recursively_disambiguate_identifiers_in_op(op, integration_name, table):
         elif isinstance(arg, Operation):
             recursively_disambiguate_identifiers_in_op(arg, integration_name, table)
         elif isinstance(arg, Select):
-            arg_select_integration_name, arg_table= get_integration_path_from_identifier(arg.from_table)
+            arg_select_integration_name, arg_table = get_integration_path_from_identifier(arg.from_table)
 
             recursively_disambiguate_identifiers_in_select(arg, arg_select_integration_name, arg_table)
 
@@ -189,6 +193,7 @@ def recursively_check_join_identifiers_for_ambiguity(item):
     elif isinstance(item, list):
         for arg in item:
             recursively_check_join_identifiers_for_ambiguity(arg)
+
 
 def get_deepest_select(select):
     if not select.from_table or not isinstance(select.from_table, Select):

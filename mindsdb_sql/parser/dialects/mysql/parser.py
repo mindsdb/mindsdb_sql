@@ -5,7 +5,7 @@ from mindsdb_sql.parser.dialects.mysql.variable import Variable
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union)
+                                    Union, Use, Show, CommonTableExpression)
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
@@ -21,13 +21,60 @@ class MySQLParser(SQLParser):
     )
 
     # Top-level statements
-    @_('union')
+    @_('show',
+       'union',
+       'select',)
     def query(self, p):
         return p[0]
 
-    @_('select')
-    def query(self, p):
+    # Show
+
+    @_('SHOW show_category show_condition_or_nothing')
+    def show(self, p):
+        condition = p.show_condition_or_nothing['condition'] if p.show_condition_or_nothing else None
+        expression = p.show_condition_or_nothing['expression'] if p.show_condition_or_nothing else None
+        return Show(category=p.show_category,
+                    condition=condition,
+                    expression=expression)
+
+    @_('show_condition_token expr',
+       'empty')
+    def show_condition_or_nothing(self, p):
+        if not p[0]:
+            return None
+        return dict(condition=p[0], expression=p[1])
+
+    @_('WHERE',
+       'FROM',
+       'LIKE')
+    def show_condition_token(self, p):
         return p[0]
+
+    @_('SCHEMAS',
+       'DATABASES',
+       'TABLES',
+       'FULL TABLES',
+       'VARIABLES',
+       'SESSION VARIABLES',
+       'SESSION STATUS',
+       'GLOBAL VARIABLES',
+       'PROCEDURE STATUS',
+       'FUNCTION STATUS',
+       'INDEX',
+       'CREATE TABLE',
+       'WARNINGS',
+       'ENGINES',
+       'CHARSET',
+       'COLLATION',
+       'TABLE STATUS')
+    def show_category(self, p):
+        return ' '.join([x for x in p])
+
+    # USE
+
+    @_('USE identifier')
+    def use(self, p):
+        return Use(value=p.identifier)
 
     # UNION / UNION ALL
     @_('select UNION select')
@@ -37,6 +84,41 @@ class MySQLParser(SQLParser):
     @_('select UNION ALL select')
     def union(self, p):
         return Union(left=p.select0, right=p.select1, unique=False)
+
+    # WITH
+    @_('ctes select')
+    def select(self, p):
+        select = p.select
+        select.cte = p.ctes
+        return select
+
+    @_('ctes COMMA identifier cte_columns_or_nothing AS LPAREN select RPAREN')
+    def ctes(self, p):
+        ctes = p.ctes
+        ctes = ctes + [
+            CommonTableExpression(
+                name=p.identifier,
+                columns=p.cte_columns_or_nothing,
+                query=p.select)
+        ]
+        return ctes
+
+    @_('WITH identifier cte_columns_or_nothing AS LPAREN select RPAREN')
+    def ctes(self, p):
+        return [
+            CommonTableExpression(
+                name=p.identifier,
+                columns=p.cte_columns_or_nothing,
+                query=p.select)
+        ]
+
+    @_('empty')
+    def cte_columns_or_nothing(self, p):
+        pass
+
+    @_('LPAREN enumeration RPAREN')
+    def cte_columns_or_nothing(self, p):
+        return p.enumeration
 
     # SELECT
 
@@ -179,14 +261,15 @@ class MySQLParser(SQLParser):
         return p.parameter
 
     @_('JOIN',
-       'LEFT_JOIN',
-       'RIGHT_JOIN',
-       'INNER_JOIN',
-       'FULL_JOIN',
-       'CROSS_JOIN',
-       'OUTER_JOIN')
+       'LEFT JOIN',
+       'RIGHT JOIN',
+       'INNER JOIN',
+       'FULL JOIN',
+       'CROSS JOIN',
+       'OUTER JOIN',
+       )
     def join_clause(self, p):
-        return p[0]
+        return ' '.join([x for x in p])
 
     @_('SELECT DISTINCT result_columns')
     def select(self, p):

@@ -6,7 +6,7 @@ from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.utils import JoinType
 
 
-@pytest.mark.parametrize('dialect', ['sqlite', ])# 'mysql', 'mindsdb'])
+@pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
 class TestUnion:
     def test_single_select_error(self, dialect):
         sql = "SELECT col FROM tab UNION"

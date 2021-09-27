@@ -7,15 +7,15 @@ from mindsdb_sql.parser.ast import *
 
 class TestDropPredictor:
     def test_drop_predictor_lexer(self):
-        sql = "DROP Predictor mindsdb.pred"
+        sql = "DROP PREDICTOR mindsdb.pred"
         tokens = list(MindsDBLexer().tokenize(sql))
         assert tokens[0].type == 'DROP'
-        assert tokens[1].type == 'Predictor'
+        assert tokens[1].type == 'PREDICTOR'
         assert tokens[2].type == 'ID'
         assert tokens[2].value == 'mindsdb.pred'
 
     def test_drop_predictor_ok(self):
-        sql = "DROP Predictor mindsdb.pred"
+        sql = "DROP PREDICTOR mindsdb.pred"
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = DropPredictor(name=Identifier('mindsdb.pred'))
         assert str(ast).lower() == sql.lower()

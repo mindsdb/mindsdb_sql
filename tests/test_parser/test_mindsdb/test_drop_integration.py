@@ -17,7 +17,7 @@ class TestDropIntegration:
     def test_drop_integration_ok(self):
         sql = "DROP INTEGRATION db"
         ast = parse_sql(sql, dialect='mindsdb')
-        expected_ast = DropIntegration(name='db')
+        expected_ast = DropIntegration(name=Identifier('db'))
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()

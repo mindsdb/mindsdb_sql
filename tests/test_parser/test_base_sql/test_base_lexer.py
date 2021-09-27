@@ -28,6 +28,28 @@ class TestLexer:
         assert tokens[1].type == 'ID'
         assert tokens[1].value == 'a'
 
+    def test_select_basic_ignored_symbols(self, lexer):
+        sql = f'SELECT \t\r\n1'
+        tokens = list(lexer.tokenize(sql))
+
+        assert tokens[0].type == 'SELECT'
+        assert tokens[0].value == 'SELECT'
+
+        assert tokens[1].type == 'INTEGER'
+        assert tokens[1].value == 1
+
+        sql = f'select 1'
+        tokens = list(lexer.tokenize(sql))
+        assert tokens[0].type == 'SELECT'
+        assert tokens[1].type == 'INTEGER'
+        assert tokens[1].value == 1
+
+        sql = f'select a'
+        tokens = list(lexer.tokenize(sql))
+        assert tokens[0].type == 'SELECT'
+        assert tokens[1].type == 'ID'
+        assert tokens[1].value == 'a'
+
     def test_select_identifiers(self, lexer):
         sql = 'SELECT abcd123, __whatisthi123s__, `spaces in id`, multiple.parts.__whoa, `multiple`.`parts`.`with brackets` '
         tokens = list(lexer.tokenize(sql))

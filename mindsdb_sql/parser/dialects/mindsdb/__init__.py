@@ -6,5 +6,4 @@ from .create_integration import CreateIntegration
 from .create_predictor import CreatePredictor
 from .drop_predictor import DropPredictor
 from .drop_integration import DropIntegration
-from .use import Use
-from .show import Show
+from .latest import Latest

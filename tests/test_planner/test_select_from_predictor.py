@@ -143,3 +143,23 @@ class TestPlanSelectFromPredictor:
 
         with pytest.raises(PlanningException):
             plan_query(query, predictor_namespace='mindsdb')
+
+    def test_select_from_predictor_default_namespace(self):
+        query = Select(targets=[Star()],
+                       from_table=Identifier('pred'),
+                       where=BinaryOperation(op='and',
+                                             args=[BinaryOperation(op='=', args=[Identifier('x1'), Constant(1)]),
+                                                   BinaryOperation(op='=', args=[Identifier('x2'), Constant('2')])],
+                                             ))
+        expected_plan = QueryPlan(predictor_namespace='mindsdb',
+                                  default_namespace='mindsdb',
+                                  steps=[
+                                      ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('pred'),
+                                                            row_dict={'x1': 1, 'x2': '2'}),
+                                      ProjectStep(dataframe=Result(0), columns=[Star()]),
+                                  ],
+                                  )
+
+        plan = plan_query(query, predictor_namespace='mindsdb', default_namespace='mindsdb')
+
+        assert plan.steps == expected_plan.steps

@@ -3,13 +3,13 @@ from sly import Parser
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union)
+                                    Union, Use, Show, CommonTableExpression)
+from mindsdb_sql.parser.dialects.mindsdb.drop_integration import DropIntegration
+from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_integration import CreateIntegration
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
-from mindsdb_sql.parser.dialects.mindsdb.show import Show
-from mindsdb_sql.parser.dialects.mindsdb.use import Use
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
@@ -31,6 +31,8 @@ class MindsDBParser(Parser):
        'create_predictor',
        'create_integration',
        'create_view',
+       'drop_predictor',
+       'drop_integration',
        'select',
        'union')
     def query(self, p):
@@ -38,18 +40,54 @@ class MindsDBParser(Parser):
 
     # Show
 
-    @_('SHOW STREAMS',
-       'SHOW PREDICTORS',
-       'SHOW INTEGRATIONS',
-       'SHOW PUBLICATIONS',
-       'SHOW ALL')
+    @_('SHOW show_category show_condition_or_nothing')
     def show(self, p):
-        return Show(value=p[1])
+        condition = p.show_condition_or_nothing['condition'] if p.show_condition_or_nothing else None
+        expression = p.show_condition_or_nothing['expression'] if p.show_condition_or_nothing else None
+        return Show(category=p.show_category,
+                    condition=condition,
+                    expression=expression)
 
-    @_('SHOW TABLES identifier',
-       'SHOW VIEWS identifier')
-    def show(self, p):
-        return Show(value=p[1], arg=p[2])
+    @_('show_condition_token expr',
+       'empty')
+    def show_condition_or_nothing(self, p):
+        if not p[0]:
+            return None
+        return dict(condition=p[0], expression=p[1])
+
+    @_('WHERE',
+       'FROM',
+       'LIKE', )
+    def show_condition_token(self, p):
+        return p[0]
+
+    @_('SCHEMAS',
+       'DATABASES',
+       'TABLES',
+       'FULL TABLES',
+       'VARIABLES',
+       'SESSION VARIABLES',
+       'SESSION STATUS',
+       'GLOBAL VARIABLES',
+       'PROCEDURE STATUS',
+       'FUNCTION STATUS',
+       'INDEX',
+       'CREATE TABLE',
+       'WARNINGS',
+       'ENGINES',
+       'CHARSET',
+       'COLLATION',
+       'TABLE STATUS',
+       # Mindsdb specific
+       'VIEWS',
+       'STREAMS',
+       'PREDICTORS',
+       'INTEGRATIONS',
+       'PUBLICATIONS',
+       'ALL')
+    def show_category(self, p):
+        return ' '.join([x for x in p])
+
 
     # USE
     @_('USE identifier')
@@ -70,6 +108,16 @@ class MindsDBParser(Parser):
     @_('empty')
     def create_view_from_table_or_nothing(self, p):
         pass
+
+    # DROP PREDICTOR
+    @_('DROP PREDICTOR identifier')
+    def drop_predictor(self, p):
+        return DropPredictor(p.identifier)
+
+    # DROP INTEGRATION
+    @_('DROP INTEGRATION identifier')
+    def drop_integration(self, p):
+        return DropIntegration(p.identifier)
 
     # CREATE PREDICTOR
     @_('create_predictor USING STRING')
@@ -135,6 +183,41 @@ class MindsDBParser(Parser):
     @_('select UNION ALL select')
     def union(self, p):
         return Union(left=p.select0, right=p.select1, unique=False)
+
+    # WITH
+    @_('ctes select')
+    def select(self, p):
+        select = p.select
+        select.cte = p.ctes
+        return select
+
+    @_('ctes COMMA identifier cte_columns_or_nothing AS LPAREN select RPAREN')
+    def ctes(self, p):
+        ctes = p.ctes
+        ctes = ctes + [
+            CommonTableExpression(
+                name=p.identifier,
+                columns=p.cte_columns_or_nothing,
+                query=p.select)
+        ]
+        return ctes
+
+    @_('WITH identifier cte_columns_or_nothing AS LPAREN select RPAREN')
+    def ctes(self, p):
+        return [
+            CommonTableExpression(
+                name=p.identifier,
+                columns=p.cte_columns_or_nothing,
+                query=p.select)
+        ]
+
+    @_('empty')
+    def cte_columns_or_nothing(self, p):
+        pass
+
+    @_('LPAREN enumeration RPAREN')
+    def cte_columns_or_nothing(self, p):
+        return p.enumeration
 
     # SELECT
 
@@ -277,14 +360,15 @@ class MindsDBParser(Parser):
         return p.parameter
 
     @_('JOIN',
-       'LEFT_JOIN',
-       'RIGHT_JOIN',
-       'INNER_JOIN',
-       'FULL_JOIN',
-       'CROSS_JOIN',
-       'OUTER_JOIN')
+       'LEFT JOIN',
+       'RIGHT JOIN',
+       'INNER JOIN',
+       'FULL JOIN',
+       'CROSS JOIN',
+       'OUTER JOIN',
+       )
     def join_clause(self, p):
-        return p[0]
+        return ' '.join([x for x in p])
 
     @_('SELECT DISTINCT result_columns')
     def select(self, p):
