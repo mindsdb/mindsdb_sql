@@ -240,6 +240,14 @@ class MindsDBParser(Parser):
         select.where = where_expr
         return select
 
+    # Mindsdb special case
+    @_('select FROM PREDICTORS')
+    def select(self, p):
+        select = p.select
+        ensure_select_keyword_order(select, 'FROM')
+        select.from_table = Identifier(p.PREDICTORS)
+        return select
+
     @_('select FROM from_table')
     def select(self, p):
         select = p.select
