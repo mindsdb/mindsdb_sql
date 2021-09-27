@@ -178,7 +178,8 @@ class TestPlanSelectFromPredictor:
         expected_plan = QueryPlan(predictor_namespace='mindsdb',
                                   default_namespace='mindsdb',
                                   steps=[
-                                      ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('hdi_predictor_external'),
+                                      ApplyPredictorRowStep(namespace='mindsdb',
+                                                            predictor=Identifier('hdi_predictor_external'),
                                                             row_dict={1: 0}),
                                       ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
