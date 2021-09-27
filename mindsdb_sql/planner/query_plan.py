@@ -1,20 +1,19 @@
 import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
-from mindsdb_sql.parser.ast import Select, Identifier, Join, Star, BinaryOperation, Constant, Operation, OrderBy, \
-    BetweenOperation, Union
+from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, Operation, OrderBy,
+                                    BetweenOperation, Union, Use)
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps)
-from mindsdb_sql.planner.ts_utils import validate_ts_where_condition, find_time_filter, replace_time_filter, \
-    find_and_remove_time_filter
+from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
+                                          find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        get_predictor_namespace_and_name_from_identifier,
                                        disambiguate_integration_column_identifier,
                                        disambiguate_predictor_column_identifier, recursively_disambiguate_identifiers,
-                                       recursively_disambiguate_identifiers_in_op, disambiguate_select_targets,
                                        get_deepest_select,
                                        recursively_extract_column_values,
                                        recursively_check_join_identifiers_for_ambiguity)
@@ -26,7 +25,8 @@ class QueryPlan:
                  integrations=None,
                  predictor_namespace=None,
                  predictor_metadata=None,
-                 steps=None):
+                 steps=None,
+                 default_namespace=None):
         self.integrations = [int.lower() for int in integrations] if integrations else []
         self.predictor_namespace = predictor_namespace.lower() if predictor_namespace else 'mindsdb'
         self.predictor_metadata = predictor_metadata or defaultdict(dict)
@@ -35,6 +35,8 @@ class QueryPlan:
         if steps:
             for step in steps:
                 self.add_step(step)
+
+        self.default_namespace = default_namespace
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -65,18 +67,30 @@ class QueryPlan:
         parts = identifier.parts
         if parts[0].lower() == self.predictor_namespace:
             return True
+        elif len(parts) == 1 and self.default_namespace == self.predictor_namespace:
+            return True
         return False
 
     def is_integration_table(self, identifier):
         parts = identifier.parts
         if parts[0].lower() in self.integrations:
             return True
+        elif len(parts) == 1 and self.default_namespace in self.integrations:
+            return True
         return False
 
-    def get_integration_path_from_identifier_or_error(self, identifier):
-        integration_name, table = get_integration_path_from_identifier(identifier)
-        if not integration_name.lower() in self.integrations:
-            raise PlanningException(f'Unknown integration {integration_name} for table {str(identifier)}. Available integrations: {", ".join(self.integrations)}')
+    def get_integration_path_from_identifier_or_error(self, identifier, recurse=True):
+        try:
+            integration_name, table = get_integration_path_from_identifier(identifier)
+            if not integration_name.lower() in self.integrations:
+                raise PlanningException(f'Unknown integration {integration_name} for table {str(identifier)}. Available integrations: {", ".join(self.integrations)}')
+        except PlanningException:
+            if not recurse or not self.default_namespace:
+                raise
+            else:
+                new_identifier = copy.deepcopy(identifier)
+                new_identifier.parts = [self.default_namespace, *identifier.parts]
+                return self.get_integration_path_from_identifier_or_error(new_identifier, recurse=False)
         return integration_name, table
 
     def get_integration_select_step(self, select):
@@ -100,7 +114,7 @@ class QueryPlan:
         return self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
     def plan_select_from_predictor(self, select):
-        predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(select.from_table)
+        predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(select.from_table, self.default_namespace)
         new_query_targets = []
         for target in select.targets:
             if isinstance(target, Identifier):
@@ -336,12 +350,12 @@ class QueryPlan:
             predictor = None
             table = None
             if self.is_predictor(join.left):
-                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join.left)
+                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join.left, self.default_namespace)
             else:
                 table = join.left
 
             if self.is_predictor(join.right):
-                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join.right)
+                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join.right, self.default_namespace)
             else:
                 table = join.right
 

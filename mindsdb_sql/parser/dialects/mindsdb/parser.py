@@ -3,10 +3,8 @@ from sly import Parser
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union, Show)
+                                    Union, Use, Show, CommonTableExpression)
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
-from mindsdb_sql.parser.ast.show import Show
-from mindsdb_sql.parser.dialects.mindsdb.use import Use
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
@@ -113,6 +111,41 @@ class MindsDBParser(Parser):
     @_('select UNION ALL select')
     def union(self, p):
         return Union(left=p.select0, right=p.select1, unique=False)
+
+    # WITH
+    @_('ctes select')
+    def select(self, p):
+        select = p.select
+        select.cte = p.ctes
+        return select
+
+    @_('ctes COMMA identifier cte_columns_or_nothing AS LPAREN select RPAREN')
+    def ctes(self, p):
+        ctes = p.ctes
+        ctes = ctes + [
+            CommonTableExpression(
+                name=p.identifier,
+                columns=p.cte_columns_or_nothing,
+                query=p.select)
+        ]
+        return ctes
+
+    @_('WITH identifier cte_columns_or_nothing AS LPAREN select RPAREN')
+    def ctes(self, p):
+        return [
+            CommonTableExpression(
+                name=p.identifier,
+                columns=p.cte_columns_or_nothing,
+                query=p.select)
+        ]
+
+    @_('empty')
+    def cte_columns_or_nothing(self, p):
+        pass
+
+    @_('LPAREN enumeration RPAREN')
+    def cte_columns_or_nothing(self, p):
+        return p.enumeration
 
     # SELECT
 

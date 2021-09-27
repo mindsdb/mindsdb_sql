@@ -3,7 +3,7 @@ from sly import Parser
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union, Show)
+                                    Union, Use, Show, CommonTableExpression)
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.lexer import SQLLexer
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
@@ -69,6 +69,12 @@ class SQLParser(Parser):
     def show_category(self, p):
         return ' '.join([x for x in p])
 
+    # USE
+
+    @_('USE identifier')
+    def use(self, p):
+        return Use(value=p.identifier)
+
     # UNION / UNION ALL
     @_('select UNION select')
     def union(self, p):
@@ -78,8 +84,42 @@ class SQLParser(Parser):
     def union(self, p):
         return Union(left=p.select0, right=p.select1, unique=False)
 
-    # SELECT
+    # WITH
+    @_('ctes select')
+    def select(self, p):
+        select = p.select
+        select.cte = p.ctes
+        return select
 
+    @_('ctes COMMA identifier cte_columns_or_nothing AS LPAREN select RPAREN')
+    def ctes(self, p):
+        ctes = p.ctes
+        ctes = ctes + [
+            CommonTableExpression(
+                name=p.identifier,
+                columns=p.cte_columns_or_nothing,
+                query=p.select)
+        ]
+        return ctes
+
+    @_('WITH identifier cte_columns_or_nothing AS LPAREN select RPAREN')
+    def ctes(self, p):
+        return [
+            CommonTableExpression(
+                name=p.identifier,
+                columns=p.cte_columns_or_nothing,
+                query=p.select)
+        ]
+
+    @_('empty')
+    def cte_columns_or_nothing(self, p):
+        pass
+
+    @_('LPAREN enumeration RPAREN')
+    def cte_columns_or_nothing(self, p):
+        return p.enumeration
+
+    # SELECT
     @_('select OFFSET constant')
     def select(self, p):
         select = p.select

@@ -350,3 +350,39 @@ class TestPlanJoinTables:
                                        ))
         with pytest.raises(PlanningException) as e:
             plan_query(query, integrations=['int'])
+
+    def test_join_tables_plan_default_namespace(self):
+        query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
+                       from_table=Join(left=Identifier('tab1'),
+                                       right=Identifier('tab2'),
+                                       condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
+                                       join_type=JoinType.INNER_JOIN
+                                       )
+                )
+        expected_plan = QueryPlan(integrations=['int'],
+                                  default_namespace='int',
+                                  steps = [
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(
+                                                             targets=[Star()],
+                                                             from_table=Identifier('tab1')),
+                                                         ),
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(targets=[Star()],
+                                                                      from_table=Identifier('tab2')),
+                                                         ),
+                                      JoinStep(left=Result(0), right=Result(1),
+                                               query=Join(left=Identifier('tab1'),
+                                                          right=Identifier('tab2'),
+                                                          condition=BinaryOperation(op='=',
+                                                                                    args=[Identifier('tab1.column1'),
+                                                                                          Identifier('tab2.column1')]),
+                                                          join_type=JoinType.INNER_JOIN
+                                                          )),
+                                      ProjectStep(dataframe=Result(2),
+                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                  ],
+        )
+        plan = plan_query(query, integrations=['int'], default_namespace='int')
+
+        assert plan.steps == expected_plan.steps

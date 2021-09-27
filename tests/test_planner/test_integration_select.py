@@ -310,3 +310,60 @@ class TestPlanIntegrationSelect:
 
         assert plan.steps == expected_plan.steps
         
+    def test_integration_select_default_namespace(self):
+        query = Select(targets=[Identifier('column1'), Constant(1), Function('database', args=[])],
+                       from_table=Identifier('tab'),
+                       where=BinaryOperation('and', args=[
+                           BinaryOperation('=', args=[Identifier('column1'), Identifier('column2')]),
+                           BinaryOperation('>', args=[Identifier('column3'), Constant(0)]),
+                       ]))
+
+        expected_plan = QueryPlan(integrations=['int'],
+                                  default_namespace='int',
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(targets=[Identifier('tab.column1', alias=Identifier('column1')),
+                                                                               Constant(1),
+                                                                               Function('database', args=[]),
+                                                                               ],
+                                                                      from_table=Identifier('tab'),
+                                                                      where=BinaryOperation('and', args=[
+                                                                              BinaryOperation('=',
+                                                                                              args=[Identifier('tab.column1'),
+                                                                                                    Identifier('tab.column2')]),
+                                                                              BinaryOperation('>',
+                                                                                              args=[Identifier('tab.column3'),
+                                                                                                    Constant(0)]),
+                                                                          ])
+                                                                      ),
+                                                         step_num=0,
+                                                         references=None,
+                                                         ),
+                                  ])
+
+        plan = plan_query(query, integrations=['int'], default_namespace='int')
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_integration_select_default_namespace_subquery_in_from(self):
+        query = Select(targets=[Identifier('column1')],
+                       from_table=Select(targets=[Identifier('column1')],
+                                         from_table=Identifier('tab'),
+                                         alias=Identifier('subquery')))
+        expected_plan = QueryPlan(integrations=['int'],
+                                  default_namespace='int',
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(
+                                                             targets=[Identifier('column1')],
+                                                             from_table=Select(
+                                                                 targets=[Identifier('tab.column1', alias=Identifier('column1'))],
+                                                                 from_table=Identifier('tab'),
+                                                                 alias=Identifier('subquery')),
+                                                             )),
+                                  ])
+
+        plan = plan_query(query, integrations=['int'], default_namespace='int')
+
+        assert plan.steps == expected_plan.steps

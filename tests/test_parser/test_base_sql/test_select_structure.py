@@ -66,6 +66,8 @@ class TestSelectStructure:
         assert ast.targets[0].alias.parts[0] == 'column_alias'
         assert str(ast).lower() == sql.lower()
 
+
+
     def test_select_identifier_alias_complex(self, dialect):
         sql = f'SELECT column AS `column alias spaces`'
         ast = parse_sql(sql, dialect=dialect)
@@ -322,10 +324,20 @@ class TestSelectStructure:
                                            nulls='NULLS FIRST')],
                                )
 
-
         assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_select_aliases_order_by(self, dialect):
+        sql = "select max(name) as `max(name)` from tbl order by `max(name)`"
+
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(targets=[Function('max', args=[Identifier('name')], alias=Identifier('max(name)'))],
+                              from_table=Identifier('tbl'),
+                              order_by=[OrderBy(Identifier('max(name)'))])
+
+        assert ast.to_tree() == expected_ast.to_tree()
 
     def test_select_limit_offset_elaborate(self, dialect):
         sql = """SELECT * FROM t1 LIMIT 1 OFFSET 2"""
