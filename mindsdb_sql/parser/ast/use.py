@@ -11,11 +11,10 @@ class Use(ASTNode):
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
-        ind1 = indent(level+1)
-        value_str = f'value=\n{self.value.to_tree(level=level+2)},'
+        value_str = f'value={self.value.to_tree(level=level+2)},'
 
         out_str = f'{ind}Use(' \
-                  f'{ind1}{value_str}' \
+                  f'{value_str}' \
                   f'\n{ind})'
         return out_str
 
