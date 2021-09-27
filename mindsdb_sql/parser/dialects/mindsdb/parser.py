@@ -1,11 +1,15 @@
+import json
 from sly import Parser
-
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
                                     Union, Use, Show, CommonTableExpression)
-from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
+from mindsdb_sql.parser.dialects.mindsdb.drop_integration import DropIntegration
+from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
+from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
+from mindsdb_sql.parser.dialects.mindsdb.create_integration import CreateIntegration
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
+from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
@@ -24,7 +28,11 @@ class MindsDBParser(Parser):
     # Top-level statements
     @_('show',
        'use',
+       'create_predictor',
+       'create_integration',
        'create_view',
+       'drop_predictor',
+       'drop_integration',
        'select',
        'union')
     def query(self, p):
@@ -82,13 +90,11 @@ class MindsDBParser(Parser):
 
 
     # USE
-
     @_('USE identifier')
     def use(self, p):
         return Use(value=p.identifier)
 
     # CREATE VIEW
-
     @_('CREATE VIEW ID create_view_from_table_or_nothing AS LPAREN select RPAREN')
     def create_view(self, p):
         return CreateView(name=p.ID,
@@ -102,6 +108,72 @@ class MindsDBParser(Parser):
     @_('empty')
     def create_view_from_table_or_nothing(self, p):
         pass
+
+    # DROP PREDICTOR
+    @_('DROP PREDICTOR identifier')
+    def drop_predictor(self, p):
+        return DropPredictor(p.identifier)
+
+    # DROP INTEGRATION
+    @_('DROP INTEGRATION identifier')
+    def drop_integration(self, p):
+        return DropIntegration(p.identifier)
+
+    # CREATE PREDICTOR
+    @_('create_predictor USING STRING')
+    def create_predictor(self, p):
+        try:
+            using = json.loads(p.STRING)
+            p.create_predictor.using = using
+            return p.create_predictor
+        except ValueError as err:
+            raise ParsingException(f'Predictor USING must be a valid json, got error: {str(err)}')
+
+    @_('create_predictor HORIZON INTEGER')
+    def create_predictor(self, p):
+        p.create_predictor.horizon = p.INTEGER
+        return p.create_predictor
+
+    @_('create_predictor WINDOW INTEGER')
+    def create_predictor(self, p):
+        p.create_predictor.window = p.INTEGER
+        return p.create_predictor
+
+    @_('create_predictor GROUP_BY expr_list')
+    def create_predictor(self, p):
+        group_by = p.expr_list
+        if not isinstance(group_by, list):
+            group_by = [group_by]
+
+        p.create_predictor.group_by = group_by
+        return p.create_predictor
+
+    @_('create_predictor ORDER_BY ordering_terms')
+    def create_predictor(self, p):
+        p.create_predictor.order_by = p.ordering_terms
+        return p.create_predictor
+
+    @_('CREATE PREDICTOR ID FROM ID WITH LPAREN STRING RPAREN AS ID PREDICT result_columns')
+    def create_predictor(self, p):
+        return CreatePredictor(
+            name=p.ID0,
+            integration_name=p.ID1,
+            query=p.STRING,
+            datasource_name=p.ID2,
+            targets=p.result_columns
+        )
+
+    # CREATE INTEGRATION
+    @_('CREATE INTEGRATION ID WITH ENGINE EQUALS STRING COMMA PARAMETERS EQUALS STRING')
+    def create_integration(self, p):
+        try:
+            parameters = json.loads(p.STRING1)
+            return CreateIntegration(name=p.ID,
+                                     engine=p.STRING0,
+                                     parameters=parameters)
+        except ValueError as err:
+            raise ParsingException(f'Integration args must be a valid json, got error: {str(err)}')
+
 
     # UNION / UNION ALL
     @_('select UNION select')
