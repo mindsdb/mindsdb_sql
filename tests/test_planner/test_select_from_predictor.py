@@ -1,5 +1,6 @@
 import pytest
 
+from mindsdb_sql import parse_sql
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query, QueryPlan
@@ -156,6 +157,29 @@ class TestPlanSelectFromPredictor:
                                   steps=[
                                       ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('pred'),
                                                             row_dict={'x1': 1, 'x2': '2'}),
+                                      ProjectStep(dataframe=Result(0), columns=[Star()]),
+                                  ],
+                                  )
+
+        plan = plan_query(query, predictor_namespace='mindsdb', default_namespace='mindsdb')
+
+        assert plan.steps == expected_plan.steps
+
+    def test_select_from_predictor_constant(self):
+        sql = f'SELECT GDP_per_capita_USD FROM hdi_predictor_external WHERE 1 = 0'
+        query = parse_sql(sql, dialect='mindsdb')
+
+        expected_query = Select(targets=[Identifier('GDP_per_capita_USD')],
+                                       from_table=Identifier('hdi_predictor_external'),
+                                       where=BinaryOperation(op="=",
+                                                             args=[Constant(1), Constant(0)]))
+        assert query.to_tree() == expected_query.to_tree()
+
+        expected_plan = QueryPlan(predictor_namespace='mindsdb',
+                                  default_namespace='mindsdb',
+                                  steps=[
+                                      ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('hdi_predictor_external'),
+                                                            row_dict={1: 0}),
                                       ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
                                   )
