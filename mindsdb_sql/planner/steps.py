@@ -147,6 +147,14 @@ class ApplyPredictorRowStep(PlanStep):
         self.row_dict = row_dict
 
 
+class GetPredictorColumns(PlanStep):
+    """Returns an empty dataframe of shape and columns like predictor results."""
+    def __init__(self, namespace, predictor, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.namespace = namespace
+        self.predictor = predictor
+
+
 class MapReduceStep(PlanStep):
     """Applies a step for each value in a list, and then reduces results to a single dataframe"""
     def __init__(self, values, step, reduce, *args, **kwargs):

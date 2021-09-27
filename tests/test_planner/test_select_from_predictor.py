@@ -6,7 +6,7 @@ from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query, QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, ApplyPredictorStep,
-                                       ApplyPredictorRowStep, GroupByStep)
+                                       ApplyPredictorRowStep, GroupByStep, GetPredictorColumns)
 from mindsdb_sql.utils import JoinType
 
 
@@ -165,7 +165,7 @@ class TestPlanSelectFromPredictor:
 
         assert plan.steps == expected_plan.steps
 
-    def test_select_from_predictor_constant(self):
+    def test_select_from_predictor_get_columns(self):
         sql = f'SELECT GDP_per_capita_USD FROM hdi_predictor_external WHERE 1 = 0'
         query = parse_sql(sql, dialect='mindsdb')
 
@@ -178,9 +178,8 @@ class TestPlanSelectFromPredictor:
         expected_plan = QueryPlan(predictor_namespace='mindsdb',
                                   default_namespace='mindsdb',
                                   steps=[
-                                      ApplyPredictorRowStep(namespace='mindsdb',
-                                                            predictor=Identifier('hdi_predictor_external'),
-                                                            row_dict={1: 0}),
+                                      GetPredictorColumns(namespace='mindsdb',
+                                                            predictor=Identifier('hdi_predictor_external')),
                                       ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
                                   )
