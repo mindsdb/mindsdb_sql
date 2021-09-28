@@ -9,6 +9,9 @@ class SQLLexer(Lexer):
     tokens = {
         USE,
 
+        # Misc
+        SET, AUTOCOMMIT,
+
         # SHOW Keywords
 
         SHOW, SCHEMAS, DATABASES, TABLES, TABLE, FULL, VARIABLES, SESSION, STATUS,
@@ -37,6 +40,10 @@ class SQLLexer(Lexer):
         # Data types
         CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE}
 
+    # Misc
+    SET = r'\bSET\b'
+    AUTOCOMMIT = r'\bAUTOCOMMIT\b'
+
     # SHOW
 
     SHOW = r'\bSHOW\b'
@@ -61,7 +68,6 @@ class SQLLexer(Lexer):
 
     # SELECT
 
-    # Keywords
     ON = r'\bON\b'
     ASC = r'\bASC\b'
     DESC = r'\bDESC\b'
@@ -86,6 +92,8 @@ class SQLLexer(Lexer):
     CROSS = r'\bCROSS\b'
     LEFT = r'\bLEFT\b'
     RIGHT = r'\bRIGHT\b'
+
+    # UNION
 
     UNION = r'\bUNION\b'
     ALL = r'\bALL\b'

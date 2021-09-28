@@ -7,23 +7,27 @@ class MindsDBLexer(Lexer):
     ignore = ' \t\n\r'
 
     tokens = {
-        SELECT, CREATE, SHOW, USE, DROP,
+        USE, DROP, CREATE,
+
+        # Misc
+        SET, AUTOCOMMIT,
 
         # Mindsdb special
         PREDICTOR, PREDICTORS, INTEGRATION, INTEGRATIONS,
-        STREAM, STREAMS, PUBLICATION, PUBLICATIONS,
+        STREAM, STREAMS, PUBLICATION, PUBLICATIONS, VIEW, VIEWS,
 
         LATEST, HORIZON, USING,
         ENGINE, TRAIN, TEST, PREDICT, MODEL, PARAMETERS,
 
+
         # SHOW Keywords
 
-        SCHEMAS, DATABASES, TABLES, TABLE, FULL, VARIABLES, SESSION, STATUS,
-        GLOBAL, PROCEDURE, FUNCTION, INDEX, CREATE, WARNINGS, ENGINES, CHARSET, COLLATION,
-        VIEW, VIEWS,
+        SHOW, SCHEMAS, DATABASES, TABLES, TABLE, FULL, VARIABLES, SESSION, STATUS,
+        GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS, ENGINES, CHARSET, COLLATION,
+
 
         # SELECT Keywords
-        WITH, DISTINCT, FROM, WHERE, AS,
+        WITH, SELECT, DISTINCT, FROM, WHERE, AS,
         LIMIT, OFFSET, ASC, DESC, NULLS_FIRST, NULLS_LAST,
         GROUP_BY, HAVING, ORDER_BY,
         STAR,
@@ -57,6 +61,21 @@ class MindsDBLexer(Lexer):
     PARAMETERS = r'\bPARAMETERS\b'
     HORIZON = r'\bHORIZON\b'
     USING = r'\bUSING\b'
+    VIEW = r'\bVIEW\b'
+    VIEWS = r'\bVIEWS\b'
+    STREAM = r'\bSTREAM\b'
+    STREAMS = r'\bSTREAMS\b'
+    PREDICTOR = r'\bPREDICTOR\b'
+    PREDICTORS = r'\bPREDICTORS\b'
+    INTEGRATION = r'\bINTEGRATION\b'
+    INTEGRATIONS = r'\bINTEGRATIONS\b'
+    PUBLICATION = r'\bPUBLICATION\b'
+    PUBLICATIONS = r'\bPUBLICATIONS\b'
+    LATEST = r'\bLATEST\b'
+
+    # Misc
+    SET = r'\bSET\b'
+    AUTOCOMMIT = r'\bAUTOCOMMIT\b'
 
     # SHOW
 
@@ -78,21 +97,9 @@ class MindsDBLexer(Lexer):
     CHARSET = r'\bCHARSET\b'
     COLLATION = r'\bCOLLATION\b'
 
-    VIEW = r'\bVIEW\b'
-    VIEWS = r'\bVIEWS\b'
-    STREAM = r'\bSTREAM\b'
-    STREAMS = r'\bSTREAMS\b'
-    PREDICTOR = r'\bPREDICTOR\b'
-    PREDICTORS = r'\bPREDICTORS\b'
-    INTEGRATION = r'\bINTEGRATION\b'
-    INTEGRATIONS = r'\bINTEGRATIONS\b'
-    PUBLICATION = r'\bPUBLICATION\b'
-    PUBLICATIONS = r'\bPUBLICATIONS\b'
-
 
     # SELECT
 
-    # Keywords
     ON = r'\bON\b'
     ASC = r'\bASC\b'
     DESC = r'\bDESC\b'
@@ -110,7 +117,6 @@ class MindsDBLexer(Lexer):
     HAVING = r'\bHAVING\b'
     ORDER_BY = r'\bORDER BY\b'
     STAR = r'\*'
-    LATEST = r'\bLATEST\b'
 
     JOIN = r'\bJOIN\b'
     INNER = r'\bINNER\b'
@@ -118,6 +124,8 @@ class MindsDBLexer(Lexer):
     CROSS = r'\bCROSS\b'
     LEFT = r'\bLEFT\b'
     RIGHT = r'\bRIGHT\b'
+
+    # UNION
 
     UNION = r'\bUNION\b'
     ALL = r'\bALL\b'

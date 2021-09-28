@@ -3,7 +3,7 @@ from sly import Parser
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union, Use, Show, CommonTableExpression)
+                                    Union, Use, Show, CommonTableExpression, Set)
 from mindsdb_sql.parser.dialects.mindsdb.drop_integration import DropIntegration
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
@@ -27,6 +27,7 @@ class MindsDBParser(Parser):
 
     # Top-level statements
     @_('show',
+       'set',
        'use',
        'create_predictor',
        'create_integration',
@@ -37,6 +38,18 @@ class MindsDBParser(Parser):
        'union')
     def query(self, p):
         return p[0]
+
+    # Set
+
+    @_('SET AUTOCOMMIT')
+    def set(self, p):
+        return Set(category=p.AUTOCOMMIT)
+
+    @_('SET ID identifier')
+    def set(self, p):
+        if not p.ID == 'names':
+            raise ParsingException(f'Excepted "names"')
+        return Set(category=p.ID, arg=p.identifier)
 
     # Show
 

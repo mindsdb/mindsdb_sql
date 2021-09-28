@@ -5,7 +5,7 @@ from mindsdb_sql.parser.dialects.mysql.variable import Variable
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union, Use, Show, CommonTableExpression)
+                                    Union, Use, Show, CommonTableExpression, Set)
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
@@ -22,10 +22,23 @@ class MySQLParser(SQLParser):
 
     # Top-level statements
     @_('show',
+       'set',
        'union',
        'select',)
     def query(self, p):
         return p[0]
+
+    # Set
+
+    @_('SET AUTOCOMMIT')
+    def set(self, p):
+        return Set(category=p.AUTOCOMMIT)
+
+    @_('SET ID identifier')
+    def set(self, p):
+        if not p.ID == 'names':
+            raise ParsingException(f'Excepted "names"')
+        return Set(category=p.ID, arg=p.identifier)
 
     # Show
 
