@@ -23,13 +23,13 @@ class TestMiscQueries:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
-    # def test_start_transaction(self, dialect):
-    #     sql = "start transaction"
-    #
-    #     ast = parse_sql(sql, dialect=dialect)
-    #     expected_ast = StartTransaction()
-    #     assert ast.to_tree() == expected_ast.to_tree()
-    #     assert str(ast) == str(expected_ast)
+    def test_start_transaction(self, dialect):
+        sql = "start transaction"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = StartTransaction()
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
     #
     # def test_rollback(self, dialect):
     #     sql = "rollback"

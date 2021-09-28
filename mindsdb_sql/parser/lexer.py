@@ -7,15 +7,15 @@ class SQLLexer(Lexer):
     ignore = ' \t\n\r'
 
     tokens = {
-        USE,
+        USE, CREATE,
 
         # Misc
-        SET, AUTOCOMMIT,
+        SET, AUTOCOMMIT, START, TRANSACTION,
 
         # SHOW Keywords
 
         SHOW, SCHEMAS, DATABASES, TABLES, TABLE, FULL, VARIABLES, SESSION, STATUS,
-        GLOBAL, PROCEDURE, FUNCTION, INDEX, CREATE, WARNINGS, ENGINES, CHARSET, COLLATION,
+        GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS, ENGINES, CHARSET, COLLATION,
 
 
         # SELECT Keywords
@@ -43,6 +43,8 @@ class SQLLexer(Lexer):
     # Misc
     SET = r'\bSET\b'
     AUTOCOMMIT = r'\bAUTOCOMMIT\b'
+    START = r'\bSTART\b'
+    TRANSACTION = r'\bTRANSACTION\b'
 
     # SHOW
 

@@ -3,7 +3,7 @@ from sly import Parser
 from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
                                     NullConstant,
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union, Use, Show, CommonTableExpression, Set)
+                                    Union, Use, Show, CommonTableExpression, Set, StartTransaction)
 from mindsdb_sql.parser.dialects.mindsdb.drop_integration import DropIntegration
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
@@ -27,6 +27,7 @@ class MindsDBParser(Parser):
 
     # Top-level statements
     @_('show',
+       'start_transaction',
        'set',
        'use',
        'create_predictor',
@@ -34,10 +35,17 @@ class MindsDBParser(Parser):
        'create_view',
        'drop_predictor',
        'drop_integration',
+       'union',
        'select',
-       'union')
+       )
     def query(self, p):
         return p[0]
+
+    # Transactions
+
+    @_('START TRANSACTION')
+    def start_transaction(self, p):
+        return StartTransaction()
 
     # Set
 

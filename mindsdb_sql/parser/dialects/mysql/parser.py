@@ -7,6 +7,7 @@ from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, Binar
                                     TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
                                     Union, Use, Show, CommonTableExpression, Set)
 from mindsdb_sql.exceptions import ParsingException
+from mindsdb_sql.parser.ast.start_transaction import StartTransaction
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
 
@@ -22,11 +23,19 @@ class MySQLParser(SQLParser):
 
     # Top-level statements
     @_('show',
+       'start_transaction',
        'set',
+       'use',
        'union',
        'select',)
     def query(self, p):
         return p[0]
+
+    # Transactions
+
+    @_('START TRANSACTION')
+    def start_transaction(self, p):
+        return StartTransaction()
 
     # Set
 

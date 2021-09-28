@@ -10,7 +10,7 @@ class MindsDBLexer(Lexer):
         USE, DROP, CREATE,
 
         # Misc
-        SET, AUTOCOMMIT,
+        SET, AUTOCOMMIT, START, TRANSACTION,
 
         # Mindsdb special
         PREDICTOR, PREDICTORS, INTEGRATION, INTEGRATIONS,
@@ -51,7 +51,6 @@ class MindsDBLexer(Lexer):
     # Custom commands
 
     USE = r'\bUSE\b'
-    CREATE = r'\bCREATE\b'
     ENGINE = r'\bENGINE\b'
     TRAIN = r'\bTRAIN\b'
     TEST = r'\bTEST\b'
@@ -76,6 +75,8 @@ class MindsDBLexer(Lexer):
     # Misc
     SET = r'\bSET\b'
     AUTOCOMMIT = r'\bAUTOCOMMIT\b'
+    START = r'\bSTART\b'
+    TRANSACTION = r'\bTRANSACTION\b'
 
     # SHOW
 
@@ -92,6 +93,7 @@ class MindsDBLexer(Lexer):
     PROCEDURE = r'\bPROCEDURE\b'
     FUNCTION = r'\bFUNCTION\b'
     INDEX = r'\bINDEX\b'
+    CREATE = r'\bCREATE\b'
     WARNINGS = r'\bWARNINGS\b'
     ENGINES = r'\bENGINES\b'
     CHARSET = r'\bCHARSET\b'
