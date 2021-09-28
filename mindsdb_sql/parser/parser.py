@@ -21,6 +21,8 @@ class SQLParser(Parser):
        'start_transaction',
        'commit_transaction',
        'rollback_transaction',
+       'alter_table',
+       'explain',
        'set',
        'use',
        'union',
@@ -28,6 +30,17 @@ class SQLParser(Parser):
        )
     def query(self, p):
         return p[0]
+
+    # Explain
+    @_('EXPLAIN identifier')
+    def explain(self, p):
+        return Explain(target=p.identifier)
+
+    # Alter table
+    @_('ALTER TABLE identifier ID ID')
+    def alter_table(self, p):
+        return AlterTable(target=p.identifier,
+                          arg=' '.join([p.ID0, p.ID1]))
 
     # Transactions
 

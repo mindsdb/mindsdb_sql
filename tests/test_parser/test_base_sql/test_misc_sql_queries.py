@@ -46,28 +46,28 @@ class TestMiscQueries:
         expected_ast = CommitTransaction()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
-    #
-    # def test_explain(self, dialect):
-    #     sql = "explain some_table"
-    #
-    #     ast = parse_sql(sql, dialect=dialect)
-    #     expected_ast = Explain(target=Identifier('some_table'))
-    #     assert ast.to_tree() == expected_ast.to_tree()
-    #     assert str(ast) == str(expected_ast)
-    #
-    # def test_alter_table_keys(self, dialect):
-    #     sql = "alter table some_table disable keys"
-    #
-    #     ast = parse_sql(sql, dialect=dialect)
-    #     expected_ast = AlterTable(target=Identifier('some_table'), arg='disable keys')
-    #     assert ast.to_tree() == expected_ast.to_tree()
-    #     assert str(ast) == str(expected_ast)
-    #
-    #     sql = "alter table some_table enable keys"
-    #
-    #     ast = parse_sql(sql, dialect=dialect)
-    #     expected_ast = AlterTable(target=Identifier('some_table'), arg='enable keys')
-    #     assert ast.to_tree() == expected_ast.to_tree()
-    #     assert str(ast) == str(expected_ast)
+
+    def test_explain(self, dialect):
+        sql = "explain some_table"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Explain(target=Identifier('some_table'))
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+    def test_alter_table_keys(self, dialect):
+        sql = "alter table some_table disable keys"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = AlterTable(target=Identifier('some_table'), arg='disable keys')
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "alter table some_table enable keys"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = AlterTable(target=Identifier('some_table'), arg='enable keys')
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
 
 
