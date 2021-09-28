@@ -1,11 +1,7 @@
 from sly import Parser
 
-from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
-                                    NullConstant,
-                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union, Use, Show, CommonTableExpression, Set)
+from mindsdb_sql.parser.ast import *
 from mindsdb_sql.exceptions import ParsingException
-from mindsdb_sql.parser.ast.start_transaction import StartTransaction
 from mindsdb_sql.parser.lexer import SQLLexer
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
@@ -23,6 +19,8 @@ class SQLParser(Parser):
     # Top-level statements
     @_('show',
        'start_transaction',
+       'commit_transaction',
+       'rollback_transaction',
        'set',
        'use',
        'union',
@@ -36,6 +34,14 @@ class SQLParser(Parser):
     @_('START TRANSACTION')
     def start_transaction(self, p):
         return StartTransaction()
+
+    @_('COMMIT')
+    def commit_transaction(self, p):
+        return CommitTransaction()
+
+    @_('ROLLBACK')
+    def rollback_transaction(self, p):
+        return RollbackTransaction()
 
     # Set
 
@@ -355,7 +361,7 @@ class SQLParser(Parser):
     def expr(self, p):
         args = p.expr_list_or_nothing
         if not args:
-            args = tuple()
+            args = []
         return Function(op=p.ID, args=args)
 
     # arguments are optional in functions, so that things like `select database()` are possible

@@ -1,9 +1,6 @@
 import json
 from sly import Parser
-from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
-                                    NullConstant,
-                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union, Use, Show, CommonTableExpression, Set, StartTransaction)
+from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mindsdb.drop_integration import DropIntegration
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
@@ -28,6 +25,8 @@ class MindsDBParser(Parser):
     # Top-level statements
     @_('show',
        'start_transaction',
+       'commit_transaction',
+       'rollback_transaction',
        'set',
        'use',
        'create_predictor',
@@ -46,6 +45,14 @@ class MindsDBParser(Parser):
     @_('START TRANSACTION')
     def start_transaction(self, p):
         return StartTransaction()
+
+    @_('COMMIT')
+    def commit_transaction(self, p):
+        return CommitTransaction()
+
+    @_('ROLLBACK')
+    def rollback_transaction(self, p):
+        return RollbackTransaction()
 
     # Set
 
@@ -454,7 +461,7 @@ class MindsDBParser(Parser):
     def expr(self, p):
         args = p.expr_list_or_nothing
         if not args:
-            args = tuple()
+            args = []
         return Function(op=p.ID, args=args)
 
     # arguments are optional in functions, so that things like `select database()` are possible

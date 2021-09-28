@@ -30,22 +30,22 @@ class TestMiscQueries:
         expected_ast = StartTransaction()
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
-    #
-    # def test_rollback(self, dialect):
-    #     sql = "rollback"
-    #
-    #     ast = parse_sql(sql, dialect=dialect)
-    #     expected_ast = RollbackTransaction()
-    #     assert ast.to_tree() == expected_ast.to_tree()
-    #     assert str(ast) == str(expected_ast)
-    #
-    # def test_commit(self, dialect):
-    #     sql = "commit"
-    #
-    #     ast = parse_sql(sql, dialect=dialect)
-    #     expected_ast = CommitTransaction()
-    #     assert ast.to_tree() == expected_ast.to_tree()
-    #     assert str(ast) == str(expected_ast)
+
+    def test_rollback(self, dialect):
+        sql = "rollback"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = RollbackTransaction()
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+    def test_commit(self, dialect):
+        sql = "commit"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = CommitTransaction()
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
     #
     # def test_explain(self, dialect):
     #     sql = "explain some_table"

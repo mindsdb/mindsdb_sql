@@ -10,7 +10,7 @@ class SQLLexer(Lexer):
         USE, CREATE,
 
         # Misc
-        SET, AUTOCOMMIT, START, TRANSACTION,
+        SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK,
 
         # SHOW Keywords
 
@@ -45,6 +45,8 @@ class SQLLexer(Lexer):
     AUTOCOMMIT = r'\bAUTOCOMMIT\b'
     START = r'\bSTART\b'
     TRANSACTION = r'\bTRANSACTION\b'
+    COMMIT = r'\bCOMMIT\b'
+    ROLLBACK = r'\bROLLBACK\b'
 
     # SHOW
 

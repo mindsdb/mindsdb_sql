@@ -1,13 +1,8 @@
 from mindsdb_sql.parser.parser import SQLParser
+from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mysql.lexer import MySQLLexer
 from mindsdb_sql.parser.dialects.mysql.variable import Variable
-
-from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
-                                    NullConstant,
-                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union, Use, Show, CommonTableExpression, Set)
 from mindsdb_sql.exceptions import ParsingException
-from mindsdb_sql.parser.ast.start_transaction import StartTransaction
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
 
@@ -24,10 +19,13 @@ class MySQLParser(SQLParser):
     # Top-level statements
     @_('show',
        'start_transaction',
+       'commit_transaction',
+       'rollback_transaction',
        'set',
        'use',
        'union',
-       'select',)
+       'select',
+       )
     def query(self, p):
         return p[0]
 
@@ -36,6 +34,14 @@ class MySQLParser(SQLParser):
     @_('START TRANSACTION')
     def start_transaction(self, p):
         return StartTransaction()
+
+    @_('COMMIT')
+    def commit_transaction(self, p):
+        return CommitTransaction()
+
+    @_('ROLLBACK')
+    def rollback_transaction(self, p):
+        return RollbackTransaction()
 
     # Set
 
@@ -356,7 +362,7 @@ class MySQLParser(SQLParser):
     def expr(self, p):
         args = p.expr_list_or_nothing
         if not args:
-            args = tuple()
+            args = []
         return Function(op=p.ID, args=args)
 
     # arguments are optional in functions, so that things like `select database()` are possible

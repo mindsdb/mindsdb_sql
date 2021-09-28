@@ -10,9 +10,10 @@ class MindsDBLexer(Lexer):
         USE, DROP, CREATE,
 
         # Misc
-        SET, AUTOCOMMIT, START, TRANSACTION,
+        SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK,
 
         # Mindsdb special
+
         PREDICTOR, PREDICTORS, INTEGRATION, INTEGRATIONS,
         STREAM, STREAMS, PUBLICATION, PUBLICATIONS, VIEW, VIEWS,
 
@@ -77,6 +78,8 @@ class MindsDBLexer(Lexer):
     AUTOCOMMIT = r'\bAUTOCOMMIT\b'
     START = r'\bSTART\b'
     TRANSACTION = r'\bTRANSACTION\b'
+    COMMIT = r'\bCOMMIT\b'
+    ROLLBACK = r'\bROLLBACK\b'
 
     # SHOW
 
