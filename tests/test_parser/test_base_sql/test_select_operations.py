@@ -434,3 +434,19 @@ class TestOperations:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
+
+    def test_select_functions(self, dialect):
+        sqls = [
+            "SELECT connection_id()",
+            "SELECT database()",
+            "SELECT current_user()",
+            "SELECT version()",
+            "SELECT user()",
+        ]
+
+        for sql in sqls:
+            ast = parse_sql(sql, dialect=dialect)
+            assert isinstance(ast, Select)
+            assert len(ast.targets) == 1
+            assert isinstance(ast.targets[0], Function)
+
