@@ -7,7 +7,7 @@ from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
-                                       UnionStep, MapReduceStep, MultipleSteps)
+                                       UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
@@ -276,9 +276,14 @@ class QueryPlan:
         map_reduce_step = self.add_step(MapReduceStep(values=select_partitions_step.result, reduce='union', step=select_partition_step))
 
         predictor_inputs = map_reduce_step.result
-        predictor_step = self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
-                                         dataframe=predictor_inputs,
-                                         predictor=predictor))
+        predictor_step = self.add_step(
+            ApplyTimeseriesPredictorStep(
+                output_time_filter=time_filter,
+                namespace=predictor_namespace,
+                dataframe=predictor_inputs,
+                predictor=predictor,
+            )
+        )
 
         # Update reference
         integration_name, table = self.get_integration_path_from_identifier_or_error(table)
