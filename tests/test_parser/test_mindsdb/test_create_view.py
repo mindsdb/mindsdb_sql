@@ -1,6 +1,6 @@
 import pytest
 
-from mindsdb_sql import parse_sql
+from mindsdb_sql import parse_sql, ParsingException
 from mindsdb_sql.parser.dialects.mindsdb import *
 from mindsdb_sql.parser.ast import *
 
@@ -18,7 +18,7 @@ class TestCreateView:
     def test_create_view_raises_wrong_dialect(self):
         sql = "CREATE VIEW my_view FROM integr AS ( SELECT * FROM pred )"
         for dialect in ['sqlite', 'mysql']:
-            with pytest.raises(Exception):
+            with pytest.raises(ParsingException):
                 ast = parse_sql(sql, dialect=dialect)
 
     def test_create_view_full(self):
