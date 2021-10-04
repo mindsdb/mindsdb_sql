@@ -180,7 +180,7 @@ class TestPlanSelectFromPredictor:
                                   steps=[
                                       GetPredictorColumns(namespace='mindsdb',
                                                             predictor=Identifier('hdi_predictor_external')),
-                                      ProjectStep(dataframe=Result(0), columns=[Star()]),
+                                      ProjectStep(dataframe=Result(0), columns=[Identifier('GDP_per_capita_USD')]),
                                   ],
                                   )
 
