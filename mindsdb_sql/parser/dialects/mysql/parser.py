@@ -1,11 +1,7 @@
 from mindsdb_sql.parser.parser import SQLParser
+from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mysql.lexer import MySQLLexer
 from mindsdb_sql.parser.dialects.mysql.variable import Variable
-
-from mindsdb_sql.parser.ast import (ASTNode, Constant, Identifier, Select, BinaryOperation, UnaryOperation, Join,
-                                    NullConstant,
-                                    TypeCast, Tuple, OrderBy, Operation, Function, Parameter, BetweenOperation, Star,
-                                    Union, Use, Show, CommonTableExpression)
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
@@ -22,10 +18,55 @@ class MySQLParser(SQLParser):
 
     # Top-level statements
     @_('show',
+       'start_transaction',
+       'commit_transaction',
+       'rollback_transaction',
+       'alter_table',
+       'explain',
+       'set',
+       'use',
        'union',
-       'select',)
+       'select',
+       )
     def query(self, p):
         return p[0]
+
+    # Explain
+    @_('EXPLAIN identifier')
+    def explain(self, p):
+        return Explain(target=p.identifier)
+
+    # Alter table
+    @_('ALTER TABLE identifier ID ID')
+    def alter_table(self, p):
+        return AlterTable(target=p.identifier,
+                          arg=' '.join([p.ID0, p.ID1]))
+
+    # Transactions
+
+    @_('START TRANSACTION')
+    def start_transaction(self, p):
+        return StartTransaction()
+
+    @_('COMMIT')
+    def commit_transaction(self, p):
+        return CommitTransaction()
+
+    @_('ROLLBACK')
+    def rollback_transaction(self, p):
+        return RollbackTransaction()
+
+    # Set
+
+    @_('SET AUTOCOMMIT')
+    def set(self, p):
+        return Set(category=p.AUTOCOMMIT)
+
+    @_('SET ID identifier')
+    def set(self, p):
+        if not p.ID == 'names':
+            raise ParsingException(f'Excepted "names"')
+        return Set(category=p.ID, arg=p.identifier)
 
     # Show
 
@@ -334,7 +375,7 @@ class MySQLParser(SQLParser):
     def expr(self, p):
         args = p.expr_list_or_nothing
         if not args:
-            args = tuple()
+            args = []
         return Function(op=p.ID, args=args)
 
     # arguments are optional in functions, so that things like `select database()` are possible
