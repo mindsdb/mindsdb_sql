@@ -172,6 +172,16 @@ class TestSelectStructure:
 
         assert str(ast).lower() == sql.lower()
 
+    def test_select_where_constants(self, dialect):
+        sql = f'SELECT column FROM pred WHERE 1 = 0'
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[Identifier('column')],
+                                       from_table=Identifier('pred'),
+                                       where=BinaryOperation(op="=",
+                                                             args=[Constant(1), Constant(0)]))
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
     def test_select_from_where_elaborate(self, dialect):
         query = """SELECT column1, column2 FROM t1 WHERE column1 = 1"""
 

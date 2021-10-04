@@ -7,7 +7,7 @@ from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
-                                       UnionStep, MapReduceStep, MultipleSteps)
+                                       UnionStep, MapReduceStep, MultipleSteps, GetPredictorColumns)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
@@ -115,31 +115,39 @@ class QueryPlan:
 
     def plan_select_from_predictor(self, select):
         predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(select.from_table, self.default_namespace)
-        new_query_targets = []
-        for target in select.targets:
-            if isinstance(target, Identifier):
-                new_query_targets.append(
-                    disambiguate_predictor_column_identifier(target, predictor))
-            elif type(target) in (Star, Constant):
-                new_query_targets.append(target)
-            else:
-                raise PlanningException(f'Unknown select target {type(target)}')
 
-        if select.group_by or select.having:
-            raise PlanningException(f'Unsupported operation when querying predictor. Only WHERE is allowed and required.')
+        if select.where == BinaryOperation('=', args=[Constant(1), Constant(0)]):
+            # Hardcoded mysql way of getting predictor columns
+            predictor_step = self.add_step(
+                GetPredictorColumns(namespace=predictor_namespace,
+                                      predictor=predictor)
+            )
+        else:
+            new_query_targets = []
+            for target in select.targets:
+                if isinstance(target, Identifier):
+                    new_query_targets.append(
+                        disambiguate_predictor_column_identifier(target, predictor))
+                elif type(target) in (Star, Constant):
+                    new_query_targets.append(target)
+                else:
+                    raise PlanningException(f'Unknown select target {type(target)}')
 
-        row_dict = {}
-        where_clause = select.where
-        if not where_clause:
-            raise PlanningException(f'WHERE clause required when selecting from predictor')
+            if select.group_by or select.having:
+                raise PlanningException(f'Unsupported operation when querying predictor. Only WHERE is allowed and required.')
 
-        recursively_extract_column_values(where_clause, row_dict, predictor)
+            row_dict = {}
+            where_clause = select.where
+            if not where_clause:
+                raise PlanningException(f'WHERE clause required when selecting from predictor')
 
-        predictor_step = self.add_step(
-            ApplyPredictorRowStep(namespace=predictor_namespace,
-                                            predictor=predictor,
-                                            row_dict=row_dict)
-        )
+            recursively_extract_column_values(where_clause, row_dict, predictor)
+
+            predictor_step = self.add_step(
+                ApplyPredictorRowStep(namespace=predictor_namespace,
+                                                predictor=predictor,
+                                                row_dict=row_dict)
+            )
         project_step = self.plan_project(select, predictor_step.result)
         return predictor_step, project_step
 
