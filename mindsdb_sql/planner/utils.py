@@ -163,12 +163,15 @@ def recursively_disambiguate_identifiers(obj, integration_name, table):
 
 def recursively_extract_column_values(op, row_dict, predictor):
     if isinstance(op, BinaryOperation) and op.op == '=':
-        id = disambiguate_predictor_column_identifier(op.args[0], predictor)
+        id = op.args[0]
         value = op.args[1]
+
         if not (isinstance(id, Identifier) and isinstance(value, Constant)):
             raise PlanningException(f'The WHERE clause for selecting from a predictor'
                                     f' must contain pairs \'Identifier(...) = Constant(...)\','
                                     f' found instead: {id.to_tree()}, {value.to_tree()}')
+
+        id = disambiguate_predictor_column_identifier(id, predictor)
 
         if str(id) in row_dict:
             raise PlanningException(f'Multiple values provided for {str(id)}')
