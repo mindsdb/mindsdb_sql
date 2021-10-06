@@ -690,3 +690,12 @@ class TestSelectStructure:
                               )
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_select_from_tables(self, dialect):
+        sql = "SELECT * FROM tables"
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(targets=[Star()],
+                              from_table=Identifier('tables'))
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
