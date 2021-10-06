@@ -138,6 +138,16 @@ class ApplyPredictorStep(PlanStep):
             self.references.append(dataframe)
 
 
+class ApplyTimeseriesPredictorStep(ApplyPredictorStep):
+    """Applies a mindsdb predictor on some dataframe and returns a new dataframe with predictions.
+    Accepts an additional parameter output_time_filter that specifies for which dates the predictions should be returned
+    """
+
+    def __init__(self, *args, output_time_filter=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.output_time_filter = output_time_filter
+
+
 class ApplyPredictorRowStep(PlanStep):
     """Applies a mindsdb predictor to one row of values and returns a dataframe of one row, the predictor."""
     def __init__(self, namespace, predictor, row_dict, *args, **kwargs):

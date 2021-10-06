@@ -6,7 +6,7 @@ from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner import plan_query, QueryPlan
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, ApplyPredictorStep,
+from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, ApplyTimeseriesPredictorStep,
                                        LimitOffsetStep, MapReduceStep, MultipleSteps, JoinStep)
 from mindsdb_sql.utils import JoinType
 
@@ -39,7 +39,9 @@ class TestJoinTimeseriesPredictor:
                                                 )
                                    ),
                               ),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(namespace='mindsdb',
+                                             predictor=Identifier('tp3', alias=Identifier('tb')),
+                                             dataframe=Result(1)),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
@@ -63,12 +65,12 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        
-        
+
     def test_join_predictor_timeseries_select_table_columns(self):
         predictor_window = 10
         group_by_column = 'vendor_id'
-        query = Select(targets=[Identifier('ta.target', alias=Identifier('y_true')), Identifier('tb.target', alias=Identifier('y_pred'))],
+        query = Select(targets=[Identifier('ta.target', alias=Identifier('y_true')),
+                                Identifier('tb.target', alias=Identifier('y_pred'))],
                        from_table=Join(left=Identifier('mysql.data.ny_output', alias=Identifier('ta')),
                                        right=Identifier('mindsdb.tp3', alias=Identifier('tb')),
                                        join_type='join'),
@@ -92,7 +94,9 @@ class TestJoinTimeseriesPredictor:
                                                 )
                                    ),
                               ),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(namespace='mindsdb',
+                                             predictor=Identifier('tp3', alias=Identifier('tb')),
+                                             dataframe=Result(1)),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
@@ -116,7 +120,6 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        
 
     def test_join_predictor_timeseries_query_with_limit(self):
         predictor_window = 10
@@ -150,8 +153,9 @@ class TestJoinTimeseriesPredictor:
                                                                    )
                                                       ),
                               ),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
-                                   dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(namespace='mindsdb',
+                                             predictor=Identifier('tp3', alias=Identifier('tb')),
+                                             dataframe=Result(1)),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
@@ -176,7 +180,6 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        
 
     def test_join_predictor_timeseries_filter_by_group_by_column(self):
         predictor_window = 10
@@ -217,8 +220,9 @@ class TestJoinTimeseriesPredictor:
                                                                    )
                                                       ),
                               ),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
-                                   dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(namespace='mindsdb',
+                                             predictor=Identifier('tp3', alias=Identifier('tb')),
+                                             dataframe=Result(1)),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
@@ -242,7 +246,6 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        
 
     def test_join_predictor_timeseries_latest(self):
         predictor_window = 5
@@ -288,8 +291,12 @@ class TestJoinTimeseriesPredictor:
                                                                    )
                                                       ),
                               ),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
-                                   dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(
+                    output_time_filter=BinaryOperation('>', args=[Identifier('ta.pickup_hour'), Latest()]),
+                    namespace='mindsdb',
+                    predictor=Identifier('tp3', alias=Identifier('tb')),
+                    dataframe=Result(1),
+                ),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
@@ -313,7 +320,6 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        
 
     def test_join_predictor_timeseries_between(self):
         predictor_window = 5
@@ -394,8 +400,14 @@ class TestJoinTimeseriesPredictor:
 
                                   ]
                               )),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
-                                   dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(
+                    output_time_filter=BetweenOperation(
+                        args=[Identifier('ta.pickup_hour'), Constant(1), Constant(10)],
+                    ),
+                    namespace='mindsdb',
+                    predictor=Identifier('tp3', alias=Identifier('tb')),
+                    dataframe=Result(1),
+                ),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
@@ -419,7 +431,6 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        
 
     def test_join_predictor_timeseries_concrete_date_greater(self):
         predictor_window = 10
@@ -504,8 +515,10 @@ class TestJoinTimeseriesPredictor:
 
                                   ]
                               )),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
-                                   dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(output_time_filter=BinaryOperation('>', args=[Identifier('ta.pickup_hour'), Constant(10)]),
+                                             namespace='mindsdb',
+                                             predictor=Identifier('tp3', alias=Identifier('tb')),
+                                             dataframe=Result(1)),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
@@ -529,7 +542,6 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        
 
     def test_join_predictor_timeseries_concrete_date_greater_or_equal(self):
         predictor_window = 10
@@ -614,8 +626,10 @@ class TestJoinTimeseriesPredictor:
 
                                   ]
                               )),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
-                                   dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(output_time_filter=BinaryOperation('>=', args=[Identifier('ta.pickup_hour'), Constant(10)]),
+                                             namespace='mindsdb',
+                                             predictor=Identifier('tp3', alias=Identifier('tb')),
+                                             dataframe=Result(1)),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
@@ -639,7 +653,6 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        
 
     def test_join_predictor_timeseries_concrete_date_less(self):
         predictor_window = 10
@@ -694,8 +707,12 @@ class TestJoinTimeseriesPredictor:
                                                                       ),
                                                          ),
                               ),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
-                                   dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(
+                    output_time_filter=BinaryOperation('<', args=[Identifier('ta.pickup_hour'), Constant(10)]),
+                    namespace='mindsdb',
+                    predictor=Identifier('tp3', alias=Identifier('tb')),
+                    dataframe=Result(1),
+                ),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
@@ -719,7 +736,6 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        
 
     def test_join_predictor_timeseries_concrete_date_less_or_equal(self):
         predictor_window = 10
@@ -774,8 +790,12 @@ class TestJoinTimeseriesPredictor:
                                                                       ),
                                                          ),
                               ),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')),
-                                   dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(
+                    output_time_filter=BinaryOperation('<=', args=[Identifier('ta.pickup_hour'), Constant(10)]),
+                    namespace='mindsdb',
+                    predictor=Identifier('tp3', alias=Identifier('tb')),
+                    dataframe=Result(1),
+                ),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
@@ -876,7 +896,11 @@ class TestJoinTimeseriesPredictor:
                                                 )
                                    ),
                               ),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(
+                    namespace='mindsdb',
+                    predictor=Identifier('tp3', alias=Identifier('tb')),
+                    dataframe=Result(1),
+                ),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
@@ -930,7 +954,11 @@ class TestJoinTimeseriesPredictor:
                                                 )
                                    ),
                               ),
-                ApplyPredictorStep(namespace='mindsdb', predictor=Identifier('tp3', alias=Identifier('tb')), dataframe=Result(1)),
+                ApplyTimeseriesPredictorStep(
+                    namespace='mindsdb',
+                    predictor=Identifier('tp3', alias=Identifier('tb')),
+                    dataframe=Result(1),
+                ),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
