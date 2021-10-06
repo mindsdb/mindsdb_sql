@@ -1,6 +1,6 @@
 import itertools
 import pytest
-from mindsdb_sql import parse_sql
+from mindsdb_sql import parse_sql, get_lexer_parser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.utils import JoinType
@@ -9,7 +9,15 @@ from mindsdb_sql.utils import JoinType
 @pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
 class TestMiscQueries:
     def test_set(self, dialect):
+        lexer, parser = get_lexer_parser(dialect)
+
         sql = "set autocommit"
+
+        tokens = list(lexer.tokenize(sql))
+
+        assert len(tokens) == 2
+        assert tokens[0].type == 'SET'
+        assert tokens[1].type == 'AUTOCOMMIT'
 
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Set(category="autocommit")

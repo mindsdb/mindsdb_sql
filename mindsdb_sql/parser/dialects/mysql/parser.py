@@ -162,7 +162,6 @@ class MySQLParser(SQLParser):
         return p.enumeration
 
     # SELECT
-
     @_('select OFFSET constant')
     def select(self, p):
         select = p.select
@@ -252,6 +251,14 @@ class MySQLParser(SQLParser):
             raise ParsingException(
                 f"WHERE must contain an operation that evaluates to a boolean, got: {str(where_expr)}")
         select.where = where_expr
+        return select
+
+    # Special cases for keyword-like identifiers
+    @_('select FROM TABLES')
+    def select(self, p):
+        select = p.select
+        ensure_select_keyword_order(select, 'FROM')
+        select.from_table = Identifier(p.TABLES)
         return select
 
     @_('select FROM from_table')
