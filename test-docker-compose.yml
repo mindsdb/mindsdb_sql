@@ -1,0 +1,25 @@
+version: "3.9"
+services:
+  test_db:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - test-network
+    env_file:
+      - test.env
+  app:
+    build: .
+    command: sh -c 'pytest -x'
+    volumes:
+      - "./:/app/:rw"
+    links:
+      - test_db
+    depends_on:
+      - test_db
+    env_file:
+      - test.env
+    networks:
+      - test-network
+
+networks:
+  test-network:

@@ -1,0 +1,9 @@
+prod.env
+.gitignore
+.git/
+data/
+docker-compose.yml
+test-docker-compose.yml
+.venv/
+*.pyc
+*/__pycache__/*
