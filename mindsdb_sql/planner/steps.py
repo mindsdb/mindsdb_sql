@@ -28,6 +28,9 @@ class PlanStep:
         attrs_str = ', '.join([f'{k}={str(v)}' for k, v in attrs_dict.items()])
         return f'{self.__class__.__name__}({attrs_str})'
 
+    def execute(self, executor):
+        raise NotImplementedError()
+
 
 class ProjectStep(PlanStep):
     """Selects columns from a dataframe"""
@@ -124,6 +127,11 @@ class FetchDataframeStep(PlanStep):
         super().__init__(*args, **kwargs)
         self.integration = integration
         self.query = query
+
+    def execute(self, executor):
+        connection = executor.integration_connections[self.integration]
+        df = connection.query(str(self.query))
+        return df
 
 
 class ApplyPredictorStep(PlanStep):

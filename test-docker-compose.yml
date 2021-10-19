@@ -2,11 +2,13 @@ version: "3.9"
 services:
   test_db:
     image: mysql
-    command: --default-authentication-plugin=mysql_native_password
+    command: --default-authentication-plugin=mysql_native_password --general-log=1 --general-log-file=/var/log/mysql/general-log.log
     networks:
       - test-network
     env_file:
       - test.env
+    volumes:
+      - "./logs/mysql:/var/log/mysql:rw"
   app:
     build: .
     command: sh -c 'pytest -x'

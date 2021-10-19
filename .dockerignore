@@ -7,3 +7,4 @@ test-docker-compose.yml
 .venv/
 *.pyc
 */__pycache__/*
+logs/*
