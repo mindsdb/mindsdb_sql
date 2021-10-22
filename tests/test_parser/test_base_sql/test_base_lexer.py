@@ -56,7 +56,6 @@ class TestLexer:
         assert tokens[0].type == 'SELECT'
 
         for i, t in enumerate(tokens[1:]):
-            print(i, t)
             if i % 2 != 0:
                 assert t.type == 'COMMA'
             else:

@@ -20,6 +20,9 @@ class Identifier(ASTNode):
         assert isinstance(parts, list)
         self.parts = parts
 
+    def copy(self):
+        return Identifier(parts=list(self.parts))
+
     @classmethod
     def from_path_str(self, value, *args, **kwargs):
         parts = path_str_to_parts(value)

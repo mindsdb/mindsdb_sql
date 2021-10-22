@@ -1,6 +1,6 @@
 version: "3.9"
 services:
-  test_db:
+  test_db1:
     image: mysql
     command: --default-authentication-plugin=mysql_native_password --general-log=1 --general-log-file=/var/log/mysql/general-log.log
     networks:
@@ -8,16 +8,27 @@ services:
     env_file:
       - test.env
     volumes:
-      - "./logs/mysql:/var/log/mysql:rw"
+      - "./logs/test_db1:/var/log/mysql:rw"
+  test_db2:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password --general-log=1 --general-log-file=/var/log/mysql/general-log.log
+    networks:
+      - test-network
+    env_file:
+      - test.env
+    volumes:
+      - "./logs/test_db2:/var/log/mysql:rw"
   app:
     build: .
     command: sh -c 'pytest -x'
     volumes:
       - "./:/app/:rw"
     links:
-      - test_db
+      - test_db1
+      - test_db2
     depends_on:
-      - test_db
+      - test_db1
+      - test_db2
     env_file:
       - test.env
     networks:

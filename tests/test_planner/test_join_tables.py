@@ -11,31 +11,81 @@ from mindsdb_sql.utils import JoinType
 
 class TestPlanJoinTables:
     def test_join_tables_plan(self):
+        queries = [
+            # No integrations in condition
+            Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
+                   from_table=Join(left=Identifier('int.tab1'),
+                                   right=Identifier('int.tab2'),
+                                   condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'),
+                                                                           Identifier('tab2.column1')]),
+                                   join_type=JoinType.INNER_JOIN
+                                   )
+                   ),
+            # Integrations in condition
+            Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
+                   from_table=Join(left=Identifier('int.tab1'),
+                                   right=Identifier('int.tab2'),
+                                   condition=BinaryOperation(op='=', args=[Identifier('int.tab1.column1'),
+                                                                           Identifier('int.tab2.column1')]),
+                                   join_type=JoinType.INNER_JOIN
+                                   ),
+                   ),
+        ]
+        for query in queries:
+            plan = plan_query(query, integrations=['int'])
+            expected_plan = QueryPlan(integrations=['int'],
+                                      steps = [
+                                          FetchDataframeStep(integration='int',
+                                                             query=Select(
+                                                                 targets=[Star()],
+                                                                 from_table=Identifier('tab1')),
+                                                             ),
+                                          FetchDataframeStep(integration='int',
+                                                             query=Select(targets=[Star()],
+                                                                          from_table=Identifier('tab2')),
+                                                             ),
+                                          JoinStep(left=Result(0), right=Result(1),
+                                                   query=Join(left=Identifier('tab1'),
+                                                              right=Identifier('tab2'),
+                                                              condition=BinaryOperation(op='=',
+                                                                                        args=[Identifier('tab1.column1'),
+                                                                                              Identifier('tab2.column1')]),
+                                                              join_type=JoinType.INNER_JOIN
+                                                              )),
+                                          ProjectStep(dataframe=Result(2),
+                                                      columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                      ],
+            )
+            assert plan.steps == expected_plan.steps
+
+    def test_join_tables_plan_databases_specified(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
-                       from_table=Join(left=Identifier('int.tab1'),
-                                       right=Identifier('int.tab2'),
-                                       condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
-                                       join_type=JoinType.INNER_JOIN
-                                       )
-                )
+                   from_table=Join(left=Identifier('int.db.tab1'),
+                                   right=Identifier('int.db.tab2'),
+                                   condition=BinaryOperation(op='=', args=[Identifier('int.db.tab1.column1'),
+                                                                           Identifier('int.db.tab2.column1')]),
+                                   join_type=JoinType.INNER_JOIN
+                                   ),
+                   )
+
         plan = plan_query(query, integrations=['int'])
         expected_plan = QueryPlan(integrations=['int'],
                                   steps = [
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
                                                              targets=[Star()],
-                                                             from_table=Identifier('tab1')),
+                                                             from_table=Identifier('db.tab1')),
                                                          ),
                                       FetchDataframeStep(integration='int',
                                                          query=Select(targets=[Star()],
-                                                                      from_table=Identifier('tab2')),
+                                                                      from_table=Identifier('db.tab2')),
                                                          ),
                                       JoinStep(left=Result(0), right=Result(1),
-                                               query=Join(left=Identifier('tab1'),
-                                                          right=Identifier('tab2'),
+                                               query=Join(left=Identifier('db.tab1'),
+                                                          right=Identifier('db.tab2'),
                                                           condition=BinaryOperation(op='=',
-                                                                                    args=[Identifier('tab1.column1'),
-                                                                                          Identifier('tab2.column1')]),
+                                                                                    args=[Identifier('db.tab1.column1'),
+                                                                                          Identifier('db.tab2.column1')]),
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
                                       ProjectStep(dataframe=Result(2),
@@ -44,7 +94,42 @@ class TestPlanJoinTables:
         )
 
         assert plan.steps == expected_plan.steps
-        
+
+    def test_join_tables_plan_alias(self):
+        query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
+                   from_table=Join(left=Identifier('int.db.tab1', alias=Identifier('t1')),
+                                   right=Identifier('int.db.tab2', alias=Identifier('t2')),
+                                   condition=BinaryOperation(op='=', args=[Identifier('t1.column1'),
+                                                                           Identifier('t2.column1')]),
+                                   join_type=JoinType.INNER_JOIN
+                                   ),
+                   )
+
+        plan = plan_query(query, integrations=['int'])
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps = [
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(
+                                                             targets=[Star()],
+                                                             from_table=Identifier('db.tab1', alias=Identifier('t1'))),
+                                                         ),
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(targets=[Star()],
+                                                                      from_table=Identifier('db.tab2', alias=Identifier('t2'))),
+                                                         ),
+                                      JoinStep(left=Result(0), right=Result(1),
+                                               query=Join(left=Identifier('db.tab1', alias=Identifier('t1')),
+                                                          right=Identifier('db.tab2', alias=Identifier('t2')),
+                                                          condition=BinaryOperation(op='=',
+                                                                                    args=[Identifier('t1.column1'),
+                                                                                          Identifier('t2.column1')]),
+                                                          join_type=JoinType.INNER_JOIN
+                                                          )),
+                                      ProjectStep(dataframe=Result(2),
+                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                  ],
+        )
+        assert plan.steps == expected_plan.steps
 
     def test_join_tables_where_plan(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
@@ -327,18 +412,6 @@ class TestPlanJoinTables:
                                   )
 
         assert plan.steps == expected_plan.steps
-        
-
-    def test_join_tables_error_on_unspecified_table_in_condition(self):
-        query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
-                       from_table=Join(left=Identifier('int.tab1'),
-                                       right=Identifier('int.tab2'),
-                                       condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'),
-                                                                               Identifier('column1')]), #Table name omitted
-                                       join_type=JoinType.INNER_JOIN
-                                       ))
-        with pytest.raises(PlanningException):
-            plan_query(query, integrations=['int'])
 
     def test_join_tables_error_on_wrong_table_in_condition(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],

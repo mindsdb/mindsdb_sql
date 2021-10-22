@@ -43,21 +43,23 @@ def disambiguate_integration_column_identifier(identifier, integration_name, tab
     """Removes integration name from column if it's present, adds table path if it's absent"""
     column_table_ref = table.alias.to_string(alias=False) if table.alias else table.to_string(alias=False)
     initial_path_str = identifier.to_string(alias=False)
-    parts = list(identifier.parts)
+    new_identifier = identifier.copy()
+    if len(new_identifier.parts) > 1:
+        # Remove integration name if it is present
+        if new_identifier.parts[0] == integration_name:
+            new_identifier.parts = new_identifier.parts[1:]
 
-    if len(parts) > 1:
-        if parts[0] == integration_name:
-            parts = parts[1:]
-
-    if len(parts) > 1:
-        if parts[0] != column_table_ref:
+    table_identifier = new_identifier.copy()
+    table_identifier.parts = table_identifier.parts[:-1]
+    if len(new_identifier.parts) > 1:
+        if table_identifier.to_string(alias=False) != column_table_ref:
             raise PlanningException(
-                f'Tried to query column {identifier.to_tree()} from integration {integration_name} table {column_table_ref}, but a different table name has been specified.')
-    elif len(parts) == 1:
-        if parts[0] != column_table_ref:
-            parts.insert(0, column_table_ref)
+                f'Tried to query column {identifier.to_string()} from integration {integration_name} table {column_table_ref}. Wrong table name specified.')
+    elif len(new_identifier.parts) == 1:
+        # Add table name if its not present
+        if new_identifier.parts[0] != column_table_ref:
+            new_identifier.parts.insert(0, column_table_ref)
 
-    new_identifier = Identifier(parts=parts)
     if identifier.alias:
         new_identifier.alias = identifier.alias
     elif initial_path_as_alias:

@@ -314,25 +314,37 @@ class QueryPlan:
         left_integration_name, left_table = self.get_integration_path_from_identifier_or_error(join.left)
         right_integration_name, right_table = self.get_integration_path_from_identifier_or_error(join.right)
 
-        left_table_path = left_table.to_string(alias=False)
-        right_table_path = right_table.to_string(alias=False)
-
         new_condition_args = []
         for arg in join.condition.args:
             if isinstance(arg, Identifier):
-                if left_table_path in arg.parts:
-                    new_condition_args.append(
-                        disambiguate_integration_column_identifier(arg, left_integration_name, left_table, initial_path_as_alias=False))
-                elif right_table_path in arg.parts:
-                    new_condition_args.append(
-                        disambiguate_integration_column_identifier(arg, right_integration_name, right_table, initial_path_as_alias=False))
+                integration_name = None
+                if len(arg.parts) > 2:
+                    # argument contains integration path
+                    integration_name, column_identifier = get_integration_path_from_identifier(arg)
                 else:
-                    raise PlanningException(
-                        f'Wrong table or no source table in join condition for column: {str(arg)}')
+                    column_identifier = arg
+                # print(integration_name)
+                # print('tables', left_table, right_table)
+                # print('this', integration_name, column_identifier)
+                arg_table_identifier = column_identifier.copy()
+                arg_table_identifier.parts = arg_table_identifier.parts[:-1]
+                # print('arg_table_identifier', arg_table_identifier)
+                new_arg = None
+                if (not integration_name or integration_name == left_integration_name) and (arg_table_identifier == left_table or arg_table_identifier == left_table.alias):
+                    new_arg = disambiguate_integration_column_identifier(arg, left_integration_name, left_table, initial_path_as_alias=False)
+                elif (not integration_name or integration_name == right_integration_name) and (arg_table_identifier == right_table or arg_table_identifier == right_table.alias):
+                    new_arg = disambiguate_integration_column_identifier(arg, right_integration_name, right_table, initial_path_as_alias=False)
+                else:
+                    raise PlanningException(f'Wrong table or no source table in join condition for column: {str(arg)}')
+                new_condition_args.append(new_arg)
             else:
                 new_condition_args.append(arg)
         new_join = copy.deepcopy(join)
         new_join.condition.args = new_condition_args
+
+        left_table_path = left_table.to_string(alias=False)
+        right_table_path = right_table.to_string(alias=False)
+
         new_join.left = Identifier(left_table_path, alias=left_table.alias)
         new_join.right = Identifier(right_table_path, alias=right_table.alias)
         return self.add_step(JoinStep(left=select_left_step.result, right=select_right_step.result, query=new_join))
