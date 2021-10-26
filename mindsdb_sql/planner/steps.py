@@ -1,5 +1,6 @@
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.planner.step_result import Result
+from dfsql import sql_query
 
 
 class PlanStep:
@@ -80,6 +81,12 @@ class JoinStep(PlanStep):
 
         if isinstance(right, Result):
             self.references.append(right)
+
+    def execute(self, executor):
+        left_df = executor.results[self.left.step_num]
+        right_df = executor.results[self.right.step_num]
+        joined_df = sql_query(str(self.query), **{self.left.result.ref_name: left_df, self.right.result.ref_name: right_df})
+        return joined_df
 
 
 class UnionStep(PlanStep):

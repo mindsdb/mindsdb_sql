@@ -110,3 +110,29 @@ class TestExecuteSelectFromIntegration:
                            ))
 
         assert (out_df == expected_df).all()
+
+    def test_join_tables_with_filters(self, connection_db1, default_data_db1, connection_db2, default_data_db2):
+        sql = """
+            SELECT App, Category, Rating, Sentiment
+            FROM test_db1.googleplaystore 
+            INNER JOIN test_db2.googleplaystore_user_reviews
+            ON test_db1.googleplaystore.App = test_db2.googleplaystore_user_reviews.App
+            WHERE App = 'Photo Editor & Candy Camera & Grid & ScrapBook'
+        """
+
+        df1 = connection_db1.query("SELECT App, Category, Rating FROM googleplaystore")
+        df2 = connection_db2.query("SELECT App, Sentiment FROM googleplaystore_user_reviews")
+        expected_df = df1.merge(df2, on=['App'], how='inner')
+        expected_df = expected_df[expected_df['App'] == 'Photo Editor & Candy Camera & Grid & ScrapBook']
+
+        query = parse_sql(sql, dialect='mysql')
+        assert str(query) == to_single_line(sql)
+        query_plan = plan_query(query, integrations=['test_db1', 'test_db2'])
+
+        out_df = execute_plan(query_plan,
+                           integration_connections=dict(
+                               test_db1=connection_db1,
+                               test_db2=connection_db2,
+                           ))
+
+        assert (out_df == expected_df).all()

@@ -43,5 +43,3 @@ class Identifier(ASTNode):
 
     def get_string(self, *args, **kwargs):
         return self.parts_to_str()
-
-
