@@ -395,7 +395,8 @@ class MindsDBParser(Parser):
                     join_type=p.join_clause,
                     condition=p.expr)
 
-    @_('from_table AS identifier')
+    @_('from_table AS identifier',
+       'from_table identifier')
     def from_table(self, p):
         entity = p.from_table
         entity.alias = p.identifier
@@ -445,7 +446,8 @@ class MindsDBParser(Parser):
     def result_columns(self, p):
         return [p.result_column]
 
-    @_('result_column AS identifier')
+    @_('result_column AS identifier',
+       'result_column identifier')
     def result_column(self, p):
         col = p.result_column
         if col.alias:

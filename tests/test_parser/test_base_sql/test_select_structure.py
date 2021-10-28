@@ -56,15 +56,17 @@ class TestSelectStructure:
         assert str(ast).lower() == sql.lower()
 
     def test_select_identifier_alias(self, dialect):
-        sql = f'SELECT column AS column_alias'
-        ast = parse_sql(sql, dialect=dialect)
+        sql_queries = ['SELECT column AS column_alias',
+                       'SELECT column column_alias']
+        for sql in sql_queries:
+            ast = parse_sql(sql, dialect=dialect)
 
-        assert isinstance(ast, Select)
-        assert len(ast.targets) == 1
-        assert isinstance(ast.targets[0], Identifier)
-        assert ast.targets[0].parts == ['column']
-        assert ast.targets[0].alias.parts[0] == 'column_alias'
-        assert str(ast).lower() == sql.lower()
+            assert isinstance(ast, Select)
+            assert len(ast.targets) == 1
+            assert isinstance(ast.targets[0], Identifier)
+            assert ast.targets[0].parts == ['column']
+            assert ast.targets[0].alias.parts[0] == 'column_alias'
+            assert str(ast).lower().replace('as ', '') == sql.lower().replace('as ', '')
 
 
 
