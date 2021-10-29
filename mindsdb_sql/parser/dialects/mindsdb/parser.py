@@ -98,7 +98,7 @@ class MindsDBParser(Parser):
 
     @_('WHERE',
        'FROM',
-       'LIKE', )
+       'LIKE')
     def show_condition_token(self, p):
         return p[0]
 
@@ -107,6 +107,7 @@ class MindsDBParser(Parser):
        'TABLES',
        'FULL TABLES',
        'VARIABLES',
+       'PLUGINS',
        'SESSION VARIABLES',
        'SESSION STATUS',
        'GLOBAL VARIABLES',

@@ -96,6 +96,7 @@ class MySQLParser(SQLParser):
        'TABLES',
        'FULL TABLES',
        'VARIABLES',
+       'PLUGINS',
        'SESSION VARIABLES',
        'SESSION STATUS',
        'GLOBAL VARIABLES',
