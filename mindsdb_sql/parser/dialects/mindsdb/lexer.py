@@ -7,7 +7,7 @@ class MindsDBLexer(Lexer):
     ignore = ' \t\n\r'
 
     tokens = {
-        USE, DROP, CREATE,
+        USE, DROP, CREATE, DESCRIBE,
 
         # Misc
         SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
@@ -83,6 +83,7 @@ class MindsDBLexer(Lexer):
     EXPLAIN = r'\bEXPLAIN\b'
     ALTER = r'\bALTER\b'
 
+    DESCRIBE = r'\bDESCRIBE\b'
     # SHOW
 
     SHOW = r'\bSHOW\b'

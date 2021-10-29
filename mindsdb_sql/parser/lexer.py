@@ -7,7 +7,7 @@ class SQLLexer(Lexer):
     ignore = ' \t\n\r'
 
     tokens = {
-        USE, CREATE,
+        USE, CREATE, DESCRIBE,
 
         # Misc
         SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
@@ -50,8 +50,9 @@ class SQLLexer(Lexer):
     EXPLAIN = r'\bEXPLAIN\b'
     ALTER = r'\bALTER\b'
 
+    USE = r'\bUSE\b'
+    DESCRIBE = r'\bDESCRIBE\b'
     # SHOW
-
     SHOW = r'\bSHOW\b'
     SCHEMAS = r'\bSCHEMAS\b'
     DATABASES = r'\bDATABASES\b'

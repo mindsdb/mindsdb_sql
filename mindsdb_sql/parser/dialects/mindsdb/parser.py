@@ -31,6 +31,7 @@ class MindsDBParser(Parser):
        'explain',
        'set',
        'use',
+       'describe',
        'create_predictor',
        'create_integration',
        'create_view',
@@ -98,7 +99,7 @@ class MindsDBParser(Parser):
 
     @_('WHERE',
        'FROM',
-       'LIKE', )
+       'LIKE')
     def show_condition_token(self, p):
         return p[0]
 
@@ -129,8 +130,14 @@ class MindsDBParser(Parser):
     def show_category(self, p):
         return ' '.join([x for x in p])
 
+    # DESCRIBE
+
+    @_('DESCRIBE identifier')
+    def describe(self, p):
+        return Describe(value=p.identifier)
 
     # USE
+
     @_('USE identifier')
     def use(self, p):
         return Use(value=p.identifier)
