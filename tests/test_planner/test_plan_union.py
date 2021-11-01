@@ -55,7 +55,7 @@ class TestPlanUnion:
                          query=Join(left=Identifier('result_1', alias=Identifier('tab1')),
                                     right=Identifier('result_2', alias=Identifier('pred')),
                                     join_type=JoinType.INNER_JOIN)),
-                ProjectStep(dataframe=Result(3), columns=[Identifier('tab1.column1'), Identifier('predicted')]),
+                ProjectStep(dataframe=Result(3), columns=[Identifier('tab1.column1'), Identifier('pred.predicted', alias=Identifier('predicted'))]),
 
                 # Union
                 UnionStep(left=Result(0), right=Result(4), unique=False),

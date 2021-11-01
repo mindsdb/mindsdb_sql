@@ -341,10 +341,7 @@ class QueryPlan:
         out_identifiers = []
         for target in query.targets:
             if isinstance(target, Identifier) or isinstance(target, Star):
-                if target.alias:
-                    out_identifiers.append(target.alias)
-                else:
-                    out_identifiers.append(target)
+                out_identifiers.append(target)
             else:
                 new_identifier = Identifier(str(target.to_string(alias=False)), alias=target.alias)
                 out_identifiers.append(new_identifier)
