@@ -72,9 +72,6 @@ class TestExecuteSelectFromIntegration:
         query = parse_sql(sql, dialect='mysql')
         assert str(query) == to_single_line(sql)
         query_plan = plan_query(query, integrations=['test_db1', 'test_db2'])
-        # assert len(query_plan.steps) == 1
-        # assert isinstance(query_plan.steps[0], FetchDataframeStep)
-        # assert str(query_plan.steps[0].query) == "SELECT * FROM test.googleplaystore"
 
         out_df = execute_plan(query_plan,
                            integration_connections=dict(
@@ -101,10 +98,6 @@ class TestExecuteSelectFromIntegration:
         query = parse_sql(sql, dialect='mysql')
         assert str(query) == to_single_line(sql)
         query_plan = plan_query(query, integrations=['test_db1', 'test_db2'])
-        #
-        # assert len(query_plan.steps) == 1
-        # assert isinstance(query_plan.steps[0], FetchDataframeStep)
-        # assert str(query_plan.steps[0].query) == "SELECT * FROM test.googleplaystore"
 
         out_df = execute_plan(query_plan,
                            integration_connections=dict(
@@ -131,10 +124,6 @@ class TestExecuteSelectFromIntegration:
         query = parse_sql(sql, dialect='mysql')
         assert str(query) == to_single_line(sql)
         query_plan = plan_query(query, integrations=['test_db1', 'test_db2'])
-        #
-        # assert len(query_plan.steps) == 1
-        # assert isinstance(query_plan.steps[0], FetchDataframeStep)
-        # assert str(query_plan.steps[0].query) == "SELECT * FROM test.googleplaystore"
 
         out_df = execute_plan(query_plan,
                            integration_connections=dict(

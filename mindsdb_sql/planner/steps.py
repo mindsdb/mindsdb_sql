@@ -49,7 +49,8 @@ class ProjectStep(PlanStep):
         if isinstance(df, Result):
             df = executor.step_results[df.step_num]
         filter = [c.to_string(alias=False) for c in self.columns]
-        return df[filter]
+        renames = {c.to_string(alias=False): c.alias.to_string(alias=False) for c in self.columns if c.alias}
+        return df[filter].rename(columns=renames)
 
 
 class FilterStep(PlanStep):
