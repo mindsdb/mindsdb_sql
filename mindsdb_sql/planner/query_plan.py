@@ -322,10 +322,10 @@ class QueryPlan:
             if isinstance(arg, Identifier):
                 if left_table_path in arg.parts:
                     new_condition_args.append(
-                        disambiguate_integration_column_identifier(arg, left_integration_name, left_table, initial_path_as_alias=False))
+                        disambiguate_integration_column_identifier(arg, left_integration_name, left_table))
                 elif right_table_path in arg.parts:
                     new_condition_args.append(
-                        disambiguate_integration_column_identifier(arg, right_integration_name, right_table, initial_path_as_alias=False))
+                        disambiguate_integration_column_identifier(arg, right_integration_name, right_table))
                 else:
                     raise PlanningException(
                         f'Wrong table or no source table in join condition for column: {str(arg)}')

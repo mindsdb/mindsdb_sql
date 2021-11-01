@@ -1,3 +1,4 @@
+from mindsdb_sql import ParsingException
 from mindsdb_sql.utils import to_single_line
 
 
@@ -5,6 +6,9 @@ class ASTNode:
     def __init__(self, alias=None, parentheses=False):
         self.alias = alias
         self.parentheses = parentheses
+
+        if self.alias and len(self.alias.parts) > 1:
+            raise ParsingException('Alias can not contain multiple parts (dots).')
 
     def maybe_add_alias(self, some_str, alias=True):
         if self.alias and alias:
