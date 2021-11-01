@@ -25,6 +25,7 @@ class MySQLParser(SQLParser):
        'explain',
        'set',
        'use',
+       'describe',
        'union',
        'select',
        )
@@ -110,6 +111,12 @@ class MySQLParser(SQLParser):
        'TABLE STATUS')
     def show_category(self, p):
         return ' '.join([x for x in p])
+
+    # DESCRIBE
+
+    @_('DESCRIBE identifier')
+    def describe(self, p):
+        return Describe(value=p.identifier)
 
     # USE
 
