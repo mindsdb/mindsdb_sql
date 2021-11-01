@@ -1,6 +1,7 @@
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.planner.step_result import Result
-from dfsql import sql_query
+# from dfsql import sql_query
+from mindsdb_sql.utils import JoinType
 
 
 class PlanStep:
@@ -43,6 +44,13 @@ class ProjectStep(PlanStep):
         if isinstance(dataframe, Result):
             self.references.append(dataframe)
 
+    def execute(self, executor):
+        df = self.dataframe
+        if isinstance(df, Result):
+            df = executor.step_results[df.step_num]
+        filter = [c.to_string(alias=False) for c in self.columns]
+        return df[filter]
+
 
 class FilterStep(PlanStep):
     """Filters some dataframe according to a query"""
@@ -83,9 +91,21 @@ class JoinStep(PlanStep):
             self.references.append(right)
 
     def execute(self, executor):
-        left_df = executor.results[self.left.step_num]
-        right_df = executor.results[self.right.step_num]
-        joined_df = sql_query(str(self.query), **{self.left.result.ref_name: left_df, self.right.result.ref_name: right_df})
+        left_df = executor.step_results[self.left.step_num]
+        right_df = executor.step_results[self.right.step_num]
+
+        on_column = self.query.condition.args[0].parts[-1]
+        join_types = {
+            JoinType.LEFT_JOIN: 'left',
+            JoinType.RIGHT_JOIN: 'left',
+            JoinType.OUTER_JOIN: 'outer',
+            JoinType.FULL_JOIN: 'full',
+            JoinType.CROSS_JOIN: 'cross',
+        }
+        join_type = join_types.get(self.query.join_type, 'inner')
+        joined_df = left_df.merge(right_df, how=join_type, on=on_column)
+        # TODO use dfsql
+        #joined_df = sql_query(str(self.query), **{self.left.result.ref_name: left_df, self.right.result.ref_name: right_df})
         return joined_df
 
 

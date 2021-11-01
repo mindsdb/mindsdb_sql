@@ -1,7 +1,7 @@
 sly>=0.4
 pytest>=5.4.3
-dfsql==0.6.7
 sqlalchemy
 pymysql
 pandas
 numpy
+#dfsql==0.6.6
