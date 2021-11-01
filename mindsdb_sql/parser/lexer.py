@@ -7,7 +7,7 @@ class SQLLexer(Lexer):
     ignore = ' \t\n\r'
 
     tokens = {
-        USE, CREATE,
+        USE, CREATE, DESCRIBE,
 
         # Misc
         SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
@@ -15,7 +15,7 @@ class SQLLexer(Lexer):
         # SHOW Keywords
 
         SHOW, SCHEMAS, DATABASES, TABLES, TABLE, FULL, VARIABLES, SESSION, STATUS,
-        GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS, ENGINES, CHARSET, COLLATION,
+        GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS, ENGINES, CHARSET, COLLATION, PLUGINS,
 
 
         # SELECT Keywords
@@ -50,8 +50,9 @@ class SQLLexer(Lexer):
     EXPLAIN = r'\bEXPLAIN\b'
     ALTER = r'\bALTER\b'
 
+    USE = r'\bUSE\b'
+    DESCRIBE = r'\bDESCRIBE\b'
     # SHOW
-
     SHOW = r'\bSHOW\b'
     SCHEMAS = r'\bSCHEMAS\b'
     DATABASES = r'\bDATABASES\b'
@@ -70,6 +71,7 @@ class SQLLexer(Lexer):
     ENGINES = r'\bENGINES\b'
     CHARSET = r'\bCHARSET\b'
     COLLATION = r'\bCOLLATION\b'
+    PLUGINS = r'\bPLUGINS\b'
 
 
     # SELECT

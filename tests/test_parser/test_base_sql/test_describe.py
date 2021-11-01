@@ -5,11 +5,11 @@ from mindsdb_sql.parser.ast import *
 
 
 @pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
-class TestUse:
-    def test_use(self, dialect):
-        sql = "USE my_integration"
+class TestDescribe:
+    def test_describe(self, dialect):
+        sql = "DESCRIBE my_identifier"
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Use(value=Identifier('my_integration'))
+        expected_ast = Describe(value=Identifier('my_identifier'))
 
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)

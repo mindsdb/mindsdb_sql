@@ -31,6 +31,7 @@ class MindsDBParser(Parser):
        'explain',
        'set',
        'use',
+       'describe',
        'create_predictor',
        'create_integration',
        'create_view',
@@ -98,7 +99,7 @@ class MindsDBParser(Parser):
 
     @_('WHERE',
        'FROM',
-       'LIKE', )
+       'LIKE')
     def show_condition_token(self, p):
         return p[0]
 
@@ -107,6 +108,7 @@ class MindsDBParser(Parser):
        'TABLES',
        'FULL TABLES',
        'VARIABLES',
+       'PLUGINS',
        'SESSION VARIABLES',
        'SESSION STATUS',
        'GLOBAL VARIABLES',
@@ -129,8 +131,14 @@ class MindsDBParser(Parser):
     def show_category(self, p):
         return ' '.join([x for x in p])
 
+    # DESCRIBE
+
+    @_('DESCRIBE identifier')
+    def describe(self, p):
+        return Describe(value=p.identifier)
 
     # USE
+
     @_('USE identifier')
     def use(self, p):
         return Use(value=p.identifier)
@@ -264,11 +272,23 @@ class MindsDBParser(Parser):
     @_('select OFFSET constant')
     def select(self, p):
         select = p.select
+        if select.offset is not None:
+            raise ParsingException(f'OFFSET already specified for this query')
         ensure_select_keyword_order(select, 'OFFSET')
         if not isinstance(p.constant.value, int):
             raise ParsingException(f'OFFSET must be an integer value, got: {p.constant.value}')
 
         select.offset = p.constant
+        return select
+
+    @_('select LIMIT constant COMMA constant')
+    def select(self, p):
+        select = p.select
+        ensure_select_keyword_order(select, 'LIMIT')
+        if not isinstance(p.constant0.value, int) or not isinstance(p.constant1.value, int):
+            raise ParsingException(f'LIMIT must have integer arguments, got: {p.constant0.value}, {p.constant1.value}')
+        select.offset = p.constant0
+        select.limit = p.constant1
         return select
 
     @_('select LIMIT constant')
@@ -395,7 +415,8 @@ class MindsDBParser(Parser):
                     join_type=p.join_clause,
                     condition=p.expr)
 
-    @_('from_table AS identifier')
+    @_('from_table AS identifier',
+       'from_table identifier')
     def from_table(self, p):
         entity = p.from_table
         entity.alias = p.identifier
@@ -445,7 +466,8 @@ class MindsDBParser(Parser):
     def result_columns(self, p):
         return [p.result_column]
 
-    @_('result_column AS identifier')
+    @_('result_column AS identifier',
+       'result_column identifier')
     def result_column(self, p):
         col = p.result_column
         if col.alias:
