@@ -7,14 +7,33 @@ from mindsdb_sql.parser.ast import *
 
 @pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
 class TestShow:
-    def test_show_databases(self, dialect):
-        sql = "SHOW databases"
-        ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Show(category='databases', condition=None, expression=None)
+    def test_show_category(self, dialect):
+        categories = ['SCHEMAS',
+           'DATABASES',
+           'TABLES',
+           'FULL TABLES',
+           'VARIABLES',
+           'PLUGINS',
+           'SESSION VARIABLES',
+           'SESSION STATUS',
+           'GLOBAL VARIABLES',
+           'PROCEDURE STATUS',
+           'FUNCTION STATUS',
+           'INDEX',
+           'CREATE TABLE',
+           'WARNINGS',
+           'ENGINES',
+           'CHARSET',
+           'COLLATION',
+           'TABLE STATUS']
+        for cat in categories:
+            sql = f"SHOW {cat}"
+            ast = parse_sql(sql, dialect=dialect)
+            expected_ast = Show(category=cat, condition=None, expression=None)
 
-        assert str(ast).lower() == sql.lower()
-        assert str(ast) == str(expected_ast)
-        assert ast.to_tree() == expected_ast.to_tree()
+            assert str(ast).lower() == sql.lower()
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
 
     def test_show_unknown_category_error(self, dialect):
         sql = "SHOW abracadabra"

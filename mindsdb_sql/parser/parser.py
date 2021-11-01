@@ -97,6 +97,7 @@ class SQLParser(Parser):
        'TABLES',
        'FULL TABLES',
        'VARIABLES',
+       'PLUGINS',
        'SESSION VARIABLES',
        'SESSION STATUS',
        'GLOBAL VARIABLES',
