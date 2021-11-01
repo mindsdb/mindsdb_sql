@@ -370,6 +370,22 @@ class TestSelectStructure:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_select_limit_two_arguments(self, dialect):
+        sql = """SELECT * FROM t1 LIMIT 2, 1"""
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[Star()],
+                                                   from_table=Identifier(parts=['t1']),
+                                                   limit=Constant(1),
+                                                   offset=Constant(2))
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+    def test_select_limit_two_arguments_and_offset_error(self, dialect):
+        sql = """SELECT * FROM t1 LIMIT 2, 1 OFFSET 2"""
+        with pytest.raises(ParsingException):
+            parse_sql(sql, dialect=dialect)
+
     def test_having_raises_duplicate(self, dialect):
         sql = f'SELECT column FROM tab GROUP BY col HAVING col > 1 HAVING col > 1'
         with pytest.raises(ParsingException):

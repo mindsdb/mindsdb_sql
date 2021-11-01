@@ -173,6 +173,8 @@ class SQLParser(Parser):
     @_('select OFFSET constant')
     def select(self, p):
         select = p.select
+        if select.offset is not None:
+            raise ParsingException(f'OFFSET already specified for this query')
         ensure_select_keyword_order(select, 'OFFSET')
         if not isinstance(p.constant.value, int):
             raise ParsingException(f'OFFSET must be an integer value, got: {p.constant.value}')
@@ -187,6 +189,16 @@ class SQLParser(Parser):
         if not isinstance(p.constant.value, int):
             raise ParsingException(f'LIMIT must be an integer value, got: {p.constant.value}')
         select.limit = p.constant
+        return select
+
+    @_('select LIMIT constant COMMA constant')
+    def select(self, p):
+        select = p.select
+        ensure_select_keyword_order(select, 'LIMIT')
+        if not isinstance(p.constant0.value, int) or not isinstance(p.constant1.value, int):
+            raise ParsingException(f'LIMIT must have integer arguments, got: {p.constant0.value}, {p.constant1.value}')
+        select.offset = p.constant0
+        select.limit = p.constant1
         return select
 
     @_('select ORDER_BY ordering_terms')
