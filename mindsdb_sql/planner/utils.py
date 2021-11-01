@@ -39,10 +39,9 @@ def get_predictor_namespace_and_name_from_identifier(identifier, default_namespa
 
 
 def disambiguate_integration_column_identifier(identifier, integration_name, table,
-                                               initial_path_as_alias=False):
+                                               initial_name_as_alias=False):
     """Removes integration name from column if it's present, adds table path if it's absent"""
     column_table_ref = table.alias.to_string(alias=False) if table.alias else table.to_string(alias=False)
-    initial_path_str = identifier.to_string(alias=False)
     parts = list(identifier.parts)
 
     if len(parts) > 1:
@@ -60,8 +59,8 @@ def disambiguate_integration_column_identifier(identifier, integration_name, tab
     new_identifier = Identifier(parts=parts)
     if identifier.alias:
         new_identifier.alias = identifier.alias
-    elif initial_path_as_alias:
-        new_identifier.alias = Identifier(initial_path_str)
+    elif initial_name_as_alias:
+        new_identifier.alias = Identifier(parts[-1])
 
     return new_identifier
 
@@ -80,8 +79,7 @@ def disambiguate_predictor_column_identifier(identifier, predictor):
 def recursively_disambiguate_identifiers_in_op(op, integration_name, table):
     for arg in op.args:
         if isinstance(arg, Identifier):
-            new_identifier = disambiguate_integration_column_identifier(arg, integration_name, table,
-                                                                             initial_path_as_alias=False)
+            new_identifier = disambiguate_integration_column_identifier(arg, integration_name, table)
             arg.parts = new_identifier.parts
             arg.alias = new_identifier.alias
         elif isinstance(arg, Operation):
@@ -97,8 +95,11 @@ def disambiguate_select_targets(targets, integration_name, table):
     for target in targets:
         if isinstance(target, Identifier):
             new_query_targets.append(
-                disambiguate_integration_column_identifier(target, integration_name, table,
-                                                                initial_path_as_alias=True))
+                disambiguate_integration_column_identifier(target,
+                                                           integration_name,
+                                                           table,
+                                                           initial_name_as_alias=True)
+            )
         elif type(target) in (Star, Constant):
             new_query_targets.append(target)
         elif isinstance(target, Operation) or isinstance(target, Select):
@@ -128,8 +129,7 @@ def recursively_disambiguate_identifiers_in_select(select, integration_name, tab
     if select.group_by:
         group_by = copy.deepcopy(select.group_by)
         group_by = [
-            disambiguate_integration_column_identifier(id, integration_name, table,
-                                                       initial_path_as_alias=False)
+            disambiguate_integration_column_identifier(id, integration_name, table)
             for id in group_by]
         select.group_by = group_by
 

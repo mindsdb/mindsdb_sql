@@ -1,5 +1,6 @@
 import pytest
 
+from mindsdb_sql import parse_sql
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query, QueryPlan
@@ -147,7 +148,11 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier('tab.`a column with spaces`', alias=Identifier(parts=['int', 'tab', 'a column with spaces']))],
+                                                             targets=[
+                                                                 Identifier('tab.`a column with spaces`',
+                                                                            alias=Identifier('a column with spaces')
+                                                                            )
+                                                             ],
                                                              from_table=Identifier('tab')),
                                                          ),
                                   ])
@@ -165,7 +170,7 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier(parts=['alias','col1'],
+                                                             targets=[Identifier(parts=['alias', 'col1'],
                                                                                  alias=Identifier('col1'))],
                                                              from_table=Identifier(parts=['tab'], alias=Identifier('alias'))),
                                                          ),
@@ -192,7 +197,24 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'])
 
         assert plan.steps == expected_plan.steps
-        
+
+    def test_integration_select_table_alias_full_query(self):
+        sql = 'select ta.sqft from int.test_data.home_rentals as ta'
+
+        query = parse_sql(sql, dialect='sqlite')
+
+        expected_plan = QueryPlan(integrations=['int'],
+                                  steps=[
+                                      FetchDataframeStep(integration='int',
+                                                         query=Select(
+                                                             targets=[Identifier(parts=['ta', 'sqft'], alias=Identifier('sqft'))],
+                                                             from_table=Identifier(parts=['test_data', 'home_rentals'], alias=Identifier('ta'))),
+                                                         ),
+                                  ])
+
+        plan = plan_query(query, integrations=['int'])
+
+        assert plan.steps == expected_plan.steps
 
     def test_integration_select_plan_group_by(self):
         query = Select(targets=[Identifier('column1'),
