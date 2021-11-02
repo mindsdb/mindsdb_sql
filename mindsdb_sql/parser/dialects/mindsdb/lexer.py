@@ -7,7 +7,7 @@ class MindsDBLexer(Lexer):
     ignore = ' \t\n\r'
 
     tokens = {
-        USE, DROP, CREATE, DESCRIBE,
+        USE, DROP, CREATE, DESCRIBE, RETRAIN,
 
         # Misc
         SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
@@ -49,6 +49,7 @@ class MindsDBLexer(Lexer):
         # Data types
         CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE}
 
+    RETRAIN = r'\bRETRAIN\b'
     # Custom commands
 
     USE = r'\bUSE\b'

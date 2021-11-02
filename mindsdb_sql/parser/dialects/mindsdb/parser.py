@@ -9,6 +9,7 @@ from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
+from mindsdb_sql.parser.dialects.mindsdb.retrain_predictor import RetrainPredictor
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
 
@@ -36,6 +37,7 @@ class MindsDBParser(Parser):
        'create_integration',
        'create_view',
        'drop_predictor',
+       'retrain_predictor',
        'drop_integration',
        'union',
        'select',
@@ -157,6 +159,11 @@ class MindsDBParser(Parser):
     @_('empty')
     def create_view_from_table_or_nothing(self, p):
         pass
+
+    # RETRAIN PREDICTOR
+    @_('RETRAIN identifier')
+    def retrain_predictor(self, p):
+        return RetrainPredictor(p.identifier)
 
     # DROP PREDICTOR
     @_('DROP PREDICTOR identifier')
