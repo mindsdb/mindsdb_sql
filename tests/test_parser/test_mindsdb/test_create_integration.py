@@ -31,6 +31,15 @@ class TestCreateIntegration:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+    def test_create_datasource_ok(self):
+        sql = "CREATE DATASOURCE db WITH ENGINE = 'mysql', PARAMETERS = '{\"user\": \"admin\", \"password\": \"admin\"}'"
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreateIntegration(name='db',
+                                  engine='mysql',
+                                  parameters=dict(user='admin', password='admin'))
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_create_integration_invalid_json(self):
         sql = "CREATE INTEGRATION db WITH ENGINE = 'mysql', PARAMETERS = 'wow'"
         with pytest.raises(ParsingException):
