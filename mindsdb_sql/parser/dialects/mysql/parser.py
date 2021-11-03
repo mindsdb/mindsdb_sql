@@ -109,7 +109,8 @@ class MySQLParser(SQLParser):
        'ENGINES',
        'CHARSET',
        'COLLATION',
-       'TABLE STATUS')
+       'TABLE STATUS',
+       'STATUS')
     def show_category(self, p):
         return ' '.join([x for x in p])
 

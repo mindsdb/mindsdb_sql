@@ -123,6 +123,7 @@ class MindsDBParser(Parser):
        'CHARSET',
        'COLLATION',
        'TABLE STATUS',
+       'STATUS',
        # Mindsdb specific
        'VIEWS',
        'STREAMS',
