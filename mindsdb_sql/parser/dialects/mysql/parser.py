@@ -108,6 +108,7 @@ class MySQLParser(SQLParser):
        'WARNINGS',
        'ENGINES',
        'CHARSET',
+       'CHARACTER SET',
        'COLLATION',
        'TABLE STATUS',
        'STATUS')
@@ -521,9 +522,10 @@ class MySQLParser(SQLParser):
     def constant(self, p):
         return Constant(value=str(p.STRING))
 
-    @_('ID')
+    @_('ID',
+       'CHARSET')
     def identifier(self, p):
-        value = p.ID
+        value = p[0]
         return Identifier.from_path_str(value)
 
     @_('PARAMETER')

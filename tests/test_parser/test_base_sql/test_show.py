@@ -71,6 +71,7 @@ class TestShow:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+
     def test_show_character_set(self, dialect):
         sql = "show character set where charset = 'utf8mb4'"
         ast = parse_sql(sql, dialect=dialect)
