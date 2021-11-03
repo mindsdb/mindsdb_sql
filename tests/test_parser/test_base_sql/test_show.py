@@ -24,8 +24,10 @@ class TestShow:
            'WARNINGS',
            'ENGINES',
            'CHARSET',
+           'CHARACTER SET',
            'COLLATION',
-           'TABLE STATUS']
+           'TABLE STATUS',
+           'STATUS']
         for cat in categories:
             sql = f"SHOW {cat}"
             ast = parse_sql(sql, dialect=dialect)
@@ -63,6 +65,18 @@ class TestShow:
                                 BinaryOperation('=', args=[Identifier('Db'), Constant('MINDSDB')]),
                                 BinaryOperation('like', args=[Identifier('Name'), Constant('%')])
                             ]),
+                        )
+
+        assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+
+    def test_show_character_set(self, dialect):
+        sql = "show character set where charset = 'utf8mb4'"
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Show(category='character set', condition='where',
+                            expression=BinaryOperation('=', args=[Identifier('charset'), Constant('utf8mb4')]),
                         )
 
         assert str(ast).lower() == sql.lower()

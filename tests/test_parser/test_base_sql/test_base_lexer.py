@@ -285,10 +285,26 @@ class TestLexer:
 
     def test_select_parameter(self, lexer):
         sql = f'SELECT ?'
-        tokens = list(SQLLexer().tokenize(sql))
+        tokens = list(lexer.tokenize(sql))
 
         assert tokens[0].type == 'SELECT'
         assert tokens[0].value == 'SELECT'
 
         assert tokens[1].type == 'PARAMETER'
         assert tokens[1].value == '?'
+
+    def test_show_character_set(self, lexer):
+        lexer = SQLLexer()
+        sql = "show character set where charset = 'utf8mb4'"
+        tokens = list(lexer.tokenize(sql))
+
+        assert tokens[0].type == 'SHOW'
+        assert tokens[1].type == 'CHARACTER'
+        assert tokens[2].type == 'SET'
+        assert tokens[3].type == 'WHERE'
+        assert tokens[4].type == 'CHARSET'
+        assert tokens[4].value == 'charset'
+        assert tokens[5].value == '='
+        assert tokens[6].type == 'STRING'
+        assert tokens[6].value == 'utf8mb4'
+

@@ -23,8 +23,10 @@ class MindsDBLexer(Lexer):
 
         # SHOW Keywords
 
-        SHOW, SCHEMAS, DATABASES, TABLES, TABLE, FULL, VARIABLES, SESSION, STATUS,
-        GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS, ENGINES, CHARSET, COLLATION, PLUGINS,
+        SHOW, SCHEMAS, DATABASES, TABLES, TABLE, FULL,
+        VARIABLES, SESSION, STATUS,
+        GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
+        ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
 
 
         # SELECT Keywords
@@ -86,8 +88,8 @@ class MindsDBLexer(Lexer):
     ALTER = r'\bALTER\b'
 
     DESCRIBE = r'\bDESCRIBE\b'
-    # SHOW
 
+    # SHOW
     SHOW = r'\bSHOW\b'
     SCHEMAS = r'\bSCHEMAS\b'
     DATABASES = r'\bDATABASES\b'
@@ -105,6 +107,7 @@ class MindsDBLexer(Lexer):
     WARNINGS = r'\bWARNINGS\b'
     ENGINES = r'\bENGINES\b'
     CHARSET = r'\bCHARSET\b'
+    CHARACTER = r'\bCHARACTER\b'
     COLLATION = r'\bCOLLATION\b'
     PLUGINS = r'\bPLUGINS\b'
 
