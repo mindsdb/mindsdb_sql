@@ -4,4 +4,4 @@ sqlalchemy
 pymysql
 pandas
 numpy
-#dfsql==0.6.6
+dfsql

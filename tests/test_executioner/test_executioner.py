@@ -126,10 +126,10 @@ class TestExecuteSelectFromIntegration:
         query_plan = plan_query(query, integrations=['test_db1', 'test_db2'])
 
         out_df = execute_plan(query_plan,
-                           integration_connections=dict(
-                               test_db1=connection_db1,
-                               test_db2=connection_db2,
-                           ))
+                              integration_connections=dict(
+                                  test_db1=connection_db1,
+                                  test_db2=connection_db2,
+                              ))
 
         assert out_df.shape == expected_df.shape
         assert (out_df.columns == expected_df.columns).all()
@@ -138,10 +138,10 @@ class TestExecuteSelectFromIntegration:
     def test_join_tables_with_filters(self, connection_db1, default_data_db1, connection_db2, default_data_db2):
         sql = """
             SELECT App, Category, Rating, Sentiment
-            FROM test_db1.googleplaystore 
-            INNER JOIN test_db2.googleplaystore_user_reviews
-            ON test_db1.googleplaystore.App = test_db2.googleplaystore_user_reviews.App
-            WHERE test_db1.App = 'Photo Editor & Candy Camera & Grid & ScrapBook'
+            FROM test_db1.googleplaystore AS t1
+            INNER JOIN test_db2.googleplaystore_user_reviews AS t2
+            ON t1.App = t2.App
+            WHERE t1.App = 'Photo Editor & Candy Camera & Grid & ScrapBook'
         """
 
         df1 = connection_db1.query("SELECT App, Category, Rating FROM googleplaystore")
@@ -152,7 +152,6 @@ class TestExecuteSelectFromIntegration:
         query = parse_sql(sql, dialect='mysql')
         assert str(query) == to_single_line(sql)
         query_plan = plan_query(query, integrations=['test_db1', 'test_db2'])
-
         out_df = execute_plan(query_plan,
                            integration_connections=dict(
                                test_db1=connection_db1,

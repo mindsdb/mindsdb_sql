@@ -23,6 +23,7 @@ services:
     command: sh -c 'pytest -x'
     volumes:
       - "./:/app/:rw"
+      - "~/.local/lib/python3.8/site-packages/dfsql:/usr/local/lib/python3.8/site-packages/dfsql"
     links:
       - test_db1
       - test_db2

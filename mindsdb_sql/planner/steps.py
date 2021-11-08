@@ -1,7 +1,8 @@
 from mindsdb_sql.exceptions import PlanningException
+from mindsdb_sql.parser.ast import Select, Star, Identifier
 from mindsdb_sql.planner.step_result import Result
-# from dfsql import sql_query
 from mindsdb_sql.utils import JoinType
+from dfsql import sql_query
 
 
 class PlanStep:
@@ -63,6 +64,18 @@ class FilterStep(PlanStep):
         if isinstance(dataframe, Result):
             self.references.append(dataframe)
 
+    def execute(self, executor):
+        dataframe = self.dataframe
+        if isinstance(self.dataframe, Result):
+            dataframe = executor.step_results[self.dataframe.step_num]
+        full_query = Select(targets=[Star()],
+                            from_table=Identifier(self.dataframe.ref_name),
+                            where=self.query)
+        print(dataframe.columns)
+        print(str(full_query))
+        result_df = sql_query(str(full_query), **{self.dataframe.ref_name: dataframe})
+        return result_df
+
 
 class GroupByStep(PlanStep):
     """Groups output by columns and computes aggregation functions"""
@@ -95,18 +108,11 @@ class JoinStep(PlanStep):
         left_df = executor.step_results[self.left.step_num]
         right_df = executor.step_results[self.right.step_num]
 
-        on_column = self.query.condition.args[0].parts[-1]
-        join_types = {
-            JoinType.LEFT_JOIN: 'left',
-            JoinType.RIGHT_JOIN: 'left',
-            JoinType.OUTER_JOIN: 'outer',
-            JoinType.FULL_JOIN: 'full',
-            JoinType.CROSS_JOIN: 'cross',
-        }
-        join_type = join_types.get(self.query.join_type, 'inner')
-        joined_df = left_df.merge(right_df, how=join_type, on=on_column)
-        # TODO use dfsql
-        #joined_df = sql_query(str(self.query), **{self.left.result.ref_name: left_df, self.right.result.ref_name: right_df})
+        full_query = Select(targets=[Star()],
+                            from_table=self.query)
+        left_name = self.query.left.alias.to_string() if self.query.left.alias else self.query.left.to_string()
+        right_name = self.query.right.alias.to_string() if self.query.right.alias else self.query.right.to_string()
+        joined_df = sql_query(str(full_query), **{left_name: left_df, right_name: right_df})
         return joined_df
 
 
