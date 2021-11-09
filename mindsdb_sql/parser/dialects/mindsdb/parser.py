@@ -646,7 +646,9 @@ class MindsDBParser(Parser):
         return Constant(value=str(p.STRING))
 
     @_('ID',
-       'CHARSET')
+       'CHARSET',
+       # Mindsdb specific
+       'PREDICT')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)
