@@ -39,8 +39,13 @@ def get_predictor_namespace_and_name_from_identifier(identifier, default_namespa
 
 
 def disambiguate_integration_column_identifier(identifier, integration_name, table,
-                                               initial_path_as_alias=False):
+                                               initial_path_as_alias=False,
+                                               raw_initial_name=False):
     """Removes integration name from column if it's present, adds table path if it's absent"""
+    if raw_initial_name:
+        new_identifier = Identifier(parts=[table.to_string(alias=False), identifier.to_string(alias=False)])
+        return new_identifier
+
     column_table_ref = table.alias.to_string(alias=False) if table.alias else table.to_string(alias=False)
     initial_path_str = identifier.to_string(alias=False)
     new_identifier = identifier.copy()
@@ -79,15 +84,92 @@ def disambiguate_predictor_column_identifier(identifier, predictor):
     return new_identifier
 
 
-def recursively_disambiguate_identifiers_in_op(op, integration_name, table):
+def recursively_process_identifiers_select_targets(targets, processor):
+    new_query_targets = []
+    for target in targets:
+        if isinstance(target, Identifier):
+            new_query_targets.append(processor(target))
+        elif type(target) in (Star, Constant):
+            new_query_targets.append(target)
+        elif isinstance(target, Operation) or isinstance(target, Select):
+            new_op = copy.deepcopy(target)
+            recursively_process_identifiers(new_op, processor)
+            new_query_targets.append(new_op)
+        else:
+            raise PlanningException(f'Unknown select target {type(target)}')
+    return new_query_targets
+
+
+def recursively_process_identifiers_select(select, processor):
+    select.targets = recursively_process_identifiers_select_targets(select.targets, processor)
+
+    if select.from_table:
+        if isinstance(select.from_table, Identifier):
+            select.from_table = processor(select.from_table)
+    if select.where:
+        if not isinstance(select.where, BinaryOperation):
+            raise PlanningException(
+                f'Unsupported where clause {type(select.where)}, only BinaryOperation is supported now.')
+
+        where = copy.deepcopy(select.where)
+        recursively_process_identifiers_op(where, processor)
+        select.where = where
+
+    if select.group_by:
+        group_by = copy.deepcopy(select.group_by)
+        group_by = [processor(id) for id in group_by]
+        select.group_by = group_by
+
+    if select.having:
+        if not isinstance(select.having, BinaryOperation):
+            raise PlanningException(
+                f'Unsupported having clause {type(select.having)}, only BinaryOperation is supported now.')
+
+        having = copy.deepcopy(select.having)
+        recursively_process_identifiers_op(having, processor)
+        select.having = having
+
+    if select.order_by:
+        order_by = []
+        for order_by_item in select.order_by:
+            new_order_item = copy.deepcopy(order_by_item)
+            new_order_item.field = processor(new_order_item.field)
+            order_by.append(new_order_item)
+        select.order_by = order_by
+
+
+def recursively_process_identifiers_op(op, processor):
     for arg in op.args:
         if isinstance(arg, Identifier):
-            new_identifier = disambiguate_integration_column_identifier(arg, integration_name, table,
-                                                                             initial_path_as_alias=False)
+            new_identifier = processor(arg)
+
             arg.parts = new_identifier.parts
             arg.alias = new_identifier.alias
         elif isinstance(arg, Operation):
-            recursively_disambiguate_identifiers_in_op(arg, integration_name, table)
+            recursively_disambiguate_identifiers_in_op(arg, processor)
+        elif isinstance(arg, Select):
+            recursively_process_identifiers_select(arg, processor)
+
+
+def recursively_process_identifiers(obj, processor):
+    if isinstance(obj, Operation):
+        recursively_process_identifiers_op(obj, processor)
+    elif isinstance(obj, Select):
+        recursively_process_identifiers_select(obj, processor)
+    else:
+        raise PlanningException(f'Unsupported object for processing {type(obj)}')
+
+
+def recursively_disambiguate_identifiers_in_op(op, integration_name, table, raw_initial_name=False):
+    for arg in op.args:
+        if isinstance(arg, Identifier):
+            new_identifier = disambiguate_integration_column_identifier(arg, integration_name, table,
+                                                                             initial_path_as_alias=False,
+                                                                             raw_initial_name=raw_initial_name)
+            arg.parts = new_identifier.parts
+            arg.alias = new_identifier.alias
+        elif isinstance(arg, Operation):
+            recursively_disambiguate_identifiers_in_op(arg, integration_name, table, raw_initial_name=raw_initial_name)
         elif isinstance(arg, Select):
             arg_select_integration_name, arg_table = get_integration_path_from_identifier(arg.from_table)
 

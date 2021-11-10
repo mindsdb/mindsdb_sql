@@ -16,7 +16,8 @@ from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        disambiguate_predictor_column_identifier, recursively_disambiguate_identifiers,
                                        get_deepest_select,
                                        recursively_extract_column_values,
-                                       recursively_check_join_identifiers_for_ambiguity)
+                                       recursively_check_join_identifiers_for_ambiguity,
+                                       recursively_disambiguate_identifiers_in_op)
 from mindsdb_sql.utils import JoinType
 
 
@@ -359,6 +360,11 @@ class QueryPlan:
                 out_identifiers.append(new_identifier)
         return self.add_step(ProjectStep(dataframe=dataframe, columns=out_identifiers))
 
+    def plan_filter(self, query, dataframe):
+        new_query = copy.deepcopy(query)
+        # recursively_disambiguate_identifiers_in_op(new_query, None, Identifier(dataframe.ref_name), raw_initial_name=True)
+        return self.add_step(FilterStep(dataframe=dataframe, query=new_query))
+
     def plan_join(self, query):
         join = query.from_table
 
@@ -400,7 +406,7 @@ class QueryPlan:
                 join_step = self.plan_join_two_tables(join)
                 last_step = join_step
                 if query.where:
-                    last_step = self.add_step(FilterStep(dataframe=last_step.result, query=query.where))
+                    last_step = self.plan_filter(query.where, last_step.result)
 
                 if query.group_by:
                     group_by_targets = []
@@ -411,7 +417,7 @@ class QueryPlan:
                     last_step = self.add_step(GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets))
 
                 if query.having:
-                    last_step = self.add_step(FilterStep(dataframe=last_step.result, query=query.having))
+                    last_step = self.plan_filter(query.having, last_step.result)
 
                 if query.order_by:
                     last_step = self.add_step(OrderByStep(dataframe=last_step.result, order_by=query.order_by))

@@ -1,7 +1,10 @@
+import copy
+
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import Select, Star, Identifier
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.utils import JoinType
+from mindsdb_sql.planner.utils import recursively_process_identifiers
 from dfsql import sql_query
 
 
@@ -68,11 +71,12 @@ class FilterStep(PlanStep):
         dataframe = self.dataframe
         if isinstance(self.dataframe, Result):
             dataframe = executor.step_results[self.dataframe.step_num]
+
+        new_filter_query = copy.deepcopy(self.query)
+        recursively_process_identifiers(new_filter_query, processor=lambda x: Identifier(parts=[x.parts[-1]]))
         full_query = Select(targets=[Star()],
                             from_table=Identifier(self.dataframe.ref_name),
-                            where=self.query)
-        print(dataframe.columns)
-        print(str(full_query))
+                            where=new_filter_query)
         result_df = sql_query(str(full_query), **{self.dataframe.ref_name: dataframe})
         return result_df
 
@@ -113,6 +117,8 @@ class JoinStep(PlanStep):
         left_name = self.query.left.alias.to_string() if self.query.left.alias else self.query.left.to_string()
         right_name = self.query.right.alias.to_string() if self.query.right.alias else self.query.right.to_string()
         joined_df = sql_query(str(full_query), **{left_name: left_df, right_name: right_df})
+        print(full_query)
+        print(joined_df)
         return joined_df
 
 
