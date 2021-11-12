@@ -51,7 +51,7 @@ class TestLexer:
         assert tokens[1].value == 'a'
 
     def test_select_identifiers(self, lexer):
-        sql = 'SELECT abcd123, __whatisthi123s__, `spaces in id`, multiple.parts.__whoa, `multiple`.`parts`.`with brackets` '
+        sql = 'SELECT abcd123, __whatisthi123s__, `spaces in id`'
         tokens = list(lexer.tokenize(sql))
         assert tokens[0].type == 'SELECT'
 
@@ -59,6 +59,18 @@ class TestLexer:
             print(i, t)
             if i % 2 != 0:
                 assert t.type == 'COMMA'
+            else:
+                assert t.type == 'ID'
+
+    def test_select_identifiers_dots(self, lexer):
+        sql = 'SELECT multiple.parts.__whoa, `multiple`.`parts`.`with brackets` '
+        tokens = list(lexer.tokenize(sql))
+        assert tokens[0].type == 'SELECT'
+
+        for i, t in enumerate(tokens[1:]):
+            print(i, t)
+            if i % 2 != 0:
+                assert t.type in ['COMMA', 'DOT']
             else:
                 assert t.type == 'ID'
 
@@ -178,7 +190,13 @@ class TestLexer:
         assert tokens[4].value == 'FROM'
 
         assert tokens[5].type == 'ID'
-        assert tokens[5].value == 'db.schema.tab'
+        assert tokens[5].value == 'db'
+        assert tokens[6].type == 'DOT'
+        assert tokens[7].type == 'ID'
+        assert tokens[7].value == 'schema'
+        assert tokens[8].type == 'DOT'
+        assert tokens[9].type == 'ID'
+        assert tokens[9].value == 'tab'
 
     def test_select_star(self, lexer):
         sql = f'SELECT * FROM tab'
@@ -214,7 +232,7 @@ class TestLexer:
         assert tokens[7].value == 'something'
 
     def test_select_group_by(self, lexer):
-        sql = f'SELECT column, sum(column2) FROM db.schema.tab GROUP BY column'
+        sql = f'SELECT column, sum(column2) FROM tab GROUP BY column'
         tokens = list(SQLLexer().tokenize(sql))
 
         assert tokens[0].type == 'SELECT'
@@ -233,7 +251,7 @@ class TestLexer:
 
     def test_select_order_by(self, lexer):
         for order_dir in ['ASC', 'DESC']:
-            sql = f'SELECT column, sum(column2) FROM db.schema.tab ORDER BY column {order_dir}'
+            sql = f'SELECT column, sum(column2) FROM tab ORDER BY column {order_dir}'
             tokens = list(SQLLexer().tokenize(sql))
 
             assert tokens[0].type == 'SELECT'

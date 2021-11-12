@@ -724,3 +724,16 @@ class TestSelectStructure:
                               from_table=Identifier('tables'))
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_tricky_tables_case(self, dialect):
+        sql = "SELECT TABLES.table_name AS Tables_in_mindsdb FROM TABLES WHERE TABLES.table_schema = 'MINDSDB' AND TABLES.table_type = 'BASE TABLE'"
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(targets=[Identifier('TABLES.table_name', alias=Identifier('Tables_in_mindsdb'))],
+                              from_table=Identifier('TABLES'),
+                              where=BinaryOperation('and', args=[
+                                  BinaryOperation('=', args=[Identifier('TABLES.table_schema'), Constant('MINDSDB')]),
+                                  BinaryOperation('=', args=[Identifier('TABLES.table_type'), Constant('BASE TABLE')]),
+                              ]))
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)

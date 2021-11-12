@@ -40,7 +40,7 @@ class MindsDBLexer(Lexer):
         UNION, ALL,
 
         # Special
-        COMMA, LPAREN, RPAREN, PARAMETER,
+        DOT, COMMA, LPAREN, RPAREN, PARAMETER,
 
         # Operators
         PLUS, MINUS, DIVIDE, MODULO,
@@ -145,6 +145,7 @@ class MindsDBLexer(Lexer):
     ALL = r'\bALL\b'
 
     # Special
+    DOT = r'\.'
     COMMA = r','
     LPAREN = r'\('
     RPAREN = r'\)'
@@ -177,7 +178,7 @@ class MindsDBLexer(Lexer):
     TRUE = r'\bTRUE\b'
     FALSE = r'\bFALSE\b'
 
-    @_(r'([a-zA-Z_][a-zA-Z_0-9]*|`([^`]+)`)(\.([a-zA-Z_][a-zA-Z_.0-9]*|`([^`]+)`))*')
+    @_(r'([a-zA-Z_][a-zA-Z_0-9]*|`([^`]+)`)|([a-zA-Z_][a-zA-Z_.0-9]*|`([^`]+)`)')
     def ID(self, t):
         return t
 

@@ -382,14 +382,6 @@ class MindsDBParser(Parser):
         select.where = where_expr
         return select
 
-    # Mindsdb special case
-    @_('select FROM PREDICTORS')
-    def select(self, p):
-        select = p.select
-        ensure_select_keyword_order(select, 'FROM')
-        select.from_table = Identifier(p.PREDICTORS)
-        return select
-
     # Special cases for keyword-like identifiers
     @_('select FROM TABLES')
     def select(self, p):
@@ -645,10 +637,18 @@ class MindsDBParser(Parser):
     def constant(self, p):
         return Constant(value=str(p.STRING))
 
+    @_('identifier DOT identifier')
+    def identifier(self, p):
+        p.identifier0.parts += p.identifier1.parts
+        return p.identifier0
+
     @_('ID',
        'CHARSET',
+       'TABLES',
        # Mindsdb specific
-       'PREDICT')
+       'PREDICT',
+       'PREDICTOR',
+       'PREDICTORS')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)

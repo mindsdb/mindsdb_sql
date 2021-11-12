@@ -522,8 +522,14 @@ class MySQLParser(SQLParser):
     def constant(self, p):
         return Constant(value=str(p.STRING))
 
+    @_('identifier DOT identifier')
+    def identifier(self, p):
+        p.identifier0.parts += p.identifier1.parts
+        return p.identifier0
+
     @_('ID',
-       'CHARSET')
+       'CHARSET',
+       'TABLES')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)
