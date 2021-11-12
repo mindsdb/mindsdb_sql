@@ -12,7 +12,10 @@ class TestDropPredictor:
         assert tokens[0].type == 'DROP'
         assert tokens[1].type == 'PREDICTOR'
         assert tokens[2].type == 'ID'
-        assert tokens[2].value == 'mindsdb.pred'
+        assert tokens[2].value == 'mindsdb'
+        assert tokens[3].type == 'DOT'
+        assert tokens[4].type == 'ID'
+        assert tokens[4].value == 'pred'
 
     def test_drop_predictor_ok(self):
         sql = "DROP PREDICTOR mindsdb.pred"
