@@ -76,6 +76,10 @@ class MindsDBParser(Parser):
     def set(self, p):
         return Set(category=p.AUTOCOMMIT)
 
+    @_('SET expr')
+    def set(self, p):
+        return Set(arg=p.expr)
+
     @_('SET ID identifier')
     def set(self, p):
         if not p.ID == 'names':
