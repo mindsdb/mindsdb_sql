@@ -21,3 +21,10 @@ class TestDropPredictor:
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_drop_predictor_table_syntax_ok(self):
+        sql = "DROP TABLE mindsdb.pred"
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = DropPredictor(name=Identifier('mindsdb.pred'))
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
