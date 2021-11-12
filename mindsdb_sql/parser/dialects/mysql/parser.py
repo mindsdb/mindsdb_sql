@@ -59,15 +59,19 @@ class MySQLParser(SQLParser):
 
     # Set
 
+    @_('SET expr')
+    def set(self, p):
+        return Set(arg=p.expr)
+
     @_('SET AUTOCOMMIT')
     def set(self, p):
         return Set(category=p.AUTOCOMMIT)
 
     @_('SET ID identifier')
     def set(self, p):
-        if not p.ID == 'names':
-            raise ParsingException(f'Excepted "names"')
-        return Set(category=p.ID, arg=p.identifier)
+        if not p.ID.lower() == 'names':
+            raise ParsingException(f'Expected "SET names", got "SET {p.ID}"')
+        return Set(category=p.ID.lower(), arg=p.identifier)
 
     # Show
 

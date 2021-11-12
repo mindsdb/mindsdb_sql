@@ -24,10 +24,17 @@ class TestMiscQueries:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
-        sql = "set names some_name"
+        sql = "SET NAMES some_name"
 
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Set(category="names", arg=Identifier('some_name'))
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "set character_set_results = NULL"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(arg=BinaryOperation('=', args=[Identifier('character_set_results'), NullConstant()]))
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
