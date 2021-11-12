@@ -172,7 +172,8 @@ class MindsDBParser(Parser):
         return RetrainPredictor(p.identifier)
 
     # DROP PREDICTOR
-    @_('DROP PREDICTOR identifier')
+    @_('DROP PREDICTOR identifier',
+       'DROP TABLE identifier')
     def drop_predictor(self, p):
         return DropPredictor(p.identifier)
 
