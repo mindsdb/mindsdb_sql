@@ -74,7 +74,6 @@ class SQLParser(Parser):
         return Set(category=p.ID.lower(), arg=p.identifier)
 
     # Show
-
     @_('SHOW show_category show_condition_or_nothing')
     def show(self, p):
         condition = p.show_condition_or_nothing['condition'] if p.show_condition_or_nothing else None

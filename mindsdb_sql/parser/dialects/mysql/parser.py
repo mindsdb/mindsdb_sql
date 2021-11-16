@@ -2,6 +2,7 @@ from mindsdb_sql.parser.parser import SQLParser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mysql.lexer import MySQLLexer
 from mindsdb_sql.parser.dialects.mysql.variable import Variable
+from mindsdb_sql.parser.dialects.mysql.show_index import ShowIndex
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
@@ -74,7 +75,6 @@ class MySQLParser(SQLParser):
         return Set(category=p.ID.lower(), arg=p.identifier)
 
     # Show
-
     @_('SHOW show_category show_condition_or_nothing')
     def show(self, p):
         condition = p.show_condition_or_nothing['condition'] if p.show_condition_or_nothing else None
@@ -82,6 +82,15 @@ class MySQLParser(SQLParser):
         return Show(category=p.show_category,
                     condition=condition,
                     expression=expression)
+
+    @_('SHOW INDEX FROM identifier FROM identifier')
+    def show(self, p):
+        return ShowIndex(table=p.identifier0,
+                         db=p.identifier1)
+
+    @_('SHOW INDEX FROM identifier')
+    def show(self, p):
+        return ShowIndex(table=p.identifier)
 
     @_('show_condition_token expr',
        'empty')
@@ -107,7 +116,6 @@ class MySQLParser(SQLParser):
        'GLOBAL VARIABLES',
        'PROCEDURE STATUS',
        'FUNCTION STATUS',
-       'INDEX',
        'CREATE TABLE',
        'WARNINGS',
        'ENGINES',

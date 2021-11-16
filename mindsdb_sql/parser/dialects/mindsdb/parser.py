@@ -651,6 +651,7 @@ class MindsDBParser(Parser):
        'CHARSET',
        'TABLES',
        # Mindsdb specific
+       'STATUS',
        'PREDICT',
        'PREDICTOR',
        'PREDICTORS')

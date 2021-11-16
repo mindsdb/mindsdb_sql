@@ -19,7 +19,6 @@ class TestShow:
            'GLOBAL VARIABLES',
            'PROCEDURE STATUS',
            'FUNCTION STATUS',
-           'INDEX',
            'CREATE TABLE',
            'WARNINGS',
            'ENGINES',
