@@ -3,10 +3,12 @@ from sly import Parser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.lexer import SQLLexer
+from mindsdb_sql.parser.logger import ParserLogger
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
 
 class SQLParser(Parser):
+    log = ParserLogger()
     tokens = SQLLexer.tokens
 
     precedence = (
@@ -74,7 +76,6 @@ class SQLParser(Parser):
         return Set(category=p.ID.lower(), arg=p.identifier)
 
     # Show
-
     @_('SHOW show_category show_condition_or_nothing')
     def show(self, p):
         condition = p.show_condition_or_nothing['condition'] if p.show_condition_or_nothing else None

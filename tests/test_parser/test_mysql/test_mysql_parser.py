@@ -1,6 +1,6 @@
 from mindsdb_sql import parse_sql
 from mindsdb_sql.parser.ast import Select, Identifier, BinaryOperation, Star
-from mindsdb_sql.parser.dialects.mysql import Variable
+from mindsdb_sql.parser.dialects.mysql import Variable, ShowIndex
 
 
 class TestMySQLParser:
@@ -39,3 +39,26 @@ class TestMySQLParser:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
+
+    def test_show_index(self):
+        sql = "SHOW INDEX FROM predictors"
+        ast = parse_sql(sql, dialect='mysql')
+        expected_ast = ShowIndex(
+            table=Identifier('predictors'),
+        )
+
+        assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_show_index_from_db(self):
+        sql = "SHOW INDEX FROM predictors FROM db"
+        ast = parse_sql(sql, dialect='mysql')
+        expected_ast = ShowIndex(
+            table=Identifier('predictors'),
+            db=Identifier('db'),
+        )
+
+        assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()

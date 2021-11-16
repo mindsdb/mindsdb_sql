@@ -30,3 +30,15 @@ class TestSpecificSelects:
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_select_status_column(self):
+        sql = "SELECT status FROM mindsdb.predictors"
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = Select(
+            targets=[Identifier('status')],
+            from_table=Identifier('mindsdb.predictors'),
+        )
+
+        assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
