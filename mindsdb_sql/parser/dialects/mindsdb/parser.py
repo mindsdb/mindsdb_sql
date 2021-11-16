@@ -10,10 +10,12 @@ from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.parser.dialects.mindsdb.retrain_predictor import RetrainPredictor
+from mindsdb_sql.parser.logger import ParserLogger
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
 
 class MindsDBParser(Parser):
+    log = ParserLogger()
     tokens = MindsDBLexer.tokens
 
     precedence = (

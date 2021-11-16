@@ -1,3 +1,4 @@
+from mindsdb_sql.parser.logger import ParserLogger
 from mindsdb_sql.parser.parser import SQLParser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mysql.lexer import MySQLLexer
@@ -8,6 +9,7 @@ from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
 
 class MySQLParser(SQLParser):
+    log = ParserLogger()
     tokens = MySQLLexer.tokens
 
     precedence = (

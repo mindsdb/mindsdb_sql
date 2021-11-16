@@ -3,10 +3,12 @@ from sly import Parser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.lexer import SQLLexer
+from mindsdb_sql.parser.logger import ParserLogger
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
 
 class SQLParser(Parser):
+    log = ParserLogger()
     tokens = SQLLexer.tokens
 
     precedence = (
