@@ -94,6 +94,7 @@ class GroupByStep(PlanStep):
             self.references.append(dataframe)
 
 
+
 class JoinStep(PlanStep):
     """Joins two dataframes, producing a new dataframe"""
     def __init__(self, left, right, query, *args, **kwargs):
@@ -117,8 +118,6 @@ class JoinStep(PlanStep):
         left_name = self.query.left.alias.to_string() if self.query.left.alias else self.query.left.to_string()
         right_name = self.query.right.alias.to_string() if self.query.right.alias else self.query.right.to_string()
         joined_df = sql_query(str(full_query), **{left_name: left_df, right_name: right_df})
-        print(full_query)
-        print(joined_df)
         return joined_df
 
 
