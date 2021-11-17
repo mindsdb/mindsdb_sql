@@ -51,7 +51,7 @@ class TestLexer:
         assert tokens[1].value == 'a'
 
     def test_select_identifiers(self, lexer):
-        sql = 'SELECT abcd123, __whatisthi123s__, `spaces in id`'
+        sql = 'SELECT abcd123, 123abcd, idwith$sign, __whatisthi123s__, `spaces in id`'
         tokens = list(lexer.tokenize(sql))
         assert tokens[0].type == 'SELECT'
 
