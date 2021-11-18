@@ -324,12 +324,8 @@ class QueryPlan:
                     integration_name, column_identifier = get_integration_path_from_identifier(arg)
                 else:
                     column_identifier = arg
-                # print(integration_name)
-                # print('tables', left_table, right_table)
-                # print('this', integration_name, column_identifier)
                 arg_table_identifier = column_identifier.copy()
                 arg_table_identifier.parts = arg_table_identifier.parts[:-1]
-                # print('arg_table_identifier', arg_table_identifier)
                 new_arg = None
                 if (not integration_name or integration_name == left_integration_name) and (arg_table_identifier == left_table or arg_table_identifier == left_table.alias):
                     new_arg = disambiguate_integration_column_identifier(arg, left_integration_name, left_table, initial_path_as_alias=False)
@@ -356,7 +352,7 @@ class QueryPlan:
             if isinstance(target, Identifier) or isinstance(target, Star):
                 out_identifiers.append(target)
             else:
-                new_identifier = Identifier(str(target.to_string(alias=False)), alias=target.alias)
+                new_identifier = Identifier(parts=[str(target.to_string(alias=False))], alias=target.alias)
                 out_identifiers.append(new_identifier)
         return self.add_step(ProjectStep(dataframe=dataframe, columns=out_identifiers))
 
@@ -368,10 +364,10 @@ class QueryPlan:
     def plan_join(self, query):
         join = query.from_table
 
-        recursively_check_join_identifiers_for_ambiguity(query.where)
-        recursively_check_join_identifiers_for_ambiguity(query.group_by)
-        recursively_check_join_identifiers_for_ambiguity(query.having)
-        recursively_check_join_identifiers_for_ambiguity(query.order_by)
+        # recursively_check_join_identifiers_for_ambiguity(query.where)
+        # recursively_check_join_identifiers_for_ambiguity(query.group_by)
+        # recursively_check_join_identifiers_for_ambiguity(query.having)
+        # recursively_check_join_identifiers_for_ambiguity(query.order_by)
 
         if isinstance(join.left, Identifier) and isinstance(join.right, Identifier):
             if self.is_predictor(join.left) and self.is_predictor(join.right):
@@ -412,7 +408,6 @@ class QueryPlan:
                     group_by_targets = []
                     for t in query.targets:
                         target_copy = copy.deepcopy(t)
-                        target_copy.alias = None
                         group_by_targets.append(target_copy)
                     last_step = self.add_step(GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets))
 

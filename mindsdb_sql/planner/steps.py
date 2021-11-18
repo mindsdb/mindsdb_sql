@@ -52,9 +52,8 @@ class ProjectStep(PlanStep):
         df = self.dataframe
         if isinstance(df, Result):
             df = executor.step_results[df.step_num]
-        filter = [c.to_string(alias=False) for c in self.columns]
-        renames = {c.to_string(alias=False): c.alias.to_string(alias=False) for c in self.columns if c.alias}
-        return df[filter].rename(columns=renames)
+        filter = [(c.to_string(alias=False) if not c.alias else c.alias.to_string()) for c in self.columns]
+        return df[filter]
 
 
 class FilterStep(PlanStep):
@@ -73,7 +72,7 @@ class FilterStep(PlanStep):
             dataframe = executor.step_results[self.dataframe.step_num]
 
         new_filter_query = copy.deepcopy(self.query)
-        recursively_process_identifiers(new_filter_query, processor=lambda x: Identifier(parts=[x.parts[-1]]))
+        recursively_process_identifiers(new_filter_query, processor=lambda x: Identifier(parts=[x.parts[-1]], alias=x.alias))
         full_query = Select(targets=[Star()],
                             from_table=Identifier(self.dataframe.ref_name),
                             where=new_filter_query)
@@ -93,6 +92,16 @@ class GroupByStep(PlanStep):
         if isinstance(dataframe, Result):
             self.references.append(dataframe)
 
+    def execute(self, executor):
+        dataframe = self.dataframe
+        if isinstance(self.dataframe, Result):
+            dataframe = executor.step_results[self.dataframe.step_num]
+
+        query = Select(targets=self.targets,
+                       from_table=self.dataframe.ref_name,
+                       group_by=self.columns)
+        result_df = sql_query(str(query), **{self.dataframe.ref_name: dataframe})
+        return result_df
 
 
 class JoinStep(PlanStep):
@@ -118,6 +127,11 @@ class JoinStep(PlanStep):
         left_name = self.query.left.alias.to_string() if self.query.left.alias else self.query.left.to_string()
         right_name = self.query.right.alias.to_string() if self.query.right.alias else self.query.right.to_string()
         joined_df = sql_query(str(full_query), **{left_name: left_df, right_name: right_df})
+
+        # TODO remove column duplication
+        for column in joined_df.columns:
+            joined_df[f'{left_name}.{column}'] = joined_df[column]
+            joined_df[f'{right_name}.{column}'] = joined_df[column]
         return joined_df
 
 
