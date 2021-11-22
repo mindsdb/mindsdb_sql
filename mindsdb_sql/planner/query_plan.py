@@ -17,7 +17,7 @@ from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        get_deepest_select,
                                        recursively_extract_column_values,
                                        recursively_check_join_identifiers_for_ambiguity,
-                                       recursively_disambiguate_identifiers_in_op)
+                                       recursively_disambiguate_identifiers_in_op, recursively_process_identifiers)
 from mindsdb_sql.utils import JoinType
 
 
@@ -110,8 +110,12 @@ class QueryPlan:
     def plan_integration_nested_select(self, select):
         fetch_df_select = copy.deepcopy(select)
         deepest_select = get_deepest_select(fetch_df_select)
-        integration_name, table = self.get_integration_path_from_identifier_or_error(deepest_select.from_table)
-        recursively_disambiguate_identifiers(deepest_select, integration_name, table)
+
+        if isinstance(deepest_select.from_table, Join):
+            raise NotImplementedError()
+        else:
+            integration_name, table = self.get_integration_path_from_identifier_or_error(deepest_select.from_table)
+            recursively_disambiguate_identifiers(deepest_select, integration_name, table)
         return self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
     def plan_select_from_predictor(self, select):
@@ -400,6 +404,31 @@ class QueryPlan:
                 # Both arguments are tables, join results of 2 dataframe fetches
 
                 join_step = self.plan_join_two_tables(join)
+
+                # Remove aliases and names of tables in all subsequent stages of this select, as they are no longer relevant
+                left_name = join.left.alias.to_string() if join.left.alias else join.left.to_string()
+                right_name = join.right.alias.to_string() if join.right.alias else join.right.to_string()
+
+                def clean_identifier(target):
+                    new_identifier = copy.deepcopy(target)
+                    if left_name in new_identifier.parts:
+                        new_identifier.parts.remove(left_name)
+                    if right_name in new_identifier.parts:
+                        new_identifier.parts.remove(right_name)
+                    return new_identifier
+
+                # Make sure the targets are renamed to original names in project
+                for target in query.targets:
+                    if not target.alias:
+                        target.alias = copy.deepcopy(target)
+
+                recursively_process_identifiers(query.targets, clean_identifier)
+                recursively_process_identifiers(query.where, clean_identifier)
+                recursively_process_identifiers(query.group_by, clean_identifier)
+                recursively_process_identifiers(query.having, clean_identifier)
+                recursively_process_identifiers(query.order_by, clean_identifier)
+                recursively_process_identifiers(query.limit, clean_identifier)
+
                 last_step = join_step
                 if query.where:
                     last_step = self.plan_filter(query.where, last_step.result)

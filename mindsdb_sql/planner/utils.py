@@ -138,26 +138,21 @@ def recursively_process_identifiers_select(select, processor):
         select.order_by = order_by
 
 
-def recursively_process_identifiers_op(op, processor):
-    for arg in op.args:
-        if isinstance(arg, Identifier):
-            new_identifier = processor(arg)
-
-            arg.parts = new_identifier.parts
-            arg.alias = new_identifier.alias
-        elif isinstance(arg, Operation):
-            recursively_disambiguate_identifiers_in_op(arg, processor)
-        elif isinstance(arg, Select):
-            recursively_process_identifiers_select(arg, processor)
-
-
 def recursively_process_identifiers(obj, processor):
-    if isinstance(obj, Operation):
-        recursively_process_identifiers_op(obj, processor)
+    if isinstance(obj, Identifier):
+        new_identifier = processor(obj)
+        obj.parts = new_identifier.parts
+        obj.alias = new_identifier.alias
+    elif isinstance(obj, Operation):
+        for arg in obj.args:
+            recursively_process_identifiers(arg, processor)
     elif isinstance(obj, Select):
         recursively_process_identifiers_select(obj, processor)
+    elif isinstance(obj, list):
+        for item in obj:
+            recursively_process_identifiers(item, processor)
     else:
-        raise PlanningException(f'Unsupported object for processing {type(obj)}')
+        pass
 
 
 def recursively_disambiguate_identifiers_in_op(op, integration_name, table, raw_initial_name=False):

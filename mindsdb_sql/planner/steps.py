@@ -52,8 +52,9 @@ class ProjectStep(PlanStep):
         df = self.dataframe
         if isinstance(df, Result):
             df = executor.step_results[df.step_num]
-        filter = [(c.to_string(alias=False) if not c.alias else c.alias.to_string()) for c in self.columns]
-        return df[filter]
+        filter = [(c.alias.to_string() if c.alias and c.alias.to_string() in df.columns else c.to_string(alias=False)) for c in self.columns]
+        renames = {c.to_string(alias=False): c.alias.to_string() for c in self.columns if c.alias}
+        return df[filter].rename(columns=renames)
 
 
 class FilterStep(PlanStep):
@@ -100,6 +101,10 @@ class GroupByStep(PlanStep):
         query = Select(targets=self.targets,
                        from_table=self.dataframe.ref_name,
                        group_by=self.columns)
+        print(str(query))
+        print(self.dataframe.ref_name)
+        print(dataframe.head())
+        print(dataframe.columns)
         result_df = sql_query(str(query), **{self.dataframe.ref_name: dataframe})
         return result_df
 
@@ -124,14 +129,18 @@ class JoinStep(PlanStep):
 
         full_query = Select(targets=[Star()],
                             from_table=self.query)
-        left_name = self.query.left.alias.to_string() if self.query.left.alias else self.query.left.to_string()
-        right_name = self.query.right.alias.to_string() if self.query.right.alias else self.query.right.to_string()
-        joined_df = sql_query(str(full_query), **{left_name: left_df, right_name: right_df})
+        left_name = self.query.left.to_string(alias=False)
+        right_name = self.query.right.to_string(alias=False)
 
-        # TODO remove column duplication
-        for column in joined_df.columns:
-            joined_df[f'{left_name}.{column}'] = joined_df[column]
-            joined_df[f'{right_name}.{column}'] = joined_df[column]
+        dfs = {
+            left_name: left_df,
+            right_name: right_df
+        }
+        if self.query.left.alias:
+            dfs[self.query.left.alias.to_string()] = left_df
+        if self.query.right.alias:
+            dfs[self.query.right.alias.to_string()] = right_df
+        joined_df = sql_query(str(full_query), **dfs)
         return joined_df
 
 
