@@ -406,8 +406,11 @@ class QueryPlan:
                 join_step = self.plan_join_two_tables(join)
 
                 # Remove aliases and names of tables in all subsequent stages of this select, as they are no longer relevant
-                left_name = join.left.alias.to_string() if join.left.alias else join.left.to_string()
-                right_name = join.right.alias.to_string() if join.right.alias else join.right.to_string()
+                left_integration_name, left_table = self.get_integration_path_from_identifier_or_error(join.left)
+                right_integration_name, right_table = self.get_integration_path_from_identifier_or_error(join.right)
+
+                left_name = left_table.alias.to_string() if left_table.alias else left_table.to_string()
+                right_name = right_table.alias.to_string() if right_table.alias else right_table.to_string()
 
                 def clean_identifier(target):
                     new_identifier = copy.deepcopy(target)

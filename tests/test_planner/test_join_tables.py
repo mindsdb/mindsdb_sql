@@ -53,7 +53,10 @@ class TestPlanJoinTables:
                                                               join_type=JoinType.INNER_JOIN
                                                               )),
                                           ProjectStep(dataframe=Result(2),
-                                                      columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                                      columns=[Identifier('tab1.column1', alias=Identifier('tab1.column1')),
+                                                               Identifier('tab2.column1', alias=Identifier('tab2.column1')),
+                                                               Identifier('tab2.column2', alias=Identifier('tab2.column2')),
+                                                               ]),
                                       ],
             )
             assert plan.steps == expected_plan.steps
@@ -89,10 +92,12 @@ class TestPlanJoinTables:
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
                                       ProjectStep(dataframe=Result(2),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                                  columns=[Identifier('tab1.column1', alias=Identifier('tab1.column1')),
+                                                           Identifier('tab2.column1', alias=Identifier('tab2.column1')),
+                                                           Identifier('tab2.column2', alias=Identifier('tab2.column2')),
+                                                           ]),
                                   ],
         )
-
         assert plan.steps == expected_plan.steps
 
     def test_join_tables_plan_alias(self):
@@ -214,7 +219,10 @@ class TestPlanJoinTables:
                                                                        ]
                                                                        )),
                                       ProjectStep(dataframe=Result(3),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                                  columns=[Identifier('tab1.column1', alias=Identifier('tab1.column1')),
+                                                           Identifier('tab2.column1', alias=Identifier('tab2.column1')),
+                                                           Identifier('tab2.column2', alias=Identifier('tab2.column2')),
+                                                           ]),
                                   ],
                                   )
 
@@ -256,17 +264,26 @@ class TestPlanJoinTables:
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
                                       GroupByStep(dataframe=Result(2),
-                                                  targets=[Identifier('tab1.column1'),
-                                                            Identifier('tab2.column1'),
-                                                            Function('sum', args=[Identifier('tab2.column2')], alias=Identifier('total'))],
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
-                                      FilterStep(dataframe=Result(3), query=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Constant(0)])),
+                                                  targets=[Identifier('column1'),
+                                                            Identifier('column1'),
+                                                            Function('sum', args=[Identifier('column2')])],
+                                                  columns=[Identifier('column1'), Identifier('column1')]),
+                                      FilterStep(dataframe=Result(3), query=BinaryOperation(op='=', args=[Identifier('column1'), Constant(0)])),
                                       ProjectStep(dataframe=Result(4),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'),
-                                                           Identifier(parts=['sum(tab2.column2)'], alias=Identifier('total'))]),
+                                                  columns=[Identifier('column1', alias=Identifier('tab1.column1')),
+                                                           Identifier('column1', alias=Identifier('tab2.column1')),
+                                                           Identifier(parts=['sum(column2)'], alias=Identifier('total'))]),
                                   ],
                                   )
         for step, expected_step in zip(plan.steps, expected_plan.steps):
+            try:
+                print([str(x) for x in step.targets])
+                print([str(x) for x in step.columns])
+
+                print([str(x) for x in expected_step.targets])
+                print([str(x) for x in expected_step.columns])
+            except:
+                pass
             assert step == expected_step
 
 

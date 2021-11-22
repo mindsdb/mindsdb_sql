@@ -53,7 +53,7 @@ class ProjectStep(PlanStep):
         if isinstance(df, Result):
             df = executor.step_results[df.step_num]
         filter = [(c.alias.to_string() if c.alias and c.alias.to_string() in df.columns else c.to_string(alias=False)) for c in self.columns]
-        renames = {c.to_string(alias=False): c.alias.to_string() for c in self.columns if c.alias}
+        renames = {c.to_string(alias=False): c.alias.to_string() for c in self.columns if c.alias and c.to_string(alias=False) != c.alias.to_string()}
         return df[filter].rename(columns=renames)
 
 
@@ -77,6 +77,7 @@ class FilterStep(PlanStep):
         full_query = Select(targets=[Star()],
                             from_table=Identifier(self.dataframe.ref_name),
                             where=new_filter_query)
+        print(full_query, dataframe.columns)
         result_df = sql_query(str(full_query), **{self.dataframe.ref_name: dataframe})
         return result_df
 
