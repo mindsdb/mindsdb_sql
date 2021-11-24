@@ -53,16 +53,16 @@ class TestPlanJoinTables:
                                                               join_type=JoinType.INNER_JOIN
                                                               )),
                                           ProjectStep(dataframe=Result(2),
-                                                      columns=[Identifier('tab1.column1', alias=Identifier('tab1.column1')),
-                                                               Identifier('tab2.column1', alias=Identifier('tab2.column1')),
-                                                               Identifier('tab2.column2', alias=Identifier('tab2.column2')),
+                                                      columns=[Identifier('column1', alias=Identifier('tab1.column1')),
+                                                               Identifier('column1', alias=Identifier('tab2.column1')),
+                                                               Identifier('column2', alias=Identifier('tab2.column2')),
                                                                ]),
                                       ],
             )
             assert plan.steps == expected_plan.steps
 
     def test_join_tables_plan_databases_specified(self):
-        query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
+        query = Select(targets=[Identifier('column1'), Identifier('column1'), Identifier('column2')],
                    from_table=Join(left=Identifier('int.db.tab1'),
                                    right=Identifier('int.db.tab2'),
                                    condition=BinaryOperation(op='=', args=[Identifier('int.db.tab1.column1'),
@@ -92,9 +92,9 @@ class TestPlanJoinTables:
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
                                       ProjectStep(dataframe=Result(2),
-                                                  columns=[Identifier('tab1.column1', alias=Identifier('tab1.column1')),
-                                                           Identifier('tab2.column1', alias=Identifier('tab2.column1')),
-                                                           Identifier('tab2.column2', alias=Identifier('tab2.column2')),
+                                                  columns=[Identifier('column1', alias=Identifier('column1')),
+                                                           Identifier('column1', alias=Identifier('column1')),
+                                                           Identifier('column2', alias=Identifier('column2')),
                                                            ]),
                                   ],
         )
@@ -199,13 +199,13 @@ class TestPlanJoinTables:
                                                                                                BinaryOperation('=',
                                                                                                                args=[
                                                                                                                    Identifier(
-                                                                                                                       'tab1.column1'),
+                                                                                                                       'column1'),
                                                                                                                    Constant(
                                                                                                                        1)]),
                                                                                                BinaryOperation('=',
                                                                                                                args=[
                                                                                                                    Identifier(
-                                                                                                                       'tab2.column1'),
+                                                                                                                       'column1'),
                                                                                                                    Constant(
                                                                                                                        0)]),
 
@@ -213,21 +213,20 @@ class TestPlanJoinTables:
                                                                                            ),
                                                                            BinaryOperation('=',
                                                                                            args=[Identifier(
-                                                                                               'tab1.column3'),
+                                                                                               'column3'),
                                                                                                  Identifier(
-                                                                                                     'tab2.column3')]),
+                                                                                                     'column3')]),
                                                                        ]
                                                                        )),
                                       ProjectStep(dataframe=Result(3),
-                                                  columns=[Identifier('tab1.column1', alias=Identifier('tab1.column1')),
-                                                           Identifier('tab2.column1', alias=Identifier('tab2.column1')),
-                                                           Identifier('tab2.column2', alias=Identifier('tab2.column2')),
+                                                  columns=[Identifier('column1', alias=Identifier('tab1.column1')),
+                                                           Identifier('column1', alias=Identifier('tab2.column1')),
+                                                           Identifier('column2', alias=Identifier('tab2.column2')),
                                                            ]),
                                   ],
                                   )
 
         assert plan.steps == expected_plan.steps
-        
 
     def test_join_tables_plan_groupby(self):
         query = Select(targets=[
@@ -264,9 +263,9 @@ class TestPlanJoinTables:
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
                                       GroupByStep(dataframe=Result(2),
-                                                  targets=[Identifier('column1'),
-                                                            Identifier('column1'),
-                                                            Function('sum', args=[Identifier('column2')])],
+                                                  targets=[Identifier('column1', alias=Identifier('tab1.column1')),
+                                                            Identifier('column1', alias=Identifier('tab2.column1')),
+                                                            Function('sum', args=[Identifier('column2')], alias=Identifier('total'))],
                                                   columns=[Identifier('column1'), Identifier('column1')]),
                                       FilterStep(dataframe=Result(3), query=BinaryOperation(op='=', args=[Identifier('column1'), Constant(0)])),
                                       ProjectStep(dataframe=Result(4),
@@ -276,14 +275,6 @@ class TestPlanJoinTables:
                                   ],
                                   )
         for step, expected_step in zip(plan.steps, expected_plan.steps):
-            try:
-                print([str(x) for x in step.targets])
-                print([str(x) for x in step.columns])
-
-                print([str(x) for x in expected_step.targets])
-                print([str(x) for x in expected_step.columns])
-            except:
-                pass
             assert step == expected_step
 
 
@@ -319,7 +310,11 @@ class TestPlanJoinTables:
                                                           )),
                                       LimitOffsetStep(dataframe=Result(2), limit=10, offset=15),
                                       ProjectStep(dataframe=Result(3),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                                  columns=[
+                                                      Identifier('column1', alias=Identifier('tab1.column1')),
+                                                      Identifier('column1', alias=Identifier('tab2.column1')),
+                                                      Identifier('column2', alias=Identifier('tab2.column2')),
+                                                  ]),
                                   ],
                                   )
 
@@ -360,7 +355,11 @@ class TestPlanJoinTables:
                                       OrderByStep(dataframe=Result(2), order_by=[OrderBy(field=Identifier('tab1.column1'))]),
                                       LimitOffsetStep(dataframe=Result(3), limit=10, offset=15),
                                       ProjectStep(dataframe=Result(4),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                                  columns=[
+                                                      Identifier('column1', alias=Identifier('tab1.column1')),
+                                                      Identifier('column1', alias=Identifier('tab2.column1')),
+                                                      Identifier('column2', alias=Identifier('tab2.column2')),
+                                                  ]),
                                   ],
                                   )
 
@@ -429,7 +428,11 @@ class TestPlanJoinTables:
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
                                       ProjectStep(dataframe=Result(2),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                                  columns=[
+                                                      Identifier('column1', alias=Identifier('tab1.column1')),
+                                                      Identifier('column1', alias=Identifier('tab2.column1')),
+                                                      Identifier('column2', alias=Identifier('tab2.column2')),
+                                                  ]),
                                   ],
                                   )
 
@@ -475,7 +478,11 @@ class TestPlanJoinTables:
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
                                       ProjectStep(dataframe=Result(2),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                                  columns=[
+                                                      Identifier('column1', alias=Identifier('tab1.column1')),
+                                                      Identifier('column1', alias=Identifier('tab2.column1')),
+                                                      Identifier('column2', alias=Identifier('tab2.column2')),
+                                                  ]),
                                   ],
         )
         plan = plan_query(query, integrations=['int'], default_namespace='int')
