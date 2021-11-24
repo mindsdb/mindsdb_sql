@@ -166,6 +166,15 @@ class OrderByStep(PlanStep):
         if isinstance(dataframe, Result):
             self.references.append(dataframe)
 
+    def execute(self, executor):
+        dataframe = self.dataframe
+        if isinstance(self.dataframe, Result):
+            dataframe = executor.step_results[self.dataframe.step_num]
+
+        fields = [s.field.to_string(alias=False) for s in self.order_by]
+        sort_orders = [s.direction != 'DESC' for s in self.order_by]
+        return dataframe.sort_values(by=fields, ascending=sort_orders)
+
 
 class LimitOffsetStep(PlanStep):
     """Applies limit and offset to a dataframe"""
@@ -177,6 +186,15 @@ class LimitOffsetStep(PlanStep):
 
         if isinstance(dataframe, Result):
             self.references.append(dataframe)
+
+    def execute(self, executor):
+        dataframe = self.dataframe
+        if isinstance(self.dataframe, Result):
+            dataframe = executor.step_results[self.dataframe.step_num]
+
+        left_bound = self.offset or 0
+        right_bound = left_bound + self.limit if self.limit is not None else None
+        return dataframe.iloc[left_bound:right_bound]
 
 
 class FetchDataframeStep(PlanStep):
