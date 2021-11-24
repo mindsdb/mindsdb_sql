@@ -1,4 +1,5 @@
 import pytest
+import pandas as pd
 import numpy as np
 from mindsdb_sql import parse_sql
 from mindsdb_sql.executioner import execute_plan
@@ -322,4 +323,32 @@ class TestExecutioner:
     #     assert (out_df.columns == expected_df.columns).all()
     #     assert (out_df == expected_df).all().all()
 
+    def test_execute_union_tables(self, connection_db1, default_data_db1, connection_db2, default_data_db2):
+        sql = """
+            SELECT App FROM test_db1.googleplaystore
+            UNION ALL
+            SELECT App FROM test_db2.googleplaystore_user_reviews
+        """
 
+        df1 = connection_db1.query("SELECT App FROM googleplaystore")
+        df2 = connection_db2.query("SELECT App ROM googleplaystore_user_reviews")
+        expected_df = pd.concat([df1, df2])
+
+        query = parse_sql(sql, dialect='mindsdb')
+        assert str(query) == to_single_line(sql)
+        query_plan = plan_query(query, integrations=['test_db1', 'test_db2'])
+        assert len(query_plan.steps) == 4
+        assert isinstance(query_plan.steps[0], FetchDataframeStep)
+        assert isinstance(query_plan.steps[1], FetchDataframeStep)
+        assert isinstance(query_plan.steps[2], JoinStep)
+        assert isinstance(query_plan.steps[3], ProjectStep)
+
+        out_df = execute_plan(query_plan,
+                           integration_connections=dict(
+                               test_db1=connection_db1,
+                               test_db2=connection_db2,
+                           ))
+
+        assert out_df.shape == expected_df.shape
+        assert (out_df.columns == expected_df.columns).all()
+        assert (out_df == expected_df).all().all()
