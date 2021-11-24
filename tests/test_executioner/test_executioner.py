@@ -221,6 +221,71 @@ class TestExecutioner:
         assert (out_df.columns == expected_df.columns).all()
         assert (out_df == expected_df).all().all()
 
+    def test_execute_join_tables_with_groupby_having_limit_offset(self, connection_db1, default_data_db1, connection_db2, default_data_db2):
+        sql = """
+            SELECT t1.App, t2.Sentiment, avg(t2.Sentiment_Polarity) AS avg_sentiment_polarity
+            FROM test_db1.googleplaystore AS t1
+            INNER JOIN test_db2.googleplaystore_user_reviews AS t2
+            ON t1.App = t2.App
+            GROUP BY t1.App, t2.Sentiment
+            HAVING avg_sentiment_polarity > 0.4
+            LIMIT 2
+            OFFSET 2
+        """
+
+        df1 = connection_db1.query("SELECT App, Category, Rating FROM googleplaystore")
+        df2 = connection_db2.query("SELECT App, Sentiment, Sentiment_Polarity FROM googleplaystore_user_reviews")
+        inner_df = df1.merge(df2, on=['App'], how='inner')
+        expected_df = inner_df.groupby(['App', 'Sentiment']).agg({'Sentiment_Polarity': 'mean'}).reset_index()
+        expected_df.columns = ['t1.App', 't2.Sentiment', 'avg_sentiment_polarity']
+        expected_df = expected_df[expected_df['avg_sentiment_polarity'] > 0.4]
+        expected_df = expected_df.reset_index(drop=True).iloc[2:4]
+
+        query = parse_sql(sql, dialect='mindsdb')
+        assert str(query) == to_single_line(sql)
+        query_plan = plan_query(query, integrations=['test_db1', 'test_db2'])
+        out_df = execute_plan(query_plan,
+                           integration_connections=dict(
+                               test_db1=connection_db1,
+                               test_db2=connection_db2,
+                           ))
+
+        assert out_df.shape == expected_df.shape
+        assert (out_df.columns == expected_df.columns).all()
+        assert (out_df == expected_df).all().all()
+
+    def test_execute_join_tables_with_groupby_having_order_by(self, connection_db1, default_data_db1, connection_db2, default_data_db2):
+        sql = """
+            SELECT t1.App, t2.Sentiment, avg(t2.Sentiment_Polarity) AS avg_sentiment_polarity
+            FROM test_db1.googleplaystore AS t1
+            INNER JOIN test_db2.googleplaystore_user_reviews AS t2
+            ON t1.App = t2.App
+            GROUP BY t1.App, t2.Sentiment
+            HAVING avg_sentiment_polarity > 0.4
+            ORDER BY t2.Sentiment DESC
+        """
+
+        df1 = connection_db1.query("SELECT App, Category, Rating FROM googleplaystore")
+        df2 = connection_db2.query("SELECT App, Sentiment, Sentiment_Polarity FROM googleplaystore_user_reviews")
+        inner_df = df1.merge(df2, on=['App'], how='inner')
+        expected_df = inner_df.groupby(['App', 'Sentiment']).agg({'Sentiment_Polarity': 'mean'}).reset_index()
+        expected_df.columns = ['t1.App', 't2.Sentiment', 'avg_sentiment_polarity']
+        expected_df = expected_df[expected_df['avg_sentiment_polarity'] > 0.4]
+        expected_df = expected_df.reset_index(drop=True).sort_values(by='t2.Sentiment', ascending=False)
+
+        query = parse_sql(sql, dialect='mindsdb')
+        assert str(query) == to_single_line(sql)
+        query_plan = plan_query(query, integrations=['test_db1', 'test_db2'])
+        out_df = execute_plan(query_plan,
+                           integration_connections=dict(
+                               test_db1=connection_db1,
+                               test_db2=connection_db2,
+                           ))
+
+        assert out_df.shape == expected_df.shape
+        assert (out_df.columns == expected_df.columns).all()
+        assert (out_df == expected_df).all().all()
+
     #
     # def test_execute_join_tables_with_subquery_groupby_having(self, connection_db1, default_data_db1, connection_db2, default_data_db2):
     #     sql = """
@@ -256,3 +321,5 @@ class TestExecutioner:
     #     assert out_df.shape == expected_df.shape
     #     assert (out_df.columns == expected_df.columns).all()
     #     assert (out_df == expected_df).all().all()
+
+

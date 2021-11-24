@@ -77,7 +77,6 @@ class FilterStep(PlanStep):
         full_query = Select(targets=[Star()],
                             from_table=Identifier(self.dataframe.ref_name),
                             where=new_filter_query)
-        print(full_query, dataframe.columns)
         result_df = sql_query(str(full_query), **{self.dataframe.ref_name: dataframe})
         return result_df
 
@@ -102,10 +101,6 @@ class GroupByStep(PlanStep):
         query = Select(targets=self.targets,
                        from_table=self.dataframe.ref_name,
                        group_by=self.columns)
-        print(str(query))
-        print(self.dataframe.ref_name)
-        print(dataframe.head())
-        print(dataframe.columns)
         result_df = sql_query(str(query), **{self.dataframe.ref_name: dataframe})
         return result_df
 
