@@ -4,10 +4,13 @@ from mindsdb_sql.utils import indent
 import re
 
 no_wrap_identifier_regex = re.compile(r'[a-zA-Z_][a-zA-Z_0-9]*')
+path_str_parts_regex = re.compile(r'(?:(?:(`[^`]+`))|([^.]+))')
 
 
 def path_str_to_parts(path_str):
-    return [part.strip('`') for part in path_str.split('.')]
+    match = re.finditer(path_str_parts_regex, path_str)
+    parts = [x[0].strip('`') for x in match]
+    return parts
 
 
 class Identifier(ASTNode):

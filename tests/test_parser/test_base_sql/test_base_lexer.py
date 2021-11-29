@@ -51,26 +51,13 @@ class TestLexer:
         assert tokens[1].value == 'a'
 
     def test_select_identifiers(self, lexer):
-        sql = 'SELECT abcd123, 123abcd, idwith$sign, __whatisthi123s__, `spaces in id`'
+        sql = 'SELECT abcd123, 123abcd, __whatisthi123s__, idwith$sign, `spaces in id`, multiple.parts.__whoa, `multiple`.`parts`.`with brackets` '
         tokens = list(lexer.tokenize(sql))
         assert tokens[0].type == 'SELECT'
 
         for i, t in enumerate(tokens[1:]):
-            print(i, t)
             if i % 2 != 0:
                 assert t.type == 'COMMA'
-            else:
-                assert t.type == 'ID'
-
-    def test_select_identifiers_dots(self, lexer):
-        sql = 'SELECT multiple.parts.__whoa, `multiple`.`parts`.`with brackets` '
-        tokens = list(lexer.tokenize(sql))
-        assert tokens[0].type == 'SELECT'
-
-        for i, t in enumerate(tokens[1:]):
-            print(i, t)
-            if i % 2 != 0:
-                assert t.type in ['COMMA', 'DOT']
             else:
                 assert t.type == 'ID'
 
@@ -190,13 +177,7 @@ class TestLexer:
         assert tokens[4].value == 'FROM'
 
         assert tokens[5].type == 'ID'
-        assert tokens[5].value == 'db'
-        assert tokens[6].type == 'DOT'
-        assert tokens[7].type == 'ID'
-        assert tokens[7].value == 'schema'
-        assert tokens[8].type == 'DOT'
-        assert tokens[9].type == 'ID'
-        assert tokens[9].value == 'tab'
+        assert tokens[5].value == 'db.schema.tab'
 
     def test_select_star(self, lexer):
         sql = f'SELECT * FROM tab'

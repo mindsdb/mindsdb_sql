@@ -32,10 +32,10 @@ class CreatePredictor(ASTNode):
         ind = indent(level)
         ind1 = indent(level+1)
 
-        name_str = f'\n{ind1}name={repr(self.name)},'
-        integration_name_str = f'\n{ind1}integration_name={repr(self.integration_name)},'
+        name_str = f'\n{ind1}name={self.name.to_tree()},'
+        integration_name_str = f'\n{ind1}integration_name={self.integration_name.to_tree()},'
         query_str = f'\n{ind1}query={repr(self.query)},'
-        datasource_name_str = f'\n{ind1}datasource_name={repr(self.datasource_name)},'
+        datasource_name_str = f'\n{ind1}datasource_name={self.datasource_name.to_tree()},'
 
         target_trees = ',\n'.join([t.to_tree(level=level+2) for t in self.targets])
         targets_str = f'\n{ind1}targets=[\n{target_trees}\n{ind1}],'
@@ -75,7 +75,7 @@ class CreatePredictor(ASTNode):
         window_str = f'WINDOW {self.window} ' if self.window is not None else ''
         horizon_str = f'HORIZON {self.horizon} ' if self.horizon is not None else ''
         using_str = f'USING \'{json.dumps(self.using)}\'' if self.using is not None else ''
-        out_str = f'CREATE PREDICTOR {str(self.name)} FROM {str(self.integration_name)} WITH ({repr(self.query)}) AS {str(self.datasource_name)} ' \
+        out_str = f'CREATE PREDICTOR {self.name.to_string()} FROM {self.integration_name.to_string()} WITH ({repr(self.query)}) AS {self.datasource_name.to_string()} ' \
                   f'PREDICT {targets_str} ' \
                   f'{order_by_str}' \
                   f'{group_by_str}' \
