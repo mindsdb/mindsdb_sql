@@ -59,6 +59,25 @@ class TestCreatePredictor:
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()
 
+    def test_create_predictor_quotes(self):
+        sql = """CREATE PREDICTOR xxx 
+                 FROM `yyy` 
+                  WITH ('SELECT * FROM zzz') 
+                  AS x 
+                  PREDICT sss
+                """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreatePredictor(
+            name='xxx',
+            integration_name='yyy',
+            query='SELECT * FROM zzz',
+            datasource_name='x',
+            targets=[Identifier('sss')],
+        )
+        assert str(ast).lower() == to_single_line(sql.lower())
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_create_predictor_invalid_json(self):
         sql = """CREATE PREDICTOR pred
                 FROM integration_name 
