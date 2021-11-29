@@ -218,13 +218,13 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR ID FROM ID WITH LPAREN STRING RPAREN AS ID PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier WITH LPAREN STRING RPAREN AS identifier PREDICT result_columns')
     def create_predictor(self, p):
         return CreatePredictor(
-            name=p.ID0,
-            integration_name=p.ID1,
+            name=p.identifier0,
+            integration_name=p.identifier1,
             query=p.STRING,
-            datasource_name=p.ID2,
+            datasource_name=p.identifier2,
             targets=p.result_columns
         )
 

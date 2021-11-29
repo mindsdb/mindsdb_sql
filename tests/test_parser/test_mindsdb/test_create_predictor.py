@@ -20,10 +20,10 @@ class TestCreatePredictor:
                 USING '{"x": 1, "y": "a"}'"""
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreatePredictor(
-            name='pred',
-            integration_name='integration_name',
+            name=Identifier('pred'),
+            integration_name=Identifier('integration_name'),
             query='select * FROM table',
-            datasource_name='ds_name',
+            datasource_name=Identifier('ds_name'),
             targets=[Identifier('f1', alias=Identifier('f1_alias')),
                              Identifier('f2')],
             order_by=[OrderBy(Identifier('f_order_1'), direction='ASC'),
@@ -48,14 +48,32 @@ class TestCreatePredictor:
                 """
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreatePredictor(
-            name='pred',
-            integration_name='integration_name',
+            name=Identifier('pred'),
+            integration_name=Identifier('integration_name'),
             query='select * FROM table',
-            datasource_name='ds_name',
+            datasource_name=Identifier('ds_name'),
             targets=[Identifier('f1', alias=Identifier('f1_alias')),
                              Identifier('f2')],
         )
         assert str(ast).lower() == to_single_line(sql.lower())
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_create_predictor_quotes(self):
+        sql = """CREATE PREDICTOR xxx 
+                 FROM `yyy` 
+                  WITH ('SELECT * FROM zzz') 
+                  AS x 
+                  PREDICT sss
+                """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreatePredictor(
+            name=Identifier('xxx'),
+            integration_name=Identifier('yyy'),
+            query='SELECT * FROM zzz',
+            datasource_name=Identifier('x'),
+            targets=[Identifier('sss')],
+        )
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()
 
