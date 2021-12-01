@@ -214,15 +214,23 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR identifier FROM identifier WITH STRING AS identifier PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier WITH STRING optional_data_source_name PREDICT result_columns')
     def create_predictor(self, p):
         return CreatePredictor(
             name=p.identifier0,
             integration_name=p.identifier1,
             query=p.STRING,
-            datasource_name=p.identifier2,
-            targets=p.result_columns
+            datasource_name=p.optional_data_source_name,
+            targets=p.result_columns,
         )
+
+    @_('AS identifier')
+    def optional_data_source_name(self, p):
+        return p.identifier
+
+    @_('empty')
+    def optional_data_source_name(self, p):
+        pass
 
     # CREATE INTEGRATION
     @_('CREATE INTEGRATION ID WITH ENGINE EQUALS STRING COMMA PARAMETERS EQUALS JSON',
