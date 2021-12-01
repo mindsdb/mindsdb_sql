@@ -8,8 +8,8 @@ class CreatePredictor(ASTNode):
                  name,
                  integration_name,
                  query,
-                 datasource_name,
                  targets,
+                 datasource_name=None,
                  order_by=None,
                  group_by=None,
                  window=None,
@@ -20,8 +20,8 @@ class CreatePredictor(ASTNode):
         self.name = name
         self.integration_name = integration_name
         self.query = query
-        self.datasource_name = datasource_name
         self.targets = targets
+        self.datasource_name = datasource_name
         self.order_by = order_by
         self.group_by = group_by
         self.window = window
@@ -35,7 +35,10 @@ class CreatePredictor(ASTNode):
         name_str = f'\n{ind1}name={self.name.to_tree()},'
         integration_name_str = f'\n{ind1}integration_name={self.integration_name.to_tree()},'
         query_str = f'\n{ind1}query={repr(self.query)},'
-        datasource_name_str = f'\n{ind1}datasource_name={self.datasource_name.to_tree()},'
+
+        datasource_name_str = ''
+        if self.datasource_name:
+            datasource_name_str = f'\n{ind1}datasource_name={self.datasource_name.to_tree()},'
 
         target_trees = ',\n'.join([t.to_tree(level=level+2) for t in self.targets])
         targets_str = f'\n{ind1}targets=[\n{target_trees}\n{ind1}],'
@@ -74,8 +77,11 @@ class CreatePredictor(ASTNode):
         group_by_str = f'GROUP BY {", ".join([out.to_string() for out in self.group_by])} ' if self.group_by else ''
         window_str = f'WINDOW {self.window} ' if self.window is not None else ''
         horizon_str = f'HORIZON {self.horizon} ' if self.horizon is not None else ''
-        using_str = f'USING \'{json.dumps(self.using)}\'' if self.using is not None else ''
-        out_str = f'CREATE PREDICTOR {self.name.to_string()} FROM {self.integration_name.to_string()} WITH ({repr(self.query)}) AS {self.datasource_name.to_string()} ' \
+        using_str = f'USING {json.dumps(self.using)}' if self.using is not None else ''
+        datasource_name_str = f' AS {self.datasource_name.to_string()} ' if self.datasource_name is not None else ''
+
+        out_str = f'CREATE PREDICTOR {self.name.to_string()} FROM {self.integration_name.to_string()} WITH {repr(self.query)}' \
+                  f'{datasource_name_str}' \
                   f'PREDICT {targets_str} ' \
                   f'{order_by_str}' \
                   f'{group_by_str}' \

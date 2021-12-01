@@ -29,5 +29,5 @@ class CreateIntegration(ASTNode):
         return out_str
 
     def get_string(self, *args, **kwargs):
-        out_str = f'CREATE INTEGRATION {str(self.name)} WITH ENGINE = {repr(self.engine)}, PARAMETERS = \'{json.dumps(self.parameters)}\''
+        out_str = f'CREATE INTEGRATION {str(self.name)} WITH ENGINE = {repr(self.engine)}, PARAMETERS = {json.dumps(self.parameters)}'
         return out_str

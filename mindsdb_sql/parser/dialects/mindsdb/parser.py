@@ -185,14 +185,10 @@ class MindsDBParser(Parser):
         return DropIntegration(p.identifier)
 
     # CREATE PREDICTOR
-    @_('create_predictor USING STRING')
+    @_('create_predictor USING JSON')
     def create_predictor(self, p):
-        try:
-            using = json.loads(p.STRING)
-            p.create_predictor.using = using
-            return p.create_predictor
-        except ValueError as err:
-            raise ParsingException(f'Predictor USING must be a valid json, got error: {str(err)}')
+        p.create_predictor.using = p.JSON
+        return p.create_predictor
 
     @_('create_predictor HORIZON INTEGER')
     def create_predictor(self, p):
@@ -218,28 +214,31 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR identifier FROM identifier WITH LPAREN STRING RPAREN AS identifier PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier WITH STRING optional_data_source_name PREDICT result_columns')
     def create_predictor(self, p):
         return CreatePredictor(
             name=p.identifier0,
             integration_name=p.identifier1,
             query=p.STRING,
-            datasource_name=p.identifier2,
-            targets=p.result_columns
+            datasource_name=p.optional_data_source_name,
+            targets=p.result_columns,
         )
 
-    # CREATE INTEGRATION
-    @_('CREATE INTEGRATION ID WITH ENGINE EQUALS STRING COMMA PARAMETERS EQUALS STRING',
-       'CREATE DATASOURCE ID WITH ENGINE EQUALS STRING COMMA PARAMETERS EQUALS STRING')
-    def create_integration(self, p):
-        try:
-            parameters = json.loads(p.STRING1)
-            return CreateIntegration(name=p.ID,
-                                     engine=p.STRING0,
-                                     parameters=parameters)
-        except ValueError as err:
-            raise ParsingException(f'Integration args must be a valid json, got error: {str(err)}')
+    @_('AS identifier')
+    def optional_data_source_name(self, p):
+        return p.identifier
 
+    @_('empty')
+    def optional_data_source_name(self, p):
+        pass
+
+    # CREATE INTEGRATION
+    @_('CREATE INTEGRATION ID WITH ENGINE EQUALS STRING COMMA PARAMETERS EQUALS JSON',
+       'CREATE DATASOURCE ID WITH ENGINE EQUALS STRING COMMA PARAMETERS EQUALS JSON')
+    def create_integration(self, p):
+        return CreateIntegration(name=p.ID,
+                                 engine=p.STRING,
+                                 parameters=p.JSON)
 
     # UNION / UNION ALL
     @_('select UNION select')
