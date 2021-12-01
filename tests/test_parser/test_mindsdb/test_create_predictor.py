@@ -10,14 +10,15 @@ class TestCreatePredictor:
     def test_create_predictor_full(self):
         sql = """CREATE PREDICTOR pred
                 FROM integration_name 
-                WITH ('select * FROM table') 
+                WITH 'select * FROM table'
                 AS ds_name
                 PREDICT f1 as f1_alias, f2
                 ORDER BY f_order_1 ASC, f_order_2, f_order_3 DESC
                 GROUP BY f_group_1, f_group_2
                 WINDOW 100
                 HORIZON 7
-                USING '{"x": 1, "y": "a"}'"""
+                USING {"x": 1, "y": "a"}
+                """
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreatePredictor(
             name=Identifier('pred'),
@@ -42,7 +43,7 @@ class TestCreatePredictor:
     def test_create_predictor_minimal(self):
         sql = """CREATE PREDICTOR pred
                 FROM integration_name 
-                WITH ('select * FROM table') 
+                WITH 'select * FROM table'
                 AS ds_name
                 PREDICT f1 as f1_alias, f2
                 """
@@ -62,7 +63,7 @@ class TestCreatePredictor:
     def test_create_predictor_quotes(self):
         sql = """CREATE PREDICTOR xxx 
                  FROM `yyy` 
-                  WITH ('SELECT * FROM zzz') 
+                  WITH 'SELECT * FROM zzz'
                   AS x 
                   PREDICT sss
                 """
@@ -80,7 +81,7 @@ class TestCreatePredictor:
     def test_create_predictor_invalid_json(self):
         sql = """CREATE PREDICTOR pred
                 FROM integration_name 
-                WITH ('select * FROM table') 
+                WITH 'select * FROM table'
                 AS ds_name
                 PREDICT f1 as f1_alias, f2
                 ORDER BY f_order_1 ASC, f_order_2, f_order_3 DESC

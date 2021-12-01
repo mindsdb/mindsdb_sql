@@ -1,3 +1,4 @@
+import json
 import re
 from sly import Lexer
 
@@ -49,7 +50,11 @@ class MindsDBLexer(Lexer):
         IN, LIKE, CONCAT, BETWEEN, WINDOW,
 
         # Data types
-        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE}
+        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE,
+
+        JSON,
+
+    }
 
     RETRAIN = r'\bRETRAIN\b'
     # Custom commands
@@ -190,6 +195,11 @@ class MindsDBLexer(Lexer):
     @_(r'\d+')
     def INTEGER(self, t):
         t.value = int(t.value)
+        return t
+
+    @_(r'\{[a-zA-Z0-9\"\':,\{\}\[\]\s]*\}')
+    def JSON(self, t):
+        t.value = json.loads(t.value)
         return t
 
     @_(r'"[^"]*"',

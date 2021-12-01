@@ -7,7 +7,7 @@ from mindsdb_sql.parser.ast import *
 
 class TestCreateIntegration:
     def test_create_integration_lexer(self):
-        sql = "CREATE INTEGRATION db WITH ENGINE = 'mysql', PARAMETERS = '{\"user\": \"admin\", \"password\": \"admin\"}'"
+        sql = "CREATE INTEGRATION db WITH ENGINE = 'mysql', PARAMETERS = {\"user\": \"admin\", \"password\": \"admin\"}"
         tokens = list(MindsDBLexer().tokenize(sql))
         assert tokens[0].type == 'CREATE'
         assert tokens[1].type == 'INTEGRATION'
@@ -19,10 +19,10 @@ class TestCreateIntegration:
         assert tokens[7].type == 'COMMA'
         assert tokens[8].type == 'PARAMETERS'
         assert tokens[9].type == 'EQUALS'
-        assert tokens[10].type == 'STRING'
+        assert tokens[10].type == 'JSON'
 
     def test_create_integration_ok(self):
-        sql = "CREATE INTEGRATION db WITH ENGINE = 'mysql', PARAMETERS = '{\"user\": \"admin\", \"password\": \"admin\"}'"
+        sql = "CREATE INTEGRATION db WITH ENGINE = 'mysql', PARAMETERS = {\"user\": \"admin\", \"password\": \"admin\"}"
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateIntegration(name='db',
                                   engine='mysql',
@@ -32,7 +32,7 @@ class TestCreateIntegration:
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_create_datasource_ok(self):
-        sql = "CREATE DATASOURCE db WITH ENGINE = 'mysql', PARAMETERS = '{\"user\": \"admin\", \"password\": \"admin\"}'"
+        sql = "CREATE DATASOURCE db WITH ENGINE = 'mysql', PARAMETERS = {\"user\": \"admin\", \"password\": \"admin\"}"
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateIntegration(name='db',
                                   engine='mysql',
