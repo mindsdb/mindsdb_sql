@@ -64,7 +64,7 @@ class SQLLexer(Lexer):
     FULL = r'\bFULL\b'
     VARIABLES = r'\bVARIABLES\b'
     SESSION = r'\bSESSION\b'
-    STATUS = r'\STATUS\b'
+    STATUS = r'\bSTATUS\b'
     GLOBAL = r'\bGLOBAL\b'
     PROCEDURE = r'\bPROCEDURE\b'
     FUNCTION = r'\bFUNCTION\b'

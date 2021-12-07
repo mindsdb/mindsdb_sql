@@ -526,7 +526,8 @@ class SQLParser(Parser):
 
     @_('ID',
        'CHARSET',
-       'TABLES')
+       'TABLES',
+       'STATUS')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)
