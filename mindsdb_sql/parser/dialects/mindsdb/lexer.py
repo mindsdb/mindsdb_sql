@@ -2,7 +2,12 @@ import json
 import re
 from sly import Lexer
 
-
+"""
+Unfortunately we can't inherit from base SQLLexer, because the order of rules is important.
+If we do, like in MySQL lexer, the new rules like `DATASOURCE = r'\bDATASOURCE\b'` are added to the end of the rule list.
+Then, for an input `DATASOURCE`, the last matched regexp is `STRING`, and the token is incorrectly classified 
+as a string.
+"""
 class MindsDBLexer(Lexer):
     reflags = re.IGNORECASE
     ignore = ' \t\n\r'

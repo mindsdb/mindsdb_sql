@@ -7,7 +7,9 @@ from mindsdb_sql.parser.dialects.mysql.show_index import ShowIndex
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
 
-
+"""
+Unfortunately the rules are not iherited from base SQLParser, because it just doesn't work with Sly due to metaclass magic.
+"""
 class MySQLParser(SQLParser):
     log = ParserLogger()
     tokens = MySQLLexer.tokens
