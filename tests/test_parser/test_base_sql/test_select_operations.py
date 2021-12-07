@@ -450,3 +450,12 @@ class TestOperations:
             assert len(ast.targets) == 1
             assert isinstance(ast.targets[0], Function)
 
+    def test_select_status(self, dialect):
+        sql = 'select status from mindsdb.predictors'
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[Identifier.from_path_str("status")],
+                              from_table=Identifier.from_path_str('mindsdb.predictors')
+                             )
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)
