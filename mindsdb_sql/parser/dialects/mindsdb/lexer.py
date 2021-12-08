@@ -202,7 +202,7 @@ class MindsDBLexer(Lexer):
         t.value = int(t.value)
         return t
 
-    @_(r'\{[a-zA-Z0-9\"\':,\.\{\}\[\]\s]*\}')
+    @_(r'\{.*\}')
     def JSON(self, t):
         t.value = json.loads(t.value)
         return t

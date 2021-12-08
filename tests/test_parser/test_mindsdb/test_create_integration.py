@@ -40,12 +40,12 @@ class TestCreateIntegration:
         sql = """
             CREATE DATASOURCE db
             WITH ENGINE = 'mysql',
-            PARAMETERS = {"user": "admin", "password": "admin", "host": "127.0.0.1"}
+            PARAMETERS = {"user": "admin", "password": "admin123_.,';:!@#$%^&*(){}[]", "host": "127.0.0.1"}
         """
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateIntegration(name='db',
                                   engine='mysql',
-                                  parameters=dict(user='admin', password='admin', host='127.0.0.1'))
+                                  parameters=dict(user='admin', password="admin123_.,';:!@#$%^&*(){}[]", host='127.0.0.1'))
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
