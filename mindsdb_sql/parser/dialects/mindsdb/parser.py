@@ -139,6 +139,7 @@ class MindsDBParser(Parser):
        'PREDICTORS',
        'INTEGRATIONS',
        'PUBLICATIONS',
+       'DATASETS',
        'ALL')
     def show_category(self, p):
         return ' '.join([x for x in p])

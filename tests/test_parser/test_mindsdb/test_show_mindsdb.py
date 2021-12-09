@@ -11,6 +11,7 @@ class TestShowMindsdb:
                         'PREDICTORS',
                         'INTEGRATIONS',
                         'PUBLICATIONS',
+                        'DATASETS',
                         'ALL']:
             sql = f"SHOW {keyword}"
             ast = parse_sql(sql, dialect='mindsdb')

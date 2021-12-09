@@ -11,6 +11,8 @@ as a string.
 class MindsDBLexer(Lexer):
     reflags = re.IGNORECASE
     ignore = ' \t\n\r'
+    ignore_multi_comment = r'/\*.*?\*/'
+    ignore_line_comment = r'--[^\n]*'
 
     tokens = {
         USE, DROP, CREATE, DESCRIBE, RETRAIN,
@@ -21,7 +23,7 @@ class MindsDBLexer(Lexer):
         # Mindsdb special
 
         PREDICTOR, PREDICTORS, DATASOURCE, INTEGRATION, INTEGRATIONS,
-        STREAM, STREAMS, PUBLICATION, PUBLICATIONS, VIEW, VIEWS,
+        STREAM, STREAMS, PUBLICATION, PUBLICATIONS, VIEW, VIEWS, DATASETS,
 
         LATEST, HORIZON, USING,
         ENGINE, TRAIN, TEST, PREDICT, MODEL, PARAMETERS,
@@ -85,6 +87,7 @@ class MindsDBLexer(Lexer):
     INTEGRATIONS = r'\bINTEGRATIONS\b'
     PUBLICATION = r'\bPUBLICATION\b'
     PUBLICATIONS = r'\bPUBLICATIONS\b'
+    DATASETS = r'\bDATASETS\b'
     LATEST = r'\bLATEST\b'
 
     # Misc
