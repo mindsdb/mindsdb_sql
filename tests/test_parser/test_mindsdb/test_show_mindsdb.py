@@ -10,6 +10,7 @@ class TestShowMindsdb:
         for keyword in ['STREAMS',
                         'PREDICTORS',
                         'INTEGRATIONS',
+                        'DATASOURCES',
                         'PUBLICATIONS',
                         'DATASETS',
                         'ALL']:

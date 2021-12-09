@@ -138,6 +138,7 @@ class MindsDBParser(Parser):
        'STREAMS',
        'PREDICTORS',
        'INTEGRATIONS',
+       'DATASOURCES',
        'PUBLICATIONS',
        'DATASETS',
        'ALL')
