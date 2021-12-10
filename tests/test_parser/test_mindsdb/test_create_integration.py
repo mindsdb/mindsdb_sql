@@ -37,11 +37,14 @@ class TestCreateIntegration:
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_create_datasource_ok(self):
-        sql = """
-            CREATE DATASOURCE db
-            WITH ENGINE = 'mysql',
-            PARAMETERS = {"user": "admin", "password": "admin123_.,';:!@#$%^&*(){}[]", "host": "127.0.0.1"}
-        """
+        # variants with or without ',' and '='
+        for comma in (',', ''):
+            for equal in ('=', ''):
+                sql = """
+                    CREATE DATASOURCE db
+                    WITH ENGINE %(equal)s 'mysql'%(comma)s
+                    PARAMETERS %(equal)s {"user": "admin", "password": "admin123_.,';:!@#$%%^&*(){}[]", "host": "127.0.0.1"}
+                """ % {'comma': comma, 'equal': equal}
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateIntegration(name='db',
                                   engine='mysql',

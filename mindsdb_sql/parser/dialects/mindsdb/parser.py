@@ -38,6 +38,7 @@ class MindsDBParser(Parser):
        'use',
        'describe',
        'create_predictor',
+       'datasource_engine',
        'create_integration',
        'create_view',
        'drop_predictor',
@@ -237,12 +238,21 @@ class MindsDBParser(Parser):
         pass
 
     # CREATE INTEGRATION
-    @_('CREATE INTEGRATION ID WITH ENGINE EQUALS STRING COMMA PARAMETERS EQUALS JSON',
-       'CREATE DATASOURCE ID WITH ENGINE EQUALS STRING COMMA PARAMETERS EQUALS JSON')
+    @_('CREATE datasource_engine COMMA PARAMETERS EQUALS JSON',
+       'CREATE datasource_engine COMMA PARAMETERS JSON',
+       'CREATE datasource_engine PARAMETERS EQUALS JSON',
+       'CREATE datasource_engine PARAMETERS JSON')
     def create_integration(self, p):
-        return CreateIntegration(name=p.ID,
-                                 engine=p.STRING,
+        return CreateIntegration(name=p.datasource_engine['id'],
+                                 engine=p.datasource_engine['engine'],
                                  parameters=p.JSON)
+
+    @_('INTEGRATION ID WITH ENGINE EQUALS STRING',
+       'INTEGRATION ID WITH ENGINE STRING',
+       'DATASOURCE ID WITH ENGINE EQUALS STRING',
+       'DATASOURCE ID WITH ENGINE STRING')
+    def datasource_engine(self, p):
+        return {'id': p.ID, 'engine': p.STRING}
 
     # UNION / UNION ALL
     @_('select UNION select')
