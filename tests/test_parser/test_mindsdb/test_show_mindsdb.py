@@ -10,7 +10,9 @@ class TestShowMindsdb:
         for keyword in ['STREAMS',
                         'PREDICTORS',
                         'INTEGRATIONS',
+                        'DATASOURCES',
                         'PUBLICATIONS',
+                        'DATASETS',
                         'ALL']:
             sql = f"SHOW {keyword}"
             ast = parse_sql(sql, dialect='mindsdb')
