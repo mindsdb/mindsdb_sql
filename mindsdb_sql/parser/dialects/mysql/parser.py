@@ -339,6 +339,11 @@ class MySQLParser(SQLParser):
         query.parentheses = True
         return query
 
+    # plugins can be a table
+    @_('PLUGINS')
+    def from_table(self, p):
+        return Identifier.from_path_str(p.PLUGINS)
+
     @_('identifier')
     def from_table(self, p):
         return p.identifier
