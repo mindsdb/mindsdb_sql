@@ -28,7 +28,7 @@ class DropTables(Drop):
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
 
-        tables_str = ', '.join(self.tables)
+        tables_str = ', '.join([i.to_tree() for i in self.tables])
 
         out_str = f'{ind}DropTables(' \
                   f'[{tables_str}], ' \
@@ -70,6 +70,36 @@ class DropDatabase(Drop):
 
         return f'DROP DATABASE {exists_str}{self.name}'
 
+
+class DropView(Drop):
+
+    def __init__(self,
+                 names,
+                 if_exists=False,
+                 *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # DROP VIEW removes one or more views.
+        # https://dev.mysql.com/doc/refman/8.0/en/drop-view.html
+
+        self.names = names
+        self.if_exists = if_exists
+
+    def to_tree(self, *args, level=0, **kwargs):
+        ind = indent(level)
+        names_str = ', '.join([i.to_tree() for i in self.names])
+
+        out_str = f'{ind}DropView(' \
+                  f'[{names_str}], ' \
+                  f'if_exists={self.if_exists}' \
+                  f')'
+        return out_str
+
+    def get_string(self, *args, **kwargs):
+        exists_str = f'IF EXISTS ' if self.if_exists else ''
+        names_str = ', '.join(map(str, self.names))
+
+        return f'DROP VIEW {exists_str}{names_str}'
 
 
 

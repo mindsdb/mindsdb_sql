@@ -35,6 +35,7 @@ class MySQLParser(SQLParser):
        'union',
        'select',
        'drop_database',
+       'drop_view',
        )
     def query(self, p):
         return p[0]
@@ -50,7 +51,20 @@ class MySQLParser(SQLParser):
         return AlterTable(target=p.identifier,
                           arg=' '.join([p.ID0, p.ID1]))
 
-    # DDL
+    # DROP VEW
+    @_('DROP VIEW identifier')
+    @_('DROP VIEW IF_EXISTS identifier')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView([p.identifier], if_exists=if_exists)
+
+    @_('DROP VIEW enumeration')
+    @_('DROP VIEW IF_EXISTS enumeration')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView(p.enumeration, if_exists=if_exists)
+
+    # DROP DATABASE
     @_('DROP DATABASE identifier')
     @_('DROP DATABASE IF_EXISTS identifier')
     @_('DROP SCHEMA identifier')

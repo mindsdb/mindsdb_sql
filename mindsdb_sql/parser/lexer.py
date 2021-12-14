@@ -15,7 +15,7 @@ class SQLLexer(Lexer):
         # SHOW Keywords/DDL Keywords
 
         SHOW, SCHEMAS, SCHEMA, DATABASES, DATABASE, TABLES, TABLE, FULL,
-        VARIABLES, SESSION, STATUS,
+        VIEW, VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
         IF_EXISTS,
@@ -63,6 +63,7 @@ class SQLLexer(Lexer):
     DATABASE = r'\bDATABASE\b'
     TABLES = r'\bTABLES\b'
     TABLE = r'\bTABLE\b'
+    VIEW = r'\bVIEW\b'
     FULL = r'\bFULL\b'
     VARIABLES = r'\bVARIABLES\b'
     SESSION = r'\bSESSION\b'

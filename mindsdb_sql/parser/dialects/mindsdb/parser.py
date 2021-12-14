@@ -1,7 +1,7 @@
 import json
 from sly import Parser
 from mindsdb_sql.parser.ast import *
-from mindsdb_sql.parser.ast.drop import DropDatabase
+from mindsdb_sql.parser.ast.drop import DropDatabase, DropView
 from mindsdb_sql.parser.dialects.mindsdb.drop_integration import DropIntegration
 from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
@@ -52,6 +52,7 @@ class MindsDBParser(Parser):
        'union',
        'select',
        'drop_database',
+       'drop_view',
        )
     def query(self, p):
         return p[0]
@@ -61,7 +62,26 @@ class MindsDBParser(Parser):
     def explain(self, p):
         return Explain(target=p.identifier)
 
-    # DDL
+    # Alter table
+    @_('ALTER TABLE identifier ID ID')
+    def alter_table(self, p):
+        return AlterTable(target=p.identifier,
+                          arg=' '.join([p.ID0, p.ID1]))
+
+    # DROP VEW
+    @_('DROP VIEW identifier')
+    @_('DROP VIEW IF_EXISTS identifier')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView([p.identifier], if_exists=if_exists)
+
+    @_('DROP VIEW enumeration')
+    @_('DROP VIEW IF_EXISTS enumeration')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView(p.enumeration, if_exists=if_exists)
+
+    # DROP DATABASE
     @_('DROP DATABASE identifier')
     @_('DROP DATABASE IF_EXISTS identifier')
     @_('DROP SCHEMA identifier')
@@ -69,12 +89,6 @@ class MindsDBParser(Parser):
     def drop_database(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropDatabase(name=p.identifier, if_exists=if_exists)
-
-    # Alter table
-    @_('ALTER TABLE identifier ID ID')
-    def alter_table(self, p):
-        return AlterTable(target=p.identifier,
-                          arg=' '.join([p.ID0, p.ID1]))
 
     # Transactions
 
