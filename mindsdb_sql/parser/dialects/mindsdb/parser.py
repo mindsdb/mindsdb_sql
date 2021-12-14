@@ -5,6 +5,7 @@ from mindsdb_sql.parser.ast.drop import DropDatabase
 from mindsdb_sql.parser.dialects.mindsdb.drop_integration import DropIntegration
 from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
+from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_integration import CreateIntegration
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
@@ -47,6 +48,7 @@ class MindsDBParser(Parser):
        'retrain_predictor',
        'drop_integration',
        'drop_datasource',
+       'drop_dataset',
        'union',
        'select',
        'drop_database',
@@ -206,6 +208,11 @@ class MindsDBParser(Parser):
     @_('DROP DATASOURCE identifier')
     def drop_datasource(self, p):
         return DropDatasource(p.identifier)
+
+    # DROP DATASET
+    @_('DROP DATASET identifier')
+    def drop_dataset(self, p):
+        return DropDataset(p.identifier)
 
     # CREATE PREDICTOR
     @_('create_predictor USING JSON')
