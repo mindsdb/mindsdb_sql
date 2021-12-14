@@ -1,5 +1,6 @@
 from mindsdb_sql.parser.logger import ParserLogger
 from mindsdb_sql.parser.parser import SQLParser
+from mindsdb_sql.parser.ast.drop import DropDatabase
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mysql.lexer import MySQLLexer
 from mindsdb_sql.parser.dialects.mysql.variable import Variable
@@ -33,6 +34,7 @@ class MySQLParser(SQLParser):
        'describe',
        'union',
        'select',
+       'drop_database',
        )
     def query(self, p):
         return p[0]
@@ -47,6 +49,15 @@ class MySQLParser(SQLParser):
     def alter_table(self, p):
         return AlterTable(target=p.identifier,
                           arg=' '.join([p.ID0, p.ID1]))
+
+    # DDL
+    @_('DROP DATABASE ID')
+    @_('DROP DATABASE IF_EXISTS ID')
+    @_('DROP SCHEMA ID')
+    @_('DROP SCHEMA IF_EXISTS ID')
+    def drop_database(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropDatabase(database=p.ID, if_exists=if_exists)
 
     # Transactions
 
@@ -413,6 +424,10 @@ class MySQLParser(SQLParser):
         if isinstance(p.expr, ASTNode):
             p.expr.parentheses = True
         return p.expr
+
+    @_('DATABASE LPAREN RPAREN')
+    def expr(self, p):
+        return Function(op=p.DATABASE, args=[])
 
     @_('ID LPAREN DISTINCT expr_list RPAREN')
     def expr(self, p):

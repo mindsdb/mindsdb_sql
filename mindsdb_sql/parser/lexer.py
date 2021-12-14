@@ -7,18 +7,18 @@ class SQLLexer(Lexer):
     ignore = ' \t\n\r'
 
     tokens = {
-        USE, CREATE, DESCRIBE,
+        USE, DROP, CREATE, DESCRIBE,
 
         # Misc
         SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
 
-        # SHOW Keywords
+        # SHOW Keywords/DDL Keywords
 
-        SHOW, SCHEMAS, DATABASES, TABLES, TABLE, FULL,
+        SHOW, SCHEMAS, SCHEMA, DATABASES, DATABASE, TABLES, TABLE, FULL,
         VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
-
+        IF_EXISTS,
 
         # SELECT Keywords
         WITH, SELECT, DISTINCT, FROM, WHERE, AS,
@@ -58,7 +58,9 @@ class SQLLexer(Lexer):
     # SHOW
     SHOW = r'\bSHOW\b'
     SCHEMAS = r'\bSCHEMAS\b'
+    SCHEMA = r'\bSCHEMA\b'
     DATABASES = r'\bDATABASES\b'
+    DATABASE = r'\bDATABASE\b'
     TABLES = r'\bTABLES\b'
     TABLE = r'\bTABLE\b'
     FULL = r'\bFULL\b'
@@ -69,6 +71,7 @@ class SQLLexer(Lexer):
     PROCEDURE = r'\bPROCEDURE\b'
     FUNCTION = r'\bFUNCTION\b'
     INDEX = r'\bINDEX\b'
+    DROP = r'\bDROP\b'
     CREATE = r'\bCREATE\b'
     WARNINGS = r'\bWARNINGS\b'
     ENGINES = r'\bENGINES\b'
@@ -76,7 +79,7 @@ class SQLLexer(Lexer):
     CHARACTER = r'\bCHARACTER\b'
     COLLATION = r'\bCOLLATION\b'
     PLUGINS = r'\bPLUGINS\b'
-
+    IF_EXISTS = r'\bIF[\s]+EXISTS\b'
 
     # SELECT
 

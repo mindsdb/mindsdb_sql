@@ -1,6 +1,7 @@
 import json
 from sly import Parser
 from mindsdb_sql.parser.ast import *
+from mindsdb_sql.parser.ast.drop import DropDatabase
 from mindsdb_sql.parser.dialects.mindsdb.drop_integration import DropIntegration
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
@@ -46,6 +47,7 @@ class MindsDBParser(Parser):
        'drop_integration',
        'union',
        'select',
+       'drop_database',
        )
     def query(self, p):
         return p[0]
@@ -54,6 +56,15 @@ class MindsDBParser(Parser):
     @_('EXPLAIN identifier')
     def explain(self, p):
         return Explain(target=p.identifier)
+
+    # DDL
+    @_('DROP DATABASE ID')
+    @_('DROP DATABASE IF_EXISTS ID')
+    @_('DROP SCHEMA ID')
+    @_('DROP SCHEMA IF_EXISTS ID')
+    def drop_database(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropDatabase(database=p.ID, if_exists=if_exists)
 
     # Alter table
     @_('ALTER TABLE identifier ID ID')
@@ -524,6 +535,10 @@ class MindsDBParser(Parser):
         if isinstance(p.expr, ASTNode):
             p.expr.parentheses = True
         return p.expr
+
+    @_('DATABASE LPAREN RPAREN')
+    def expr(self, p):
+        return Function(op=p.DATABASE, args=[])
 
     @_('ID LPAREN DISTINCT expr_list RPAREN')
     def expr(self, p):
