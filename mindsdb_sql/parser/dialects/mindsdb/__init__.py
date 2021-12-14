@@ -7,4 +7,5 @@ from .create_predictor import CreatePredictor
 from .drop_predictor import DropPredictor
 from .retrain_predictor import RetrainPredictor
 from .drop_integration import DropIntegration
+from .drop_datasource import DropDatasource
 from .latest import Latest

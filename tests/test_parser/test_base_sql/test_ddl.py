@@ -2,7 +2,7 @@ import pytest
 
 from mindsdb_sql.parser.ast.drop import DropDatabase
 from mindsdb_sql import parse_sql
-
+from mindsdb_sql.parser.ast import *
 
 @pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
 class TestDDL:
@@ -11,7 +11,7 @@ class TestDDL:
         sql = "DROP DATABASE IF EXISTS dbname"
 
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = DropDatabase('dbname', if_exists=True)
+        expected_ast = DropDatabase(name=Identifier('dbname'), if_exists=True)
 
         assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
@@ -19,7 +19,7 @@ class TestDDL:
         sql = "DROP DATABASE dbname"
 
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = DropDatabase('dbname', if_exists=False)
+        expected_ast = DropDatabase(name=Identifier('dbname'), if_exists=False)
 
         assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
@@ -28,7 +28,7 @@ class TestDDL:
         sql = "DROP SCHEMA dbname"
 
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = DropDatabase('dbname')
+        expected_ast = DropDatabase(name=Identifier('dbname'))
 
         assert str(ast).lower() == 'DROP DATABASE dbname'.lower()
         assert ast.to_tree() == expected_ast.to_tree()

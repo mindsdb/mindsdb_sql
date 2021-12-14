@@ -48,18 +48,19 @@ class DropTables(Drop):
 class DropDatabase(Drop):
 
     def __init__(self,
-                 database,
+                 name,
                  if_exists=False,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.database = database
+        self.name = name
         self.if_exists = if_exists
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
+        name_str = f'name={self.name.to_tree()}'
 
         out_str = f'{ind}DropDatabase(' \
-                  f'[{self.database}], ' \
+                  f'{name_str}, ' \
                   f'if_exists={self.if_exists}' \
                   f')'
         return out_str
@@ -67,7 +68,7 @@ class DropDatabase(Drop):
     def get_string(self, *args, **kwargs):
         exists_str = f'IF EXISTS ' if self.if_exists else ''
 
-        return f'DROP DATABASE {exists_str}{self.database}'
+        return f'DROP DATABASE {exists_str}{self.name}'
 
 
 

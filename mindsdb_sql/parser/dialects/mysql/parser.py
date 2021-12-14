@@ -51,13 +51,13 @@ class MySQLParser(SQLParser):
                           arg=' '.join([p.ID0, p.ID1]))
 
     # DDL
-    @_('DROP DATABASE ID')
-    @_('DROP DATABASE IF_EXISTS ID')
-    @_('DROP SCHEMA ID')
-    @_('DROP SCHEMA IF_EXISTS ID')
+    @_('DROP DATABASE identifier')
+    @_('DROP DATABASE IF_EXISTS identifier')
+    @_('DROP SCHEMA identifier')
+    @_('DROP SCHEMA IF_EXISTS identifier')
     def drop_database(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
-        return DropDatabase(database=p.ID, if_exists=if_exists)
+        return DropDatabase(name=p.identifier, if_exists=if_exists)
 
     # Transactions
 

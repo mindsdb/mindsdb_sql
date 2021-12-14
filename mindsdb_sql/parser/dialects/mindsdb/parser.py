@@ -3,6 +3,7 @@ from sly import Parser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.ast.drop import DropDatabase
 from mindsdb_sql.parser.dialects.mindsdb.drop_integration import DropIntegration
+from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_integration import CreateIntegration
@@ -45,6 +46,7 @@ class MindsDBParser(Parser):
        'drop_predictor',
        'retrain_predictor',
        'drop_integration',
+       'drop_datasource',
        'union',
        'select',
        'drop_database',
@@ -58,13 +60,13 @@ class MindsDBParser(Parser):
         return Explain(target=p.identifier)
 
     # DDL
-    @_('DROP DATABASE ID')
-    @_('DROP DATABASE IF_EXISTS ID')
-    @_('DROP SCHEMA ID')
-    @_('DROP SCHEMA IF_EXISTS ID')
+    @_('DROP DATABASE identifier')
+    @_('DROP DATABASE IF_EXISTS identifier')
+    @_('DROP SCHEMA identifier')
+    @_('DROP SCHEMA IF_EXISTS identifier')
     def drop_database(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
-        return DropDatabase(database=p.ID, if_exists=if_exists)
+        return DropDatabase(name=p.identifier, if_exists=if_exists)
 
     # Alter table
     @_('ALTER TABLE identifier ID ID')
@@ -199,6 +201,11 @@ class MindsDBParser(Parser):
     @_('DROP INTEGRATION identifier')
     def drop_integration(self, p):
         return DropIntegration(p.identifier)
+
+    # DROP DATASOURCE
+    @_('DROP DATASOURCE identifier')
+    def drop_datasource(self, p):
+        return DropDatasource(p.identifier)
 
     # CREATE PREDICTOR
     @_('create_predictor USING JSON')
