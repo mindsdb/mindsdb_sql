@@ -47,6 +47,9 @@ class MindsDBLexer(Lexer):
 
         UNION, ALL,
 
+        # DML
+        INSERT, INTO, VALUES,
+
         # Special
         DOT, COMMA, LPAREN, RPAREN, PARAMETER,
 
@@ -157,6 +160,11 @@ class MindsDBLexer(Lexer):
 
     UNION = r'\bUNION\b'
     ALL = r'\bALL\b'
+
+    # DML
+    INSERT = r'\bINSERT\b'
+    INTO = r'\bINTO\b'
+    VALUES = r'\bVALUES\b'
 
     # Special
     DOT = r'\.'
