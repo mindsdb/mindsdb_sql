@@ -160,6 +160,7 @@ class MindsDBParser(Parser):
 
     # CREATE VIEW
     @_('CREATE VIEW ID create_view_from_table_or_nothing AS LPAREN select RPAREN')
+    @_('CREATE DATASET ID create_view_from_table_or_nothing AS LPAREN select RPAREN')
     def create_view(self, p):
         return CreateView(name=p.ID,
                           from_table=p.create_view_from_table_or_nothing,
