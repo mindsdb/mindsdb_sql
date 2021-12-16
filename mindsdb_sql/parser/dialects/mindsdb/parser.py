@@ -77,10 +77,6 @@ class MindsDBParser(Parser):
 
     # Set
 
-    @_('SET AUTOCOMMIT')
-    def set(self, p):
-        return Set(category=p.AUTOCOMMIT)
-
     @_('SET expr')
     def set(self, p):
         return Set(arg=p.expr)

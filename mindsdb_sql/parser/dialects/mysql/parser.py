@@ -68,10 +68,6 @@ class MySQLParser(SQLParser):
     def set(self, p):
         return Set(arg=p.expr)
 
-    @_('SET AUTOCOMMIT')
-    def set(self, p):
-        return Set(category=p.AUTOCOMMIT)
-
     @_('SET ID identifier')
     def set(self, p):
         if not p.ID.lower() == 'names':

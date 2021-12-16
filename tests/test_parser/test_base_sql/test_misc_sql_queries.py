@@ -11,19 +11,6 @@ class TestMiscQueries:
     def test_set(self, dialect):
         lexer, parser = get_lexer_parser(dialect)
 
-        sql = "set autocommit"
-
-        tokens = list(lexer.tokenize(sql))
-
-        assert len(tokens) == 2
-        assert tokens[0].type == 'SET'
-        assert tokens[1].type == 'AUTOCOMMIT'
-
-        ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Set(category="autocommit")
-        assert ast.to_tree() == expected_ast.to_tree()
-        assert str(ast) == str(expected_ast)
-
         sql = "SET NAMES some_name"
 
         ast = parse_sql(sql, dialect=dialect)
