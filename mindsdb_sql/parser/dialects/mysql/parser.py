@@ -64,15 +64,34 @@ class MySQLParser(SQLParser):
 
     # Set
 
-    @_('SET expr')
+    @_('SET expr_list')
+    @_('SET set_modifier expr_list')
     def set(self, p):
-        return Set(arg=p.expr)
+        if len(p.expr_list) == 1:
+            arg = p.expr_list[0]
+        else:
+            arg = Tuple(items=p.expr_list)
+
+        if hasattr(p, 'set_modifier'):
+            category = p.set_modifier
+        else:
+            category = None
+
+        return Set(category=category, arg=arg)
 
     @_('SET ID identifier')
     def set(self, p):
         if not p.ID.lower() == 'names':
             raise ParsingException(f'Expected "SET names", got "SET {p.ID}"')
         return Set(category=p.ID.lower(), arg=p.identifier)
+
+    @_('GLOBAL',
+       'PERSIST',
+       'PERSIST_ONLY',
+       'SESSION',
+       )
+    def set_modifier(self, p):
+        return p[0]
 
     # Show
     @_('SHOW show_category show_condition_or_nothing')

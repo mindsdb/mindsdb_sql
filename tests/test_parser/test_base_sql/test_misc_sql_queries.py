@@ -73,3 +73,17 @@ class TestMiscQueries:
         assert str(ast) == str(expected_ast)
 
 
+@pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
+class TestMiscQueriesNoSqlite:
+    def test_set(self, dialect):
+
+        sql = "set var1 = NULL, var2 = 10"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(arg=Tuple(items=[
+                BinaryOperation('=', args=[Identifier('var1'), NullConstant()]),
+                BinaryOperation('=', args=[Identifier('var2'), Constant(10)]),
+            ])
+                           )
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)

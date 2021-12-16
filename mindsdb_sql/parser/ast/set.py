@@ -1,4 +1,5 @@
 from mindsdb_sql.parser.ast.base import ASTNode
+from mindsdb_sql.parser.ast import Tuple
 from mindsdb_sql.utils import indent
 
 
@@ -8,6 +9,7 @@ class Set(ASTNode):
                  arg=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.category = category
         self.category = category
         self.arg = arg
 
@@ -23,6 +25,9 @@ class Set(ASTNode):
         return out_str
 
     def get_string(self, *args, **kwargs):
-        arg_str = f' {str(self.arg)}' if self.arg else ''
+        if isinstance(self.arg, Tuple):
+            arg_str = ', '.join([str(i) for i in self.arg.items])
+        else:
+            arg_str = f' {str(self.arg)}' if self.arg else ''
         return f'SET {self.category if self.category else ""}{arg_str}'
 

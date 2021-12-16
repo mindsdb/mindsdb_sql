@@ -35,7 +35,7 @@ class MindsDBLexer(Lexer):
         VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
-
+        PERSIST, PERSIST_ONLY,
 
         # SELECT Keywords
         WITH, SELECT, DISTINCT, FROM, WHERE, AS,
@@ -124,7 +124,8 @@ class MindsDBLexer(Lexer):
     CHARACTER = r'\bCHARACTER\b'
     COLLATION = r'\bCOLLATION\b'
     PLUGINS = r'\bPLUGINS\b'
-
+    PERSIST = r'\bPERSIST\b'
+    PERSIST_ONLY = r'\bPERSIST_ONLY\b'
 
     # SELECT
 
