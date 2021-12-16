@@ -93,6 +93,21 @@ class MySQLParser(SQLParser):
     def set_modifier(self, p):
         return p[0]
 
+    @_('SET charset constant')
+    @_('SET charset DEFAULT')
+    def set(self, p):
+        if hasattr(p, 'DEFAULT'):
+            arg = SpecialConstant('DEFAULT')
+        else:
+            arg = p.constant
+        return Set(category='CHARSET', arg=arg)
+
+    @_('CHARACTER SET',
+       'CHARSET',
+       )
+    def charset(self, p):
+        return p[0]
+
     # Show
     @_('SHOW show_category show_condition_or_nothing')
     def show(self, p):

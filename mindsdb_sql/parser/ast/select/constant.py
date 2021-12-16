@@ -30,3 +30,16 @@ class NullConstant(Constant):
 
     def get_string(self, *args, **kwargs):
         return 'NULL'
+
+
+# DEFAULT
+class SpecialConstant(ASTNode):
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.name = name
+
+    def to_tree(self, *args, level=0, **kwargs):
+        return indent(level) + f'SpecialConstant(name={self.name})'
+
+    def get_string(self, *args, **kwargs):
+        return self.name

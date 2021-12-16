@@ -87,3 +87,30 @@ class TestMiscQueriesNoSqlite:
                            )
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_set_charset(self, dialect):
+
+        sql = "SET CHARACTER SET DEFAULT"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(category='CHARSET', arg=SpecialConstant('DEFAULT'))
+
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        sql = "SET CHARSET DEFAULT"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(category='CHARSET', arg=SpecialConstant('DEFAULT'))
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "SET CHARSET 'utf8'"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(category='CHARSET', arg=Constant('utf8'))
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+
