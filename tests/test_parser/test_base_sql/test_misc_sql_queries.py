@@ -113,4 +113,48 @@ class TestMiscQueriesNoSqlite:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_set_transaction(self, dialect):
+
+        sql = "SET GLOBAL TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ WRITE"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = SetTransaction(
+            isolation_level='REPEATABLE READ',
+            access_mode='READ WRITE',
+            scope='GLOBAL')
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "SET SESSION TRANSACTION READ ONLY, ISOLATION LEVEL SERIALIZABLE"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = SetTransaction(
+            isolation_level='SERIALIZABLE',
+            access_mode='READ ONLY',
+            scope='SESSION')
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = SetTransaction(
+            isolation_level='READ UNCOMMITTED'
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "SET TRANSACTION READ ONLY"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = SetTransaction(
+            access_mode='READ ONLY'
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
 

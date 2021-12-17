@@ -121,6 +121,57 @@ class MindsDBParser(Parser):
     def charset(self, p):
         return p[0]
 
+    # set transaction
+    @_('SET transact_scope TRANSACTION transact_property_list')
+    def set(self, p):
+        isolation_level = None
+        access_mode = None
+        for prop in p.transact_property_list:
+            if prop['type'] == 'iso_level':
+                isolation_level = prop['value']
+            else:
+                access_mode = prop['value']
+
+        return SetTransaction(
+            isolation_level=isolation_level,
+            access_mode=access_mode,
+            scope=p.transact_scope,
+        )
+
+    @_('GLOBAL',
+       'SESSION',
+       'empty')
+    def transact_scope(self, p):
+        return p[0]
+
+    @_('transact_property_list COMMA transact_property')
+    def transact_property_list(self, p):
+        return p.transact_property_list + [p.transact_property]
+
+    @_('transact_property')
+    def transact_property_list(self, p):
+        return [p[0]]
+
+    @_('ISOLATION LEVEL transact_level',
+       'transact_access_mode')
+    def transact_property(self, p):
+        if hasattr(p, 'transact_level'):
+            return {'type': 'iso_level', 'value': p.transact_level}
+        else:
+            return {'type': 'access_mode', 'value': p.transact_access_mode}
+
+    @_('REPEATABLE READ',
+       'READ COMMITTED',
+       'READ UNCOMMITTED',
+       'SERIALIZABLE')
+    def transact_level(self, p):
+        return ' '.join([x for x in p])
+
+    @_('READ WRITE',
+       'READ ONLY')
+    def transact_access_mode(self, p):
+        return ' '.join([x for x in p])
+
     # Show
 
     @_('SHOW show_category show_condition_or_nothing')
