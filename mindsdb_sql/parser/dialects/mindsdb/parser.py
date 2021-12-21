@@ -362,12 +362,13 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR identifier FROM identifier WITH STRING optional_data_source_name PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier WITH LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
     def create_predictor(self, p):
         return CreatePredictor(
             name=p.identifier0,
             integration_name=p.identifier1,
-            query=p.STRING,
+            query=p.select,
             datasource_name=p.optional_data_source_name,
             targets=p.result_columns,
         )
