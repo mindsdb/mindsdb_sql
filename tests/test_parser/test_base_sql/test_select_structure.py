@@ -737,3 +737,25 @@ class TestSelectStructure:
                               ]))
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+
+@pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
+class TestSelectStructureNoSqlite:
+    def test_select_from_plugins(self, dialect):
+        query = "select * from information_schema.plugins"
+        expected_ast = Select(
+            targets=[Star()],
+            from_table=Identifier(parts=['information_schema', 'plugins'])
+        )
+        ast = parse_sql(query, dialect=dialect)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        query = "select * from plugins"
+        expected_ast = Select(
+            targets=[Star()],
+            from_table=Identifier(parts=['plugins'])
+        )
+        ast = parse_sql(query, dialect=dialect)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()

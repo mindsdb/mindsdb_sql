@@ -23,18 +23,19 @@ class MindsDBLexer(Lexer):
         # Mindsdb special
 
         PREDICTOR, PREDICTORS, DATASOURCE, INTEGRATION, INTEGRATIONS,DATASOURCES,
-        STREAM, STREAMS, PUBLICATION, PUBLICATIONS, VIEW, VIEWS, DATASETS,
+        STREAM, STREAMS, PUBLICATION, PUBLICATIONS, VIEW, VIEWS, DATASETS, DATASET,
 
         LATEST, HORIZON, USING,
         ENGINE, TRAIN, TEST, PREDICT, MODEL, PARAMETERS,
 
 
-        # SHOW Keywords
+        # SHOW/DDL Keywords
 
-        SHOW, SCHEMAS, DATABASES, TABLES, TABLE, FULL,
+        SHOW, SCHEMAS, SCHEMA, DATABASES, DATABASE, TABLES, TABLE, FULL,
         VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
+        IF_EXISTS,
 
 
         # SELECT Keywords
@@ -92,6 +93,7 @@ class MindsDBLexer(Lexer):
     PUBLICATION = r'\bPUBLICATION\b'
     PUBLICATIONS = r'\bPUBLICATIONS\b'
     DATASETS = r'\bDATASETS\b'
+    DATASET = r'\bDATASET\b'
     LATEST = r'\bLATEST\b'
 
     # Misc
@@ -109,7 +111,9 @@ class MindsDBLexer(Lexer):
     # SHOW
     SHOW = r'\bSHOW\b'
     SCHEMAS = r'\bSCHEMAS\b'
+    SCHEMA = r'\bSCHEMA\b'
     DATABASES = r'\bDATABASES\b'
+    DATABASE = r'\bDATABASE\b'
     TABLES = r'\bTABLES\b'
     TABLE = r'\bTABLE\b'
     FULL = r'\bFULL\b'
@@ -127,7 +131,7 @@ class MindsDBLexer(Lexer):
     CHARACTER = r'\bCHARACTER\b'
     COLLATION = r'\bCOLLATION\b'
     PLUGINS = r'\bPLUGINS\b'
-
+    IF_EXISTS = r'\bIF[\s]+EXISTS\b'
 
     # SELECT
 

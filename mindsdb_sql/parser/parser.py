@@ -31,6 +31,7 @@ class SQLParser(Parser):
        'union',
        'select',
        'insert',
+       'drop_view',
        )
     def query(self, p):
         return p[0]
@@ -45,6 +46,19 @@ class SQLParser(Parser):
     def alter_table(self, p):
         return AlterTable(target=p.identifier,
                           arg=' '.join([p.ID0, p.ID1]))
+
+    # DROP VEW
+    @_('DROP VIEW identifier')
+    @_('DROP VIEW IF_EXISTS identifier')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView([p.identifier], if_exists=if_exists)
+
+    @_('DROP VIEW enumeration')
+    @_('DROP VIEW IF_EXISTS enumeration')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView(p.enumeration, if_exists=if_exists)
 
     # Transactions
 

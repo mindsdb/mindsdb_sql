@@ -1,5 +1,6 @@
 from mindsdb_sql.parser.logger import ParserLogger
 from mindsdb_sql.parser.parser import SQLParser
+from mindsdb_sql.parser.ast.drop import DropDatabase
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mysql.lexer import MySQLLexer
 from mindsdb_sql.parser.dialects.mysql.variable import Variable
@@ -34,6 +35,8 @@ class MySQLParser(SQLParser):
        'union',
        'select',
        'insert',
+       'drop_database',
+       'drop_view',
        )
     def query(self, p):
         return p[0]
@@ -48,6 +51,28 @@ class MySQLParser(SQLParser):
     def alter_table(self, p):
         return AlterTable(target=p.identifier,
                           arg=' '.join([p.ID0, p.ID1]))
+
+    # DROP VEW
+    @_('DROP VIEW identifier')
+    @_('DROP VIEW IF_EXISTS identifier')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView([p.identifier], if_exists=if_exists)
+
+    @_('DROP VIEW enumeration')
+    @_('DROP VIEW IF_EXISTS enumeration')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView(p.enumeration, if_exists=if_exists)
+
+    # DROP DATABASE
+    @_('DROP DATABASE identifier')
+    @_('DROP DATABASE IF_EXISTS identifier')
+    @_('DROP SCHEMA identifier')
+    @_('DROP SCHEMA IF_EXISTS identifier')
+    def drop_database(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropDatabase(name=p.identifier, if_exists=if_exists)
 
     # Transactions
 
@@ -361,6 +386,11 @@ class MySQLParser(SQLParser):
         query.parentheses = True
         return query
 
+    # plugins can be a table
+    @_('PLUGINS')
+    def from_table(self, p):
+        return Identifier.from_path_str(p.PLUGINS)
+
     @_('identifier')
     def from_table(self, p):
         return p.identifier
@@ -435,6 +465,10 @@ class MySQLParser(SQLParser):
         if isinstance(p.expr, ASTNode):
             p.expr.parentheses = True
         return p.expr
+
+    @_('DATABASE LPAREN RPAREN')
+    def expr(self, p):
+        return Function(op=p.DATABASE, args=[])
 
     @_('ID LPAREN DISTINCT expr_list RPAREN')
     def expr(self, p):
