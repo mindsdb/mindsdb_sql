@@ -9,4 +9,5 @@ from .rollback_transaction import *
 from .commit_transaction import *
 from .explain import *
 from .alter_table import *
+from .insert import *
 from .drop import *

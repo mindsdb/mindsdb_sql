@@ -51,6 +51,7 @@ class MindsDBParser(Parser):
        'drop_dataset',
        'union',
        'select',
+       'insert',
        'drop_database',
        'drop_view',
        )
@@ -174,6 +175,27 @@ class MindsDBParser(Parser):
        'ALL')
     def show_category(self, p):
         return ' '.join([x for x in p])
+
+    # INSERT
+    @_('INSERT INTO from_table LPAREN result_columns RPAREN select')
+    @_('INSERT INTO from_table select')
+    def insert(self, p):
+        columns = getattr(p, 'result_columns', None)
+        return Insert(table=p.from_table, columns=columns, from_select=p.select)
+
+    @_('INSERT INTO from_table LPAREN result_columns RPAREN VALUES expr_list_set')
+    @_('INSERT INTO from_table VALUES expr_list_set')
+    def insert(self, p):
+        columns = getattr(p, 'result_columns', None)
+        return Insert(table=p.from_table, columns=columns, values=p.expr_list_set)
+
+    @_('expr_list_set COMMA expr_list_set')
+    def expr_list_set(self, p):
+        return p.expr_list_set0 + p.expr_list_set1
+
+    @_('LPAREN expr_list RPAREN')
+    def expr_list_set(self, p):
+        return [p.expr_list]
 
     # DESCRIBE
 
