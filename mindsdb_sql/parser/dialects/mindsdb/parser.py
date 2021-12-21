@@ -391,12 +391,12 @@ class MindsDBParser(Parser):
                                  engine=p.datasource_engine['engine'],
                                  parameters=p.JSON)
 
-    @_('INTEGRATION ID WITH ENGINE EQUALS STRING',
-       'INTEGRATION ID WITH ENGINE STRING',
-       'DATASOURCE ID WITH ENGINE EQUALS STRING',
-       'DATASOURCE ID WITH ENGINE STRING')
+    @_('INTEGRATION ID WITH ENGINE EQUALS string',
+       'INTEGRATION ID WITH ENGINE string',
+       'DATASOURCE ID WITH ENGINE EQUALS string',
+       'DATASOURCE ID WITH ENGINE string')
     def datasource_engine(self, p):
-        return {'id': p.ID, 'engine': p.STRING}
+        return {'id': p.ID, 'engine': p.string}
 
     # UNION / UNION ALL
     @_('select UNION select')
@@ -806,9 +806,14 @@ class MindsDBParser(Parser):
     def constant(self, p):
         return Constant(value=float(p.FLOAT))
 
-    @_('STRING')
+    @_('string')
     def constant(self, p):
-        return Constant(value=str(p.STRING))
+        return Constant(value=str(p[0]))
+
+    @_('QUOTE_STRING')
+    @_('DQUOTE_STRING')
+    def string(self, p):
+        return p[0]
 
     @_('identifier DOT identifier')
     def identifier(self, p):
@@ -822,7 +827,8 @@ class MindsDBParser(Parser):
        'STATUS',
        'PREDICT',
        'PREDICTOR',
-       'PREDICTORS')
+       'PREDICTORS',
+       'DQUOTE_STRING')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)

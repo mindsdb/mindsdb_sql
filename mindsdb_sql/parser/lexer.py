@@ -47,7 +47,7 @@ class SQLLexer(Lexer):
         IN, LIKE, CONCAT, BETWEEN, WINDOW,
 
         # Data types
-        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE}
+        CAST, ID, INTEGER, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE}
 
     # Misc
     SET = r'\bSET\b'
@@ -186,11 +186,13 @@ class SQLLexer(Lexer):
         t.value = int(t.value)
         return t
 
-    @_(r'"[^"]*"',
-       r"'[^']*'")
-    def STRING(self, t):
-        if t.value[0] == '"':
-            t.value = t.value.strip('\"')
-        else:
-            t.value = t.value.strip('\'')
+    @_(r"'[^']*'")
+    def QUOTE_STRING(self, t):
+        t.value = t.value.strip('\'')
         return t
+
+    @_(r'"[^"]*"')
+    def DQUOTE_STRING(self, t):
+        t.value = t.value.strip('\"')
+        return t
+

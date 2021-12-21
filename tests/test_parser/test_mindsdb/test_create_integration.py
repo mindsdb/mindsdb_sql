@@ -16,7 +16,7 @@ class TestCreateIntegration:
         assert tokens[3].type == 'WITH'
         assert tokens[4].type == 'ENGINE'
         assert tokens[5].type == 'EQUALS'
-        assert tokens[6].type == 'STRING'
+        assert tokens[6].type == 'QUOTE_STRING'
         assert tokens[7].type == 'COMMA'
         assert tokens[8].type == 'PARAMETERS'
         assert tokens[9].type == 'EQUALS'
