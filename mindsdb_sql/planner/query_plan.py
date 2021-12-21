@@ -295,11 +295,13 @@ class QueryPlan:
 
         # Update reference
         integration_name, table = self.get_integration_path_from_identifier_or_error(table)
+        table_alias = table.alias or Identifier(table.to_string(alias=False).replace('.', '_'))
+
         join = Join(
             left=Identifier(predictor_step.result.ref_name,
                              alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
             right=Identifier(predictor_inputs.ref_name,
-                             alias=table.alias or Identifier(table.to_string(alias=False))),
+                             alias=table_alias),
             join_type=JoinType.LEFT_JOIN)
         final_step = self.add_step(JoinStep(left=predictor_step.result, right=predictor_inputs, query=join))
 
