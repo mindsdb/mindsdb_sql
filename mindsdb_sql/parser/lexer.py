@@ -7,21 +7,22 @@ class SQLLexer(Lexer):
     ignore = ' \t\n\r'
 
     tokens = {
-        USE, CREATE, DESCRIBE,
+        USE, DROP, CREATE, DESCRIBE,
 
         # Misc
         SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
         ISOLATION, LEVEL, REPEATABLE, READ, WRITE, UNCOMMITTED, COMMITTED,
         SERIALIZABLE, ONLY,
 
-        # SHOW Keywords
+        # SHOW Keywords/DDL Keywords
 
-        SHOW, SCHEMAS, DATABASES, TABLES, TABLE, FULL,
-        VARIABLES, SESSION, STATUS,
+        SHOW, SCHEMAS, SCHEMA, DATABASES, DATABASE, TABLES, TABLE, FULL,
+        VIEW, VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
         PERSIST, PERSIST_ONLY, DEFAULT,
 
+        IF_EXISTS,
 
         # SELECT Keywords
         WITH, SELECT, DISTINCT, FROM, WHERE, AS,
@@ -32,6 +33,9 @@ class SQLLexer(Lexer):
         JOIN, INNER, OUTER, CROSS, LEFT, RIGHT, ON,
 
         UNION, ALL,
+
+        # DML
+        INSERT, INTO, VALUES,
 
         # Special
         DOT, COMMA, LPAREN, RPAREN, PARAMETER,
@@ -70,9 +74,12 @@ class SQLLexer(Lexer):
     # SHOW
     SHOW = r'\bSHOW\b'
     SCHEMAS = r'\bSCHEMAS\b'
+    SCHEMA = r'\bSCHEMA\b'
     DATABASES = r'\bDATABASES\b'
+    DATABASE = r'\bDATABASE\b'
     TABLES = r'\bTABLES\b'
     TABLE = r'\bTABLE\b'
+    VIEW = r'\bVIEW\b'
     FULL = r'\bFULL\b'
     VARIABLES = r'\bVARIABLES\b'
     SESSION = r'\bSESSION\b'
@@ -81,6 +88,7 @@ class SQLLexer(Lexer):
     PROCEDURE = r'\bPROCEDURE\b'
     FUNCTION = r'\bFUNCTION\b'
     INDEX = r'\bINDEX\b'
+    DROP = r'\bDROP\b'
     CREATE = r'\bCREATE\b'
     WARNINGS = r'\bWARNINGS\b'
     ENGINES = r'\bENGINES\b'
@@ -91,6 +99,7 @@ class SQLLexer(Lexer):
     PERSIST = r'\bPERSIST\b'
     PERSIST_ONLY = r'\bPERSIST_ONLY\b'
     DEFAULT = r'\bDEFAULT\b'
+    IF_EXISTS = r'\bIF[\s]+EXISTS\b'
 
     # SELECT
 
@@ -123,6 +132,11 @@ class SQLLexer(Lexer):
 
     UNION = r'\bUNION\b'
     ALL = r'\bALL\b'
+
+    # DML
+    INSERT = r'\bINSERT\b'
+    INTO = r'\bINTO\b'
+    VALUES = r'\bVALUES\b'
 
     # Special
     DOT = r'\.'
