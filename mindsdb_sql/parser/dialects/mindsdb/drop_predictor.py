@@ -1,9 +1,9 @@
 import json
-from mindsdb_sql.parser.ast.base import ASTNode
+from mindsdb_sql.parser.ast.drop import Drop
 from mindsdb_sql.utils import indent
 
 
-class DropPredictor(ASTNode):
+class DropPredictor(Drop):
     def __init__(self,
                  name,
                  *args, **kwargs):
@@ -23,3 +23,4 @@ class DropPredictor(ASTNode):
     def get_string(self, *args, **kwargs):
         out_str = f'DROP PREDICTOR {str(self.name)}'
         return out_str
+
