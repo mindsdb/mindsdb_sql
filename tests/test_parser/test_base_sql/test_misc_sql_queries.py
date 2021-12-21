@@ -11,19 +11,6 @@ class TestMiscQueries:
     def test_set(self, dialect):
         lexer, parser = get_lexer_parser(dialect)
 
-        sql = "set autocommit"
-
-        tokens = list(lexer.tokenize(sql))
-
-        assert len(tokens) == 2
-        assert tokens[0].type == 'SET'
-        assert tokens[1].type == 'AUTOCOMMIT'
-
-        ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Set(category="autocommit")
-        assert ast.to_tree() == expected_ast.to_tree()
-        assert str(ast) == str(expected_ast)
-
         sql = "SET NAMES some_name"
 
         ast = parse_sql(sql, dialect=dialect)
@@ -82,6 +69,91 @@ class TestMiscQueries:
 
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = AlterTable(target=Identifier('some_table'), arg='enable keys')
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+
+@pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
+class TestMiscQueriesNoSqlite:
+    def test_set(self, dialect):
+
+        sql = "set var1 = NULL, var2 = 10"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(arg=Tuple(items=[
+                BinaryOperation('=', args=[Identifier('var1'), NullConstant()]),
+                BinaryOperation('=', args=[Identifier('var2'), Constant(10)]),
+            ])
+                           )
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+    def test_set_charset(self, dialect):
+
+        sql = "SET CHARACTER SET DEFAULT"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(category='CHARSET', arg=SpecialConstant('DEFAULT'))
+
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        sql = "SET CHARSET DEFAULT"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(category='CHARSET', arg=SpecialConstant('DEFAULT'))
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "SET CHARSET 'utf8'"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(category='CHARSET', arg=Constant('utf8'))
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+    def test_set_transaction(self, dialect):
+
+        sql = "SET GLOBAL TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ WRITE"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = SetTransaction(
+            isolation_level='REPEATABLE READ',
+            access_mode='READ WRITE',
+            scope='GLOBAL')
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "SET SESSION TRANSACTION READ ONLY, ISOLATION LEVEL SERIALIZABLE"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = SetTransaction(
+            isolation_level='SERIALIZABLE',
+            access_mode='READ ONLY',
+            scope='SESSION')
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = SetTransaction(
+            isolation_level='READ UNCOMMITTED'
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "SET TRANSACTION READ ONLY"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = SetTransaction(
+            access_mode='READ ONLY'
+        )
+
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 

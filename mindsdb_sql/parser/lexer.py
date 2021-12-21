@@ -11,6 +11,8 @@ class SQLLexer(Lexer):
 
         # Misc
         SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
+        ISOLATION, LEVEL, REPEATABLE, READ, WRITE, UNCOMMITTED, COMMITTED,
+        SERIALIZABLE, ONLY,
 
         # SHOW Keywords/DDL Keywords
 
@@ -18,6 +20,8 @@ class SQLLexer(Lexer):
         VIEW, VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
+        PERSIST, PERSIST_ONLY, DEFAULT,
+
         IF_EXISTS,
 
         # SELECT Keywords
@@ -54,6 +58,15 @@ class SQLLexer(Lexer):
     ROLLBACK = r'\bROLLBACK\b'
     EXPLAIN = r'\bEXPLAIN\b'
     ALTER = r'\bALTER\b'
+    ISOLATION = r'\bISOLATION\b'
+    LEVEL = r'\bLEVEL\b'
+    REPEATABLE = r'\bREPEATABLE\b'
+    READ = r'\bREAD\b'
+    WRITE = r'\bWRITE\b'
+    UNCOMMITTED = r'\bUNCOMMITTED\b'
+    COMMITTED = r'\bCOMMITTED\b'
+    SERIALIZABLE = r'\bSERIALIZABLE\b'
+    ONLY = r'\bONLY\b'
 
     USE = r'\bUSE\b'
     DESCRIBE = r'\bDESCRIBE\b'
@@ -83,6 +96,9 @@ class SQLLexer(Lexer):
     CHARACTER = r'\bCHARACTER\b'
     COLLATION = r'\bCOLLATION\b'
     PLUGINS = r'\bPLUGINS\b'
+    PERSIST = r'\bPERSIST\b'
+    PERSIST_ONLY = r'\bPERSIST_ONLY\b'
+    DEFAULT = r'\bDEFAULT\b'
     IF_EXISTS = r'\bIF[\s]+EXISTS\b'
 
     # SELECT

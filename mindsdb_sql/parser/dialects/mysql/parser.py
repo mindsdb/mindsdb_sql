@@ -90,19 +90,102 @@ class MySQLParser(SQLParser):
 
     # Set
 
-    @_('SET expr')
+    @_('SET expr_list')
+    @_('SET set_modifier expr_list')
     def set(self, p):
-        return Set(arg=p.expr)
+        if len(p.expr_list) == 1:
+            arg = p.expr_list[0]
+        else:
+            arg = Tuple(items=p.expr_list)
 
-    @_('SET AUTOCOMMIT')
-    def set(self, p):
-        return Set(category=p.AUTOCOMMIT)
+        if hasattr(p, 'set_modifier'):
+            category = p.set_modifier
+        else:
+            category = None
+
+        return Set(category=category, arg=arg)
 
     @_('SET ID identifier')
     def set(self, p):
         if not p.ID.lower() == 'names':
             raise ParsingException(f'Expected "SET names", got "SET {p.ID}"')
         return Set(category=p.ID.lower(), arg=p.identifier)
+
+    @_('GLOBAL',
+       'PERSIST',
+       'PERSIST_ONLY',
+       'SESSION',
+       )
+    def set_modifier(self, p):
+        return p[0]
+
+    # set charset
+    @_('SET charset constant')
+    @_('SET charset DEFAULT')
+    def set(self, p):
+        if hasattr(p, 'DEFAULT'):
+            arg = SpecialConstant('DEFAULT')
+        else:
+            arg = p.constant
+        return Set(category='CHARSET', arg=arg)
+
+    @_('CHARACTER SET',
+       'CHARSET',
+       )
+    def charset(self, p):
+        return p[0]
+
+    # set transaction
+    @_('SET transact_scope TRANSACTION transact_property_list')
+    def set(self, p):
+        isolation_level = None
+        access_mode = None
+        for prop in p.transact_property_list:
+            if prop['type'] == 'iso_level':
+                isolation_level = prop['value']
+            else:
+                access_mode = prop['value']
+
+        return SetTransaction(
+            isolation_level=isolation_level,
+            access_mode=access_mode,
+            scope=p.transact_scope,
+        )
+
+    @_('GLOBAL',
+       'SESSION',
+       'empty')
+    def transact_scope(self, p):
+        return p[0]
+
+    @_('transact_property_list COMMA transact_property')
+    def transact_property_list(self, p):
+        return p.transact_property_list + [p.transact_property]
+
+    @_('transact_property')
+    def transact_property_list(self, p):
+        return [p[0]]
+
+    @_('ISOLATION LEVEL transact_level',
+       'transact_access_mode')
+    def transact_property(self, p):
+        if hasattr(p, 'transact_level'):
+            return {'type': 'iso_level', 'value': p.transact_level}
+        else:
+            return {'type': 'access_mode', 'value': p.transact_access_mode}
+
+    @_('REPEATABLE READ',
+       'READ COMMITTED',
+       'READ UNCOMMITTED',
+       'SERIALIZABLE')
+    def transact_level(self, p):
+        return ' '.join([x for x in p])
+
+    @_('READ WRITE',
+       'READ ONLY')
+    def transact_access_mode(self, p):
+        return ' '.join([x for x in p])
+
 
     # Show
     @_('SHOW show_category show_condition_or_nothing')
