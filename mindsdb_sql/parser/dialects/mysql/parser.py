@@ -581,6 +581,11 @@ class MySQLParser(SQLParser):
     def expr(self, p):
         return TypeCast(arg=p.expr, type_name=str(p.ID))
 
+    @_('CONVERT LPAREN expr COMMA ID RPAREN')
+    @_('CONVERT LPAREN expr USING ID RPAREN')
+    def expr(self, p):
+        return TypeCast(arg=p.expr, type_name=str(p.ID))
+
     @_('enumeration')
     def expr_list(self, p):
         return p.enumeration

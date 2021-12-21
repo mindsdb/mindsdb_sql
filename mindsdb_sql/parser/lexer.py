@@ -12,7 +12,7 @@ class SQLLexer(Lexer):
         # Misc
         SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
         ISOLATION, LEVEL, REPEATABLE, READ, WRITE, UNCOMMITTED, COMMITTED,
-        SERIALIZABLE, ONLY,
+        SERIALIZABLE, ONLY, CONVERT, USING,
 
         # SHOW Keywords/DDL Keywords
 
@@ -67,6 +67,8 @@ class SQLLexer(Lexer):
     COMMITTED = r'\bCOMMITTED\b'
     SERIALIZABLE = r'\bSERIALIZABLE\b'
     ONLY = r'\bONLY\b'
+    CONVERT = r'\bCONVERT\b'
+    USING = r'\bUSING\b'
 
     USE = r'\bUSE\b'
     DESCRIBE = r'\bDESCRIBE\b'
