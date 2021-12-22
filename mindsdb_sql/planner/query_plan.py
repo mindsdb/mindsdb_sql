@@ -342,7 +342,7 @@ class QueryPlan:
     def plan_project(self, query, dataframe):
         out_identifiers = []
         for target in query.targets:
-            if isinstance(target, Identifier) or isinstance(target, Star):
+            if isinstance(target, Identifier) or isinstance(target, Star) or isinstance(target, Constant):
                 out_identifiers.append(target)
             else:
                 new_identifier = Identifier(str(target.to_string(alias=False)), alias=target.alias)
