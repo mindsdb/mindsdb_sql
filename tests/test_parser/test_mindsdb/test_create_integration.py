@@ -26,7 +26,8 @@ class TestCreateIntegration:
         sql = """
             CREATE INTEGRATION db
             WITH ENGINE = 'mysql',
-            PARAMETERS = {"user": "admin", "password": "admin", "host": "127.0.0.1"}
+            PARAMETERS = {"user": "admin", "password": "admin",
+             "host": "127.0.0.1"}
         """
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateIntegration(name='db',
