@@ -7,7 +7,7 @@ from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
-from mindsdb_sql.parser.dialects.mindsdb.create_integration import CreateIntegration
+from mindsdb_sql.parser.dialects.mindsdb.create_datasource import CreateDatasource
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.exceptions import ParsingException
@@ -387,13 +387,11 @@ class MindsDBParser(Parser):
        'CREATE datasource_engine PARAMETERS EQUALS JSON',
        'CREATE datasource_engine PARAMETERS JSON')
     def create_integration(self, p):
-        return CreateIntegration(name=p.datasource_engine['id'],
+        return CreateDatasource(name=p.datasource_engine['id'],
                                  engine=p.datasource_engine['engine'],
                                  parameters=p.JSON)
 
-    @_('INTEGRATION ID WITH ENGINE EQUALS string',
-       'INTEGRATION ID WITH ENGINE string',
-       'DATASOURCE ID WITH ENGINE EQUALS string',
+    @_('DATASOURCE ID WITH ENGINE EQUALS string',
        'DATASOURCE ID WITH ENGINE string')
     def datasource_engine(self, p):
         return {'id': p.ID, 'engine': p.string}
