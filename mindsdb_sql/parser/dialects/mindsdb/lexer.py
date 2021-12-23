@@ -28,7 +28,7 @@ class MindsDBLexer(Lexer):
         STREAM, STREAMS, PUBLICATION, PUBLICATIONS, VIEW, VIEWS, DATASETS, DATASET,
 
         LATEST, HORIZON, USING,
-        ENGINE, TRAIN, TEST, PREDICT, MODEL, PARAMETERS,
+        ENGINE, TRAIN, PREDICT, MODEL, PARAMETERS,
 
 
         # SHOW/DDL Keywords
@@ -76,7 +76,6 @@ class MindsDBLexer(Lexer):
     USE = r'\bUSE\b'
     ENGINE = r'\bENGINE\b'
     TRAIN = r'\bTRAIN\b'
-    TEST = r'\bTEST\b'
     PREDICT = r'\bPREDICT\b'
     MODEL = r'\bMODEL\b'
     DROP = r'\bDROP\b'
