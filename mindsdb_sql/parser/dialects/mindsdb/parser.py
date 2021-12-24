@@ -238,7 +238,6 @@ class MindsDBParser(Parser):
        'INDEX',
        'CREATE TABLE',
        'WARNINGS',
-       'ENGINES',
        'CHARSET',
        'CHARACTER SET',
        'COLLATION',

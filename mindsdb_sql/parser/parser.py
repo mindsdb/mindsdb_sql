@@ -122,7 +122,6 @@ class SQLParser(Parser):
        'INDEX',
        'CREATE TABLE',
        'WARNINGS',
-       'ENGINES',
        'CHARSET',
        'CHARACTER SET',
        'COLLATION',
