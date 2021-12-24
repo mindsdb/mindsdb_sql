@@ -72,6 +72,23 @@ class TestMiscQueries:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_autocommit(self, dialect):
+        sql = "set autocommit=1"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(
+            category=None,
+            arg=BinaryOperation(
+                op='=',
+                args=(
+                    Identifier('autocommit'),
+                    Constant(1)
+                )
+            )
+        )
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
 
 @pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
 class TestMiscQueriesNoSqlite:
