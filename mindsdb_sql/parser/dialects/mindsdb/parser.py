@@ -392,7 +392,9 @@ class MindsDBParser(Parser):
                                  parameters=p.JSON)
 
     @_('DATASOURCE ID WITH ENGINE EQUALS string',
-       'DATASOURCE ID WITH ENGINE string')
+       'DATASOURCE ID WITH ENGINE string',
+       'DATABASE ID WITH ENGINE EQUALS string',
+       'DATABASE ID WITH ENGINE string',)
     def datasource_engine(self, p):
         return {'id': p.ID, 'engine': p.string}
 
