@@ -46,7 +46,6 @@ class MindsDBParser(Parser):
        'create_view',
        'drop_predictor',
        'retrain_predictor',
-       'drop_integration',
        'drop_datasource',
        'drop_dataset',
        'union',
@@ -316,11 +315,6 @@ class MindsDBParser(Parser):
        'DROP TABLE identifier')
     def drop_predictor(self, p):
         return DropPredictor(p.identifier)
-
-    # DROP INTEGRATION
-    @_('DROP INTEGRATION identifier')
-    def drop_integration(self, p):
-        return DropIntegration(p.identifier)
 
     # DROP DATASOURCE
     @_('DROP DATASOURCE identifier')
