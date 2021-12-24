@@ -358,6 +358,8 @@ class MindsDBParser(Parser):
 
     @_('CREATE PREDICTOR identifier FROM identifier WITH LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
     @_('CREATE PREDICTOR identifier FROM identifier LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE TABLE identifier FROM identifier WITH LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE TABLE identifier FROM identifier LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
     def create_predictor(self, p):
         return CreatePredictor(
             name=p.identifier0,
