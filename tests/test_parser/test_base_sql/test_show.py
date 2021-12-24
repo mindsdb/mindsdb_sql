@@ -81,3 +81,18 @@ class TestShow:
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+
+class TestShowAdapted:
+
+    def test_show_database_adapted(self):
+        statement = Select(
+            targets=[Identifier(parts=["schema_name"], alias=Identifier('Database'))],
+            from_table=Identifier(parts=['information_schema', 'SCHEMATA'])
+        )
+        sql = statement.get_string()
+
+        statement2 = parse_sql(sql, dialect='mindsdb')
+
+        assert statement2.to_tree() == statement.to_tree()
+

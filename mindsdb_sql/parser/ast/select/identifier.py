@@ -1,6 +1,8 @@
+from mindsdb_sql.parser.lexer import RESERVED_KEYWORDS
 from mindsdb_sql import ParsingException
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.utils import indent
+
 import re
 
 no_wrap_identifier_regex = re.compile(r'[a-zA-Z_][a-zA-Z_0-9]*')
@@ -31,8 +33,13 @@ class Identifier(ASTNode):
     def parts_to_str(self):
         out_parts = []
         for part in self.parts:
-            if not no_wrap_identifier_regex.fullmatch(part):
+            if (
+                not no_wrap_identifier_regex.fullmatch(part)
+              or
+                part.upper() in RESERVED_KEYWORDS
+            ):
                 out_parts.append(f'`{part}`')
+
             else:
                 out_parts.append(part)
         return '.'.join(out_parts)

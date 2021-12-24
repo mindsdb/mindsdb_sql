@@ -1,6 +1,7 @@
 import re
 from sly import Lexer
 
+RESERVED_KEYWORDS = ['DATABASE']
 
 class SQLLexer(Lexer):
     reflags = re.IGNORECASE
