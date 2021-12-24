@@ -231,7 +231,6 @@ class MySQLParser(SQLParser):
        'FUNCTION STATUS',
        'CREATE TABLE',
        'WARNINGS',
-       'ENGINES',
        'CHARSET',
        'CHARACTER SET',
        'COLLATION',
@@ -581,6 +580,11 @@ class MySQLParser(SQLParser):
     def expr(self, p):
         return TypeCast(arg=p.expr, type_name=str(p.ID))
 
+    @_('CONVERT LPAREN expr COMMA ID RPAREN')
+    @_('CONVERT LPAREN expr USING ID RPAREN')
+    def expr(self, p):
+        return TypeCast(arg=p.expr, type_name=str(p.ID))
+
     @_('enumeration')
     def expr_list(self, p):
         return p.enumeration
@@ -673,9 +677,10 @@ class MySQLParser(SQLParser):
     def constant(self, p):
         return Constant(value=float(p.FLOAT))
 
-    @_('STRING')
+    @_('QUOTE_STRING')
+    @_('DQUOTE_STRING')
     def constant(self, p):
-        return Constant(value=str(p.STRING))
+        return Constant(value=str(p[0]))
 
     @_('identifier DOT identifier')
     def identifier(self, p):
@@ -685,7 +690,8 @@ class MySQLParser(SQLParser):
     @_('ID',
        'CHARSET',
        'TABLES',
-       'STATUS')
+       'STATUS',
+       'DQUOTE_STRING')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)

@@ -7,7 +7,7 @@ from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
-from mindsdb_sql.parser.dialects.mindsdb.create_integration import CreateIntegration
+from mindsdb_sql.parser.dialects.mindsdb.create_datasource import CreateDatasource
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.exceptions import ParsingException
@@ -46,7 +46,6 @@ class MindsDBParser(Parser):
        'create_view',
        'drop_predictor',
        'retrain_predictor',
-       'drop_integration',
        'drop_datasource',
        'drop_dataset',
        'union',
@@ -239,7 +238,6 @@ class MindsDBParser(Parser):
        'INDEX',
        'CREATE TABLE',
        'WARNINGS',
-       'ENGINES',
        'CHARSET',
        'CHARACTER SET',
        'COLLATION',
@@ -317,11 +315,6 @@ class MindsDBParser(Parser):
     def drop_predictor(self, p):
         return DropPredictor(p.identifier)
 
-    # DROP INTEGRATION
-    @_('DROP INTEGRATION identifier')
-    def drop_integration(self, p):
-        return DropIntegration(p.identifier)
-
     # DROP DATASOURCE
     @_('DROP DATASOURCE identifier')
     def drop_datasource(self, p):
@@ -362,12 +355,15 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR identifier FROM identifier WITH STRING optional_data_source_name PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier WITH LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE TABLE identifier FROM identifier WITH LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE TABLE identifier FROM identifier LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
     def create_predictor(self, p):
         return CreatePredictor(
             name=p.identifier0,
             integration_name=p.identifier1,
-            query=p.STRING,
+            query=p.select,
             datasource_name=p.optional_data_source_name,
             targets=p.result_columns,
         )
@@ -386,16 +382,16 @@ class MindsDBParser(Parser):
        'CREATE datasource_engine PARAMETERS EQUALS JSON',
        'CREATE datasource_engine PARAMETERS JSON')
     def create_integration(self, p):
-        return CreateIntegration(name=p.datasource_engine['id'],
+        return CreateDatasource(name=p.datasource_engine['id'],
                                  engine=p.datasource_engine['engine'],
                                  parameters=p.JSON)
 
-    @_('INTEGRATION ID WITH ENGINE EQUALS STRING',
-       'INTEGRATION ID WITH ENGINE STRING',
-       'DATASOURCE ID WITH ENGINE EQUALS STRING',
-       'DATASOURCE ID WITH ENGINE STRING')
+    @_('DATASOURCE ID WITH ENGINE EQUALS string',
+       'DATASOURCE ID WITH ENGINE string',
+       'DATABASE ID WITH ENGINE EQUALS string',
+       'DATABASE ID WITH ENGINE string',)
     def datasource_engine(self, p):
-        return {'id': p.ID, 'engine': p.STRING}
+        return {'id': p.ID, 'engine': p.string}
 
     # UNION / UNION ALL
     @_('select UNION select')
@@ -705,6 +701,11 @@ class MindsDBParser(Parser):
     def expr(self, p):
         return TypeCast(arg=p.expr, type_name=str(p.ID))
 
+    @_('CONVERT LPAREN expr COMMA ID RPAREN')
+    @_('CONVERT LPAREN expr USING ID RPAREN')
+    def expr(self, p):
+        return TypeCast(arg=p.expr, type_name=str(p.ID))
+
     @_('enumeration')
     def expr_list(self, p):
         return p.enumeration
@@ -805,9 +806,14 @@ class MindsDBParser(Parser):
     def constant(self, p):
         return Constant(value=float(p.FLOAT))
 
-    @_('STRING')
+    @_('string')
     def constant(self, p):
-        return Constant(value=str(p.STRING))
+        return Constant(value=str(p[0]))
+
+    @_('QUOTE_STRING')
+    @_('DQUOTE_STRING')
+    def string(self, p):
+        return p[0]
 
     @_('identifier DOT identifier')
     def identifier(self, p):
@@ -821,7 +827,8 @@ class MindsDBParser(Parser):
        'STATUS',
        'PREDICT',
        'PREDICTOR',
-       'PREDICTORS')
+       'PREDICTORS',
+       'DQUOTE_STRING')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)

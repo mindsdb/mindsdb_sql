@@ -34,7 +34,7 @@ class CreatePredictor(ASTNode):
 
         name_str = f'\n{ind1}name={self.name.to_tree()},'
         integration_name_str = f'\n{ind1}integration_name={self.integration_name.to_tree()},'
-        query_str = f'\n{ind1}query={repr(self.query)},'
+        query_str = f'\n{ind1}query={self.query.to_tree(level=level+1)},'
 
         datasource_name_str = ''
         if self.datasource_name:
@@ -78,9 +78,11 @@ class CreatePredictor(ASTNode):
         window_str = f'WINDOW {self.window} ' if self.window is not None else ''
         horizon_str = f'HORIZON {self.horizon} ' if self.horizon is not None else ''
         using_str = f'USING {json.dumps(self.using)}' if self.using is not None else ''
-        datasource_name_str = f' AS {self.datasource_name.to_string()} ' if self.datasource_name is not None else ''
+        datasource_name_str = f'AS {self.datasource_name.to_string()} ' if self.datasource_name is not None else ''
 
-        out_str = f'CREATE PREDICTOR {self.name.to_string()} FROM {self.integration_name.to_string()} WITH {repr(self.query)}' \
+        query_str = self.query.to_string()
+
+        out_str = f'CREATE PREDICTOR {self.name.to_string()} FROM {self.integration_name.to_string()} WITH ({query_str}) ' \
                   f'{datasource_name_str}' \
                   f'PREDICT {targets_str} ' \
                   f'{order_by_str}' \

@@ -122,7 +122,6 @@ class SQLParser(Parser):
        'INDEX',
        'CREATE TABLE',
        'WARNINGS',
-       'ENGINES',
        'CHARSET',
        'CHARACTER SET',
        'COLLATION',
@@ -547,9 +546,10 @@ class SQLParser(Parser):
     def constant(self, p):
         return Constant(value=float(p.FLOAT))
 
-    @_('STRING')
+    @_('QUOTE_STRING')
+    @_('DQUOTE_STRING')
     def constant(self, p):
-        return Constant(value=str(p.STRING))
+        return Constant(value=str(p[0]))
 
     @_('identifier DOT identifier')
     def identifier(self, p):
@@ -559,7 +559,8 @@ class SQLParser(Parser):
     @_('ID',
        'CHARSET',
        'TABLES',
-       'STATUS')
+       'STATUS',
+       'DQUOTE_STRING')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)

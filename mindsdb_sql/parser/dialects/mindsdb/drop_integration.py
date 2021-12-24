@@ -3,6 +3,7 @@ from mindsdb_sql.parser.ast.drop import Drop
 from mindsdb_sql.utils import indent
 
 
+# currently, not used
 class DropIntegration(Drop):
     def __init__(self,
                  name,

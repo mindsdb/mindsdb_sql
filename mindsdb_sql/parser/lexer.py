@@ -1,6 +1,7 @@
 import re
 from sly import Lexer
 
+RESERVED_KEYWORDS = ['DATABASE']
 
 class SQLLexer(Lexer):
     reflags = re.IGNORECASE
@@ -10,16 +11,16 @@ class SQLLexer(Lexer):
         USE, DROP, CREATE, DESCRIBE,
 
         # Misc
-        SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
+        SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
         ISOLATION, LEVEL, REPEATABLE, READ, WRITE, UNCOMMITTED, COMMITTED,
-        SERIALIZABLE, ONLY,
+        SERIALIZABLE, ONLY, CONVERT, USING,
 
         # SHOW Keywords/DDL Keywords
 
         SHOW, SCHEMAS, SCHEMA, DATABASES, DATABASE, TABLES, TABLE, FULL,
         VIEW, VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
-        ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
+        CHARSET, COLLATION, PLUGINS, CHARACTER,
         PERSIST, PERSIST_ONLY, DEFAULT,
 
         IF_EXISTS,
@@ -47,11 +48,10 @@ class SQLLexer(Lexer):
         IN, LIKE, CONCAT, BETWEEN, WINDOW,
 
         # Data types
-        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE}
+        CAST, ID, INTEGER, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE}
 
     # Misc
     SET = r'\bSET\b'
-    AUTOCOMMIT = r'\bAUTOCOMMIT\b'
     START = r'\bSTART\b'
     TRANSACTION = r'\bTRANSACTION\b'
     COMMIT = r'\bCOMMIT\b'
@@ -67,6 +67,8 @@ class SQLLexer(Lexer):
     COMMITTED = r'\bCOMMITTED\b'
     SERIALIZABLE = r'\bSERIALIZABLE\b'
     ONLY = r'\bONLY\b'
+    CONVERT = r'\bCONVERT\b'
+    USING = r'\bUSING\b'
 
     USE = r'\bUSE\b'
     DESCRIBE = r'\bDESCRIBE\b'
@@ -91,7 +93,6 @@ class SQLLexer(Lexer):
     DROP = r'\bDROP\b'
     CREATE = r'\bCREATE\b'
     WARNINGS = r'\bWARNINGS\b'
-    ENGINES = r'\bENGINES\b'
     CHARSET = r'\bCHARSET\b'
     CHARACTER = r'\bCHARACTER\b'
     COLLATION = r'\bCOLLATION\b'
@@ -186,11 +187,13 @@ class SQLLexer(Lexer):
         t.value = int(t.value)
         return t
 
-    @_(r'"[^"]*"',
-       r"'[^']*'")
-    def STRING(self, t):
-        if t.value[0] == '"':
-            t.value = t.value.strip('\"')
-        else:
-            t.value = t.value.strip('\'')
+    @_(r"'[^']*'")
+    def QUOTE_STRING(self, t):
+        t.value = t.value.strip('\'')
         return t
+
+    @_(r'"[^"]*"')
+    def DQUOTE_STRING(self, t):
+        t.value = t.value.strip('\"')
+        return t
+

@@ -433,6 +433,15 @@ class TestOperations:
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
 
+    def test_select_double_quote(self, dialect):
+        sql = 'select status from "mindsdb.predictors"'
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[Identifier.from_path_str("status")],
+                              from_table=Identifier.from_path_str('mindsdb.predictors')
+                             )
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
 # it doesn't work in sqlite
 @pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
 class TestOperationsNoSqlite:

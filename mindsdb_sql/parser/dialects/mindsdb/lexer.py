@@ -18,9 +18,9 @@ class MindsDBLexer(Lexer):
         USE, DROP, CREATE, DESCRIBE, RETRAIN,
 
         # Misc
-        SET, AUTOCOMMIT, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
+        SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
         ISOLATION, LEVEL, REPEATABLE, READ, WRITE, UNCOMMITTED, COMMITTED,
-        SERIALIZABLE, ONLY,
+        SERIALIZABLE, ONLY, CONVERT,
 
         # Mindsdb special
 
@@ -28,7 +28,7 @@ class MindsDBLexer(Lexer):
         STREAM, STREAMS, PUBLICATION, PUBLICATIONS, VIEW, VIEWS, DATASETS, DATASET,
 
         LATEST, HORIZON, USING,
-        ENGINE, TRAIN, TEST, PREDICT, MODEL, PARAMETERS,
+        ENGINE, TRAIN, PREDICT, MODEL, PARAMETERS,
 
 
         # SHOW/DDL Keywords
@@ -36,7 +36,7 @@ class MindsDBLexer(Lexer):
         SHOW, SCHEMAS, SCHEMA, DATABASES, DATABASE, TABLES, TABLE, FULL,
         VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
-        ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
+        CHARSET, COLLATION, PLUGINS, CHARACTER,
         PERSIST, PERSIST_ONLY, DEFAULT,
         IF_EXISTS,
 
@@ -64,7 +64,7 @@ class MindsDBLexer(Lexer):
         IN, LIKE, CONCAT, BETWEEN, WINDOW,
 
         # Data types
-        CAST, ID, INTEGER, FLOAT, STRING, NULL, TRUE, FALSE,
+        CAST, ID, INTEGER, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE,
 
         JSON,
 
@@ -76,7 +76,6 @@ class MindsDBLexer(Lexer):
     USE = r'\bUSE\b'
     ENGINE = r'\bENGINE\b'
     TRAIN = r'\bTRAIN\b'
-    TEST = r'\bTEST\b'
     PREDICT = r'\bPREDICT\b'
     MODEL = r'\bMODEL\b'
     DROP = r'\bDROP\b'
@@ -101,7 +100,6 @@ class MindsDBLexer(Lexer):
 
     # Misc
     SET = r'\bSET\b'
-    AUTOCOMMIT = r'\bAUTOCOMMIT\b'
     START = r'\bSTART\b'
     TRANSACTION = r'\bTRANSACTION\b'
     COMMIT = r'\bCOMMIT\b'
@@ -117,6 +115,7 @@ class MindsDBLexer(Lexer):
     COMMITTED = r'\bCOMMITTED\b'
     SERIALIZABLE = r'\bSERIALIZABLE\b'
     ONLY = r'\bONLY\b'
+    CONVERT = r'\bCONVERT\b'
 
     DESCRIBE = r'\bDESCRIBE\b'
 
@@ -138,7 +137,6 @@ class MindsDBLexer(Lexer):
     INDEX = r'\bINDEX\b'
     CREATE = r'\bCREATE\b'
     WARNINGS = r'\bWARNINGS\b'
-    ENGINES = r'\bENGINES\b'
     CHARSET = r'\bCHARSET\b'
     CHARACTER = r'\bCHARACTER\b'
     COLLATION = r'\bCOLLATION\b'
@@ -233,16 +231,17 @@ class MindsDBLexer(Lexer):
         t.value = int(t.value)
         return t
 
-    @_(r'\{.*\}')
+    @_(r'\{[\s\S]*}')
     def JSON(self, t):
         t.value = json.loads(t.value)
         return t
 
-    @_(r'"[^"]*"',
-       r"'[^']*'")
-    def STRING(self, t):
-        if t.value[0] == '"':
-            t.value = t.value.strip('\"')
-        else:
-            t.value = t.value.strip('\'')
+    @_(r"'[^']*'")
+    def QUOTE_STRING(self, t):
+        t.value = t.value.strip('\'')
+        return t
+
+    @_(r'"[^"]*"')
+    def DQUOTE_STRING(self, t):
+        t.value = t.value.strip('\"')
         return t
