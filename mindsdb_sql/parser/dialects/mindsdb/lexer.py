@@ -36,7 +36,7 @@ class MindsDBLexer(Lexer):
         SHOW, SCHEMAS, SCHEMA, DATABASES, DATABASE, TABLES, TABLE, FULL,
         VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
-        CHARSET, COLLATION, PLUGINS, CHARACTER,
+        ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
         PERSIST, PERSIST_ONLY, DEFAULT,
         IF_EXISTS,
 
@@ -45,7 +45,7 @@ class MindsDBLexer(Lexer):
         WITH, SELECT, DISTINCT, FROM, WHERE, AS,
         LIMIT, OFFSET, ASC, DESC, NULLS_FIRST, NULLS_LAST,
         GROUP_BY, HAVING, ORDER_BY,
-        STAR,
+        STAR, FOR, UPDATE,
 
         JOIN, INNER, OUTER, CROSS, LEFT, RIGHT, ON,
 
@@ -137,6 +137,7 @@ class MindsDBLexer(Lexer):
     INDEX = r'\bINDEX\b'
     CREATE = r'\bCREATE\b'
     WARNINGS = r'\bWARNINGS\b'
+    ENGINES = r'\bENGINES\b'
     CHARSET = r'\bCHARSET\b'
     CHARACTER = r'\bCHARACTER\b'
     COLLATION = r'\bCOLLATION\b'
@@ -165,6 +166,8 @@ class MindsDBLexer(Lexer):
     HAVING = r'\bHAVING\b'
     ORDER_BY = r'\bORDER BY\b'
     STAR = r'\*'
+    FOR = r'\bFOR\b'
+    UPDATE = r'\bUPDATE\b'
 
     JOIN = r'\bJOIN\b'
     INNER = r'\bINNER\b'
