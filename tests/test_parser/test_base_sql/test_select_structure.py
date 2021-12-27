@@ -780,3 +780,16 @@ class TestSelectStructureNoSqlite:
             Identifier(parts=['column1']), Identifier(parts=['column2'])]))])
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_select_for_update(self, dialect):
+        sql = f'SELECT * FROM tab for update'
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[Star()],
+            from_table=Identifier(parts=['tab']),
+            mode='FOR UPDATE'
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)

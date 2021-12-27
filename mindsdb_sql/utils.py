@@ -14,6 +14,7 @@ def ensure_select_keyword_order(select, operation):
         'ORDER BY': select.order_by,
         'LIMIT': select.limit,
         'OFFSET': select.offset,
+        'MODE': select.mode,
     }
 
     requirements = {
@@ -23,7 +24,7 @@ def ensure_select_keyword_order(select, operation):
         'HAVING': ['GROUP BY'],
     }
 
-    precedence = ['FROM', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY', 'LIMIT', 'OFFSET']
+    precedence = ['FROM', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY', 'LIMIT', 'OFFSET', 'MODE']
 
     if op_to_attr[operation]:
         raise ParsingException(f"Duplicate {operation} clause. Only one {operation} allowed per SELECT.")

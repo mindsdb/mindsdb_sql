@@ -318,6 +318,13 @@ class MySQLParser(SQLParser):
         return p.enumeration
 
     # SELECT
+    @_('select FOR UPDATE')
+    def select(self, p):
+        select = p.select
+        ensure_select_keyword_order(select, 'MODE')
+        select.mode = 'FOR UPDATE'
+        return select
+
     @_('select OFFSET constant')
     def select(self, p):
         select = p.select

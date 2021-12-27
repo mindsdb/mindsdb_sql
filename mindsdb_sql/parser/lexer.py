@@ -29,7 +29,7 @@ class SQLLexer(Lexer):
         WITH, SELECT, DISTINCT, FROM, WHERE, AS,
         LIMIT, OFFSET, ASC, DESC, NULLS_FIRST, NULLS_LAST,
         GROUP_BY, HAVING, ORDER_BY,
-        STAR,
+        STAR, FOR, UPDATE,
 
         JOIN, INNER, OUTER, CROSS, LEFT, RIGHT, ON,
 
@@ -122,6 +122,8 @@ class SQLLexer(Lexer):
     HAVING = r'\bHAVING\b'
     ORDER_BY = r'\bORDER BY\b'
     STAR = r'\*'
+    FOR = r'\bFOR\b'
+    UPDATE = r'\bUPDATE\b'
 
     JOIN = r'\bJOIN\b'
     INNER = r'\bINNER\b'
