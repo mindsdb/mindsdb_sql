@@ -30,6 +30,8 @@ class SQLParser(Parser):
        'describe',
        'union',
        'select',
+       'insert',
+       'drop_view',
        )
     def query(self, p):
         return p[0]
@@ -44,6 +46,19 @@ class SQLParser(Parser):
     def alter_table(self, p):
         return AlterTable(target=p.identifier,
                           arg=' '.join([p.ID0, p.ID1]))
+
+    # DROP VEW
+    @_('DROP VIEW identifier')
+    @_('DROP VIEW IF_EXISTS identifier')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView([p.identifier], if_exists=if_exists)
+
+    @_('DROP VIEW enumeration')
+    @_('DROP VIEW IF_EXISTS enumeration')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView(p.enumeration, if_exists=if_exists)
 
     # Transactions
 
@@ -60,10 +75,6 @@ class SQLParser(Parser):
         return RollbackTransaction()
 
     # Set
-
-    @_('SET AUTOCOMMIT')
-    def set(self, p):
-        return Set(category=p.AUTOCOMMIT)
 
     @_('SET expr')
     def set(self, p):
@@ -119,6 +130,27 @@ class SQLParser(Parser):
        'STATUS')
     def show_category(self, p):
         return ' '.join([x for x in p])
+
+    # INSERT
+    @_('INSERT INTO from_table LPAREN result_columns RPAREN select')
+    @_('INSERT INTO from_table select')
+    def insert(self, p):
+        columns = getattr(p, 'result_columns', None)
+        return Insert(table=p.from_table, columns=columns, from_select=p.select)
+
+    @_('INSERT INTO from_table LPAREN result_columns RPAREN VALUES expr_list_set')
+    @_('INSERT INTO from_table VALUES expr_list_set')
+    def insert(self, p):
+        columns = getattr(p, 'result_columns', None)
+        return Insert(table=p.from_table, columns=columns, values=p.expr_list_set)
+
+    @_('expr_list_set COMMA expr_list_set')
+    def expr_list_set(self, p):
+        return p.expr_list_set0 + p.expr_list_set1
+
+    @_('LPAREN expr_list RPAREN')
+    def expr_list_set(self, p):
+        return [p.expr_list]
 
     # DESCRIBE
 
@@ -320,6 +352,12 @@ class SQLParser(Parser):
         query.parentheses = True
         return query
 
+    # keywords for table
+    @_('PLUGINS')
+    @_('ENGINES')
+    def from_table(self, p):
+        return Identifier.from_path_str(p[0])
+
     @_('identifier')
     def from_table(self, p):
         return p.identifier
@@ -515,9 +553,10 @@ class SQLParser(Parser):
     def constant(self, p):
         return Constant(value=float(p.FLOAT))
 
-    @_('STRING')
+    @_('QUOTE_STRING')
+    @_('DQUOTE_STRING')
     def constant(self, p):
-        return Constant(value=str(p.STRING))
+        return Constant(value=str(p[0]))
 
     @_('identifier DOT identifier')
     def identifier(self, p):
@@ -527,7 +566,8 @@ class SQLParser(Parser):
     @_('ID',
        'CHARSET',
        'TABLES',
-       'STATUS')
+       'STATUS',
+       'DQUOTE_STRING')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)

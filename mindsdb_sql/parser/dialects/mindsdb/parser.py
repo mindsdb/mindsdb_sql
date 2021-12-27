@@ -1,10 +1,13 @@
 import json
 from sly import Parser
 from mindsdb_sql.parser.ast import *
+from mindsdb_sql.parser.ast.drop import DropDatabase, DropView
 from mindsdb_sql.parser.dialects.mindsdb.drop_integration import DropIntegration
+from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
+from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
-from mindsdb_sql.parser.dialects.mindsdb.create_integration import CreateIntegration
+from mindsdb_sql.parser.dialects.mindsdb.create_datasource import CreateDatasource
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.exceptions import ParsingException
@@ -43,9 +46,13 @@ class MindsDBParser(Parser):
        'create_view',
        'drop_predictor',
        'retrain_predictor',
-       'drop_integration',
+       'drop_datasource',
+       'drop_dataset',
        'union',
        'select',
+       'insert',
+       'drop_database',
+       'drop_view',
        )
     def query(self, p):
         return p[0]
@@ -60,6 +67,28 @@ class MindsDBParser(Parser):
     def alter_table(self, p):
         return AlterTable(target=p.identifier,
                           arg=' '.join([p.ID0, p.ID1]))
+
+    # DROP VEW
+    @_('DROP VIEW identifier')
+    @_('DROP VIEW IF_EXISTS identifier')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView([p.identifier], if_exists=if_exists)
+
+    @_('DROP VIEW enumeration')
+    @_('DROP VIEW IF_EXISTS enumeration')
+    def drop_view(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropView(p.enumeration, if_exists=if_exists)
+
+    # DROP DATABASE
+    @_('DROP DATABASE identifier')
+    @_('DROP DATABASE IF_EXISTS identifier')
+    @_('DROP SCHEMA identifier')
+    @_('DROP SCHEMA IF_EXISTS identifier')
+    def drop_database(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropDatabase(name=p.identifier, if_exists=if_exists)
 
     # Transactions
 
@@ -77,19 +106,100 @@ class MindsDBParser(Parser):
 
     # Set
 
-    @_('SET AUTOCOMMIT')
+    @_('SET expr_list')
+    @_('SET set_modifier expr_list')
     def set(self, p):
-        return Set(category=p.AUTOCOMMIT)
+        if len(p.expr_list) == 1:
+            arg = p.expr_list[0]
+        else:
+            arg = Tuple(items=p.expr_list)
 
-    @_('SET expr')
-    def set(self, p):
-        return Set(arg=p.expr)
+        if hasattr(p, 'set_modifier'):
+            category = p.set_modifier
+        else:
+            category = None
+
+        return Set(category=category, arg=arg)
 
     @_('SET ID identifier')
     def set(self, p):
         if not p.ID.lower() == 'names':
             raise ParsingException(f'Expected "SET names", got "SET {p.ID}"')
         return Set(category=p.ID.lower(), arg=p.identifier)
+
+    @_('GLOBAL',
+       'PERSIST',
+       'PERSIST_ONLY',
+       'SESSION',
+       )
+    def set_modifier(self, p):
+        return p[0]
+
+    @_('SET charset constant')
+    @_('SET charset DEFAULT')
+    def set(self, p):
+        if hasattr(p, 'DEFAULT'):
+            arg = SpecialConstant('DEFAULT')
+        else:
+            arg = p.constant
+        return Set(category='CHARSET', arg=arg)
+
+    @_('CHARACTER SET',
+       'CHARSET',
+       )
+    def charset(self, p):
+        return p[0]
+
+    # set transaction
+    @_('SET transact_scope TRANSACTION transact_property_list')
+    def set(self, p):
+        isolation_level = None
+        access_mode = None
+        for prop in p.transact_property_list:
+            if prop['type'] == 'iso_level':
+                isolation_level = prop['value']
+            else:
+                access_mode = prop['value']
+
+        return SetTransaction(
+            isolation_level=isolation_level,
+            access_mode=access_mode,
+            scope=p.transact_scope,
+        )
+
+    @_('GLOBAL',
+       'SESSION',
+       'empty')
+    def transact_scope(self, p):
+        return p[0]
+
+    @_('transact_property_list COMMA transact_property')
+    def transact_property_list(self, p):
+        return p.transact_property_list + [p.transact_property]
+
+    @_('transact_property')
+    def transact_property_list(self, p):
+        return [p[0]]
+
+    @_('ISOLATION LEVEL transact_level',
+       'transact_access_mode')
+    def transact_property(self, p):
+        if hasattr(p, 'transact_level'):
+            return {'type': 'iso_level', 'value': p.transact_level}
+        else:
+            return {'type': 'access_mode', 'value': p.transact_access_mode}
+
+    @_('REPEATABLE READ',
+       'READ COMMITTED',
+       'READ UNCOMMITTED',
+       'SERIALIZABLE')
+    def transact_level(self, p):
+        return ' '.join([x for x in p])
+
+    @_('READ WRITE',
+       'READ ONLY')
+    def transact_access_mode(self, p):
+        return ' '.join([x for x in p])
 
     # Show
 
@@ -146,6 +256,27 @@ class MindsDBParser(Parser):
     def show_category(self, p):
         return ' '.join([x for x in p])
 
+    # INSERT
+    @_('INSERT INTO from_table LPAREN result_columns RPAREN select')
+    @_('INSERT INTO from_table select')
+    def insert(self, p):
+        columns = getattr(p, 'result_columns', None)
+        return Insert(table=p.from_table, columns=columns, from_select=p.select)
+
+    @_('INSERT INTO from_table LPAREN result_columns RPAREN VALUES expr_list_set')
+    @_('INSERT INTO from_table VALUES expr_list_set')
+    def insert(self, p):
+        columns = getattr(p, 'result_columns', None)
+        return Insert(table=p.from_table, columns=columns, values=p.expr_list_set)
+
+    @_('expr_list_set COMMA expr_list_set')
+    def expr_list_set(self, p):
+        return p.expr_list_set0 + p.expr_list_set1
+
+    @_('LPAREN expr_list RPAREN')
+    def expr_list_set(self, p):
+        return [p.expr_list]
+
     # DESCRIBE
 
     @_('DESCRIBE identifier')
@@ -160,6 +291,7 @@ class MindsDBParser(Parser):
 
     # CREATE VIEW
     @_('CREATE VIEW ID create_view_from_table_or_nothing AS LPAREN select RPAREN')
+    @_('CREATE DATASET ID create_view_from_table_or_nothing AS LPAREN select RPAREN')
     def create_view(self, p):
         return CreateView(name=p.ID,
                           from_table=p.create_view_from_table_or_nothing,
@@ -184,10 +316,15 @@ class MindsDBParser(Parser):
     def drop_predictor(self, p):
         return DropPredictor(p.identifier)
 
-    # DROP INTEGRATION
-    @_('DROP INTEGRATION identifier')
-    def drop_integration(self, p):
-        return DropIntegration(p.identifier)
+    # DROP DATASOURCE
+    @_('DROP DATASOURCE identifier')
+    def drop_datasource(self, p):
+        return DropDatasource(p.identifier)
+
+    # DROP DATASET
+    @_('DROP DATASET identifier')
+    def drop_dataset(self, p):
+        return DropDataset(p.identifier)
 
     # CREATE PREDICTOR
     @_('create_predictor USING JSON')
@@ -219,12 +356,15 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR identifier FROM identifier WITH STRING optional_data_source_name PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier WITH LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE TABLE identifier FROM identifier WITH LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE TABLE identifier FROM identifier LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
     def create_predictor(self, p):
         return CreatePredictor(
             name=p.identifier0,
             integration_name=p.identifier1,
-            query=p.STRING,
+            query=p.select,
             datasource_name=p.optional_data_source_name,
             targets=p.result_columns,
         )
@@ -243,16 +383,16 @@ class MindsDBParser(Parser):
        'CREATE datasource_engine PARAMETERS EQUALS JSON',
        'CREATE datasource_engine PARAMETERS JSON')
     def create_integration(self, p):
-        return CreateIntegration(name=p.datasource_engine['id'],
+        return CreateDatasource(name=p.datasource_engine['id'],
                                  engine=p.datasource_engine['engine'],
                                  parameters=p.JSON)
 
-    @_('INTEGRATION ID WITH ENGINE EQUALS STRING',
-       'INTEGRATION ID WITH ENGINE STRING',
-       'DATASOURCE ID WITH ENGINE EQUALS STRING',
-       'DATASOURCE ID WITH ENGINE STRING')
+    @_('DATASOURCE ID WITH ENGINE EQUALS string',
+       'DATASOURCE ID WITH ENGINE string',
+       'DATABASE ID WITH ENGINE EQUALS string',
+       'DATABASE ID WITH ENGINE string',)
     def datasource_engine(self, p):
-        return {'id': p.ID, 'engine': p.STRING}
+        return {'id': p.ID, 'engine': p.string}
 
     # UNION / UNION ALL
     @_('select UNION select')
@@ -450,6 +590,12 @@ class MindsDBParser(Parser):
         query.parentheses = True
         return query
 
+    # keywords for table
+    @_('PLUGINS')
+    @_('ENGINES')
+    def from_table(self, p):
+        return Identifier.from_path_str(p[0])
+
     @_('identifier')
     def from_table(self, p):
         return p.identifier
@@ -525,6 +671,10 @@ class MindsDBParser(Parser):
             p.expr.parentheses = True
         return p.expr
 
+    @_('DATABASE LPAREN RPAREN')
+    def expr(self, p):
+        return Function(op=p.DATABASE, args=[])
+
     @_('ID LPAREN DISTINCT expr_list RPAREN')
     def expr(self, p):
         return Function(op=p.ID, distinct=True, args=p.expr_list)
@@ -550,6 +700,11 @@ class MindsDBParser(Parser):
         pass
 
     @_('CAST LPAREN expr AS ID RPAREN')
+    def expr(self, p):
+        return TypeCast(arg=p.expr, type_name=str(p.ID))
+
+    @_('CONVERT LPAREN expr COMMA ID RPAREN')
+    @_('CONVERT LPAREN expr USING ID RPAREN')
     def expr(self, p):
         return TypeCast(arg=p.expr, type_name=str(p.ID))
 
@@ -653,9 +808,14 @@ class MindsDBParser(Parser):
     def constant(self, p):
         return Constant(value=float(p.FLOAT))
 
-    @_('STRING')
+    @_('string')
     def constant(self, p):
-        return Constant(value=str(p.STRING))
+        return Constant(value=str(p[0]))
+
+    @_('QUOTE_STRING')
+    @_('DQUOTE_STRING')
+    def string(self, p):
+        return p[0]
 
     @_('identifier DOT identifier')
     def identifier(self, p):
@@ -669,7 +829,8 @@ class MindsDBParser(Parser):
        'STATUS',
        'PREDICT',
        'PREDICTOR',
-       'PREDICTORS')
+       'PREDICTORS',
+       'DQUOTE_STRING')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)

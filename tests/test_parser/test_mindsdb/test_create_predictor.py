@@ -7,10 +7,11 @@ from mindsdb_sql.utils import to_single_line
 
 
 class TestCreatePredictor:
-    def test_create_predictor_full(self):
-        sql = """CREATE PREDICTOR pred
+    @pytest.mark.parametrize('keyword', ['PREDICTOR', 'TABLE'])
+    def test_create_predictor_full(self, keyword):
+        sql = """CREATE %s pred
                 FROM integration_name 
-                WITH 'select * FROM table'
+                WITH (select * FROM table_name)
                 AS ds_name
                 PREDICT f1 as f1_alias, f2
                 ORDER BY f_order_1 ASC, f_order_2, f_order_3 DESC
@@ -18,12 +19,15 @@ class TestCreatePredictor:
                 WINDOW 100
                 HORIZON 7
                 USING {"x": 1, "y": "a"}
-                """
+                """ % keyword
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreatePredictor(
             name=Identifier('pred'),
             integration_name=Identifier('integration_name'),
-            query='select * FROM table',
+            query=Select(
+                targets=[Star()],
+                from_table=Identifier('table_name')
+            ),
             datasource_name=Identifier('ds_name'),
             targets=[Identifier('f1', alias=Identifier('f1_alias')),
                              Identifier('f2')],
@@ -36,14 +40,13 @@ class TestCreatePredictor:
             horizon=7,
             using=dict(x=1, y="a"),
         )
-        assert str(ast).lower() == to_single_line(sql.lower())
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_create_predictor_minimal(self):
         sql = """CREATE PREDICTOR pred
                 FROM integration_name 
-                WITH 'select * FROM table'
+                WITH (select * FROM table_name)
                 AS ds_name
                 PREDICT f1 as f1_alias, f2
                 """
@@ -51,7 +54,10 @@ class TestCreatePredictor:
         expected_ast = CreatePredictor(
             name=Identifier('pred'),
             integration_name=Identifier('integration_name'),
-            query='select * FROM table',
+            query=Select(
+                targets=[Star()],
+                from_table=Identifier('table_name')
+            ),
             datasource_name=Identifier('ds_name'),
             targets=[Identifier('f1', alias=Identifier('f1_alias')),
                              Identifier('f2')],
@@ -60,10 +66,31 @@ class TestCreatePredictor:
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()
 
+    def test_create_predictor_no_with(self):
+        sql = """CREATE PREDICTOR pred
+                FROM integration_name 
+                (select * FROM table_name)
+                AS ds_name
+                PREDICT f1 as f1_alias, f2
+                """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreatePredictor(
+            name=Identifier('pred'),
+            integration_name=Identifier('integration_name'),
+            query=Select(
+                targets=[Star()],
+                from_table=Identifier('table_name')
+            ),
+            datasource_name=Identifier('ds_name'),
+            targets=[Identifier('f1', alias=Identifier('f1_alias')),
+                             Identifier('f2')],
+        )
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_create_predictor_quotes(self):
         sql = """CREATE PREDICTOR xxx 
                  FROM `yyy` 
-                  WITH 'SELECT * FROM zzz'
+                  WITH (SELECT * FROM zzz)
                   AS x 
                   PREDICT sss
                 """
@@ -71,17 +98,20 @@ class TestCreatePredictor:
         expected_ast = CreatePredictor(
             name=Identifier('xxx'),
             integration_name=Identifier('yyy'),
-            query='SELECT * FROM zzz',
+            query=Select(
+                targets=[Star()],
+                from_table=Identifier('zzz')
+            ),
             datasource_name=Identifier('x'),
             targets=[Identifier('sss')],
         )
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()
 
-    def test_create_predictor_invalid_json(self):
+    def xtest_create_predictor_invalid_json(self):
         sql = """CREATE PREDICTOR pred
                 FROM integration_name 
-                WITH 'select * FROM table'
+                WITH (select * FROM table)
                 AS ds_name
                 PREDICT f1 as f1_alias, f2
                 ORDER BY f_order_1 ASC, f_order_2, f_order_3 DESC

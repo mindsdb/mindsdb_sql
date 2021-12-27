@@ -76,33 +76,33 @@ class TestLexer:
         sql = 'SELECT "a", "b", "c"'
         tokens = list(SQLLexer().tokenize(sql))
         assert tokens[0].type == 'SELECT'
-        assert tokens[1].type == 'STRING'
+        assert tokens[1].type == 'DQUOTE_STRING'
         assert tokens[1].value == 'a'
         assert tokens[2].type == 'COMMA'
-        assert tokens[3].type == 'STRING'
+        assert tokens[3].type == 'DQUOTE_STRING'
         assert tokens[3].value == 'b'
-        assert tokens[5].type == 'STRING'
+        assert tokens[5].type == 'DQUOTE_STRING'
         assert tokens[5].value == 'c'
 
         sql = "SELECT 'a', 'b', 'c'"
         tokens = list(SQLLexer().tokenize(sql))
         assert tokens[0].type == 'SELECT'
-        assert tokens[1].type == 'STRING'
+        assert tokens[1].type == 'QUOTE_STRING'
         assert tokens[1].value == 'a'
         assert tokens[2].type == 'COMMA'
-        assert tokens[3].type == 'STRING'
+        assert tokens[3].type == 'QUOTE_STRING'
         assert tokens[3].value == 'b'
-        assert tokens[5].type == 'STRING'
+        assert tokens[5].type == 'QUOTE_STRING'
         assert tokens[5].value == 'c'
 
     def test_select_strings_nested(self, lexer):
         sql = "SELECT '\"a\"', \"'b'\" "
         tokens = list(SQLLexer().tokenize(sql))
         assert tokens[0].type == 'SELECT'
-        assert tokens[1].type == 'STRING'
+        assert tokens[1].type == 'QUOTE_STRING'
         assert tokens[1].value == '"a"'
         assert tokens[2].type == 'COMMA'
-        assert tokens[3].type == 'STRING'
+        assert tokens[3].type == 'DQUOTE_STRING'
         assert tokens[3].value == "'b'"
 
     def test_binary_ops(self, lexer):
@@ -209,7 +209,7 @@ class TestLexer:
         assert tokens[5].value == 'column'
         assert tokens[6].type == 'EQUALS'
         assert tokens[6].value == '='
-        assert tokens[7].type == 'STRING'
+        assert tokens[7].type == 'DQUOTE_STRING'
         assert tokens[7].value == 'something'
 
     def test_select_group_by(self, lexer):
@@ -304,6 +304,6 @@ class TestLexer:
         assert tokens[4].type == 'CHARSET'
         assert tokens[4].value == 'charset'
         assert tokens[5].value == '='
-        assert tokens[6].type == 'STRING'
+        assert tokens[6].type == 'QUOTE_STRING'
         assert tokens[6].value == 'utf8mb4'
 

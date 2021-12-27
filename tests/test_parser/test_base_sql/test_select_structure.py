@@ -737,3 +737,40 @@ class TestSelectStructure:
                               ]))
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+
+@pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
+class TestSelectStructureNoSqlite:
+    def test_select_from_plugins(self, dialect):
+        query = "select * from information_schema.plugins"
+        expected_ast = Select(
+            targets=[Star()],
+            from_table=Identifier(parts=['information_schema', 'plugins'])
+        )
+        ast = parse_sql(query, dialect=dialect)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        query = "select * from plugins"
+        expected_ast = Select(
+            targets=[Star()],
+            from_table=Identifier(parts=['plugins'])
+        )
+        ast = parse_sql(query, dialect=dialect)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+
+    def test_type_convert(self, dialect):
+        sql = f"""SELECT CONVERT(column1, float)"""
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[TypeCast(type_name='float', arg=Identifier(parts=['column1']))])
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = f"""SELECT CONVERT((column1 + column2) USING float)"""
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[TypeCast(type_name='float', arg=BinaryOperation(op='+', parentheses=True, args=[
+            Identifier(parts=['column1']), Identifier(parts=['column2'])]))])
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
