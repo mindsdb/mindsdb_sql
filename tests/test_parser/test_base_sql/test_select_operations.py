@@ -261,19 +261,6 @@ class TestOperations:
 
             assert str(ast).lower() == sql.lower()
 
-    def test_select_function_no_args(self, dialect):
-        sql = f'SELECT database() FROM tab'
-        ast = parse_sql(sql, dialect=dialect)
-
-        expected_ast = Select(
-            targets=[Function(op='database', args=tuple())],
-            from_table=Identifier.from_path_str('tab'),
-        )
-
-        assert str(ast).lower() == sql.lower()
-        assert str(ast) == str(expected_ast)
-        assert ast.to_tree() == expected_ast.to_tree()
-
     def test_select_function_one_arg(self, dialect):
         funcs = ['sum', 'min', 'max', 'some_custom_function']
         for func in funcs:
@@ -435,6 +422,43 @@ class TestOperations:
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
 
+
+    def test_select_status(self, dialect):
+        sql = 'select status from mindsdb.predictors'
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[Identifier.from_path_str("status")],
+                              from_table=Identifier.from_path_str('mindsdb.predictors')
+                             )
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)
+
+    def test_select_double_quote(self, dialect):
+        sql = 'select status from "mindsdb.predictors"'
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[Identifier.from_path_str("status")],
+                              from_table=Identifier.from_path_str('mindsdb.predictors')
+                             )
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+# it doesn't work in sqlite
+@pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
+class TestOperationsNoSqlite:
+
+    def test_select_function_no_args(self, dialect):
+        sql = f'SELECT database() FROM tab'
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[Function(op='database', args=tuple())],
+            from_table=Identifier.from_path_str('tab'),
+        )
+
+        assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_select_functions(self, dialect):
         sqls = [
             "SELECT connection_id()",
@@ -449,13 +473,3 @@ class TestOperations:
             assert isinstance(ast, Select)
             assert len(ast.targets) == 1
             assert isinstance(ast.targets[0], Function)
-
-    def test_select_status(self, dialect):
-        sql = 'select status from mindsdb.predictors'
-        ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Select(targets=[Identifier.from_path_str("status")],
-                              from_table=Identifier.from_path_str('mindsdb.predictors')
-                             )
-        assert ast.to_tree() == expected_ast.to_tree()
-        assert str(ast).lower() == sql.lower()
-        assert str(ast) == str(expected_ast)

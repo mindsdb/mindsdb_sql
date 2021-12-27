@@ -1,9 +1,10 @@
 import json
-from mindsdb_sql.parser.ast.base import ASTNode
+from mindsdb_sql.parser.ast.drop import Drop
 from mindsdb_sql.utils import indent
 
 
-class DropIntegration(ASTNode):
+# currently, not used
+class DropIntegration(Drop):
     def __init__(self,
                  name,
                  *args, **kwargs):

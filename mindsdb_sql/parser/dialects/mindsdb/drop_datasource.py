@@ -3,7 +3,7 @@ from mindsdb_sql.parser.ast.drop import Drop
 from mindsdb_sql.utils import indent
 
 
-class DropPredictor(Drop):
+class DropDatasource(Drop):
     def __init__(self,
                  name,
                  *args, **kwargs):
@@ -15,12 +15,12 @@ class DropPredictor(Drop):
         ind1 = indent(level+1)
         name_str = f'\n{ind1}name={self.name.to_tree()},'
 
-        out_str = f'{ind}DropPredictor(' \
+        out_str = f'{ind}DropDatasource(' \
                   f'{name_str}' \
                   f'\n{ind})'
         return out_str
 
     def get_string(self, *args, **kwargs):
-        out_str = f'DROP PREDICTOR {str(self.name)}'
+        out_str = f'DROP DATASOURCE {str(self.name)}'
         return out_str
 

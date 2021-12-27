@@ -3,7 +3,7 @@ from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.utils import indent
 
 
-class CreateIntegration(ASTNode):
+class CreateDatasource(ASTNode):
     def __init__(self,
                  name,
                  engine,
@@ -21,7 +21,7 @@ class CreateIntegration(ASTNode):
         engine_str = f'\n{ind1}engine={repr(self.engine)},'
         parameters_str = f'\n{ind1}parameters={str(self.parameters)},'
 
-        out_str = f'{ind}CreateIntegration(' \
+        out_str = f'{ind}CreateDatasource(' \
                   f'{name_str}' \
                   f'{engine_str}' \
                   f'{parameters_str}' \
@@ -29,5 +29,5 @@ class CreateIntegration(ASTNode):
         return out_str
 
     def get_string(self, *args, **kwargs):
-        out_str = f'CREATE INTEGRATION {str(self.name)} WITH ENGINE = {repr(self.engine)}, PARAMETERS = {json.dumps(self.parameters)}'
+        out_str = f'CREATE DATASOURCE {str(self.name)} WITH ENGINE = {repr(self.engine)}, PARAMETERS = {json.dumps(self.parameters)}'
         return out_str
