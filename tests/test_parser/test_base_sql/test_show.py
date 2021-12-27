@@ -21,6 +21,7 @@ class TestShow:
            'FUNCTION STATUS',
            'CREATE TABLE',
            'WARNINGS',
+           'ENGINES',
            'CHARSET',
            'CHARACTER SET',
            'COLLATION',

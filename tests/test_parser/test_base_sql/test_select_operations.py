@@ -4,7 +4,7 @@ from mindsdb_sql import parse_sql
 from mindsdb_sql.parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, NullConstant
 from mindsdb_sql.parser.ast import Function, BetweenOperation
 from mindsdb_sql.parser.ast import Tuple
-
+from mindsdb_sql.parser.ast import *
 
 @pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
 class TestOperations:
@@ -442,6 +442,15 @@ class TestOperations:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_select_from_engines(self, dialect):
+        sql = 'select * from engines'
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[Star()],
+                              from_table=Identifier.from_path_str('engines')
+                             )
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
 # it doesn't work in sqlite
 @pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
 class TestOperationsNoSqlite:
@@ -451,7 +460,7 @@ class TestOperationsNoSqlite:
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
-            targets=[Function(op='database', args=tuple())],
+            targets=[Function(op='database', args=[])],
             from_table=Identifier.from_path_str('tab'),
         )
 

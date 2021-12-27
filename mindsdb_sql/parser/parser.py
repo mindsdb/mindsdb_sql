@@ -122,6 +122,7 @@ class SQLParser(Parser):
        'INDEX',
        'CREATE TABLE',
        'WARNINGS',
+       'ENGINES',
        'CHARSET',
        'CHARACTER SET',
        'COLLATION',
@@ -350,6 +351,12 @@ class SQLParser(Parser):
         query = p.query
         query.parentheses = True
         return query
+
+    # keywords for table
+    @_('PLUGINS')
+    @_('ENGINES')
+    def from_table(self, p):
+        return Identifier.from_path_str(p[0])
 
     @_('identifier')
     def from_table(self, p):

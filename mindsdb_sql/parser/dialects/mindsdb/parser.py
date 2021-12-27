@@ -238,6 +238,7 @@ class MindsDBParser(Parser):
        'INDEX',
        'CREATE TABLE',
        'WARNINGS',
+       'ENGINES',
        'CHARSET',
        'CHARACTER SET',
        'COLLATION',
@@ -589,10 +590,11 @@ class MindsDBParser(Parser):
         query.parentheses = True
         return query
 
-    # plugins can be a table
+    # keywords for table
     @_('PLUGINS')
+    @_('ENGINES')
     def from_table(self, p):
-        return Identifier.from_path_str(p.PLUGINS)
+        return Identifier.from_path_str(p[0])
 
     @_('identifier')
     def from_table(self, p):
