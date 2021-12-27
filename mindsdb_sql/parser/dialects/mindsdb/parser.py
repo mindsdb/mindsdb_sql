@@ -550,38 +550,40 @@ class MindsDBParser(Parser):
         select.from_table = Identifier(p.TABLES)
         return select
 
-    @_('select FROM from_table')
+    @_('select FROM from_table_aliased')
     def select(self, p):
         select = p.select
         ensure_select_keyword_order(select, 'FROM')
-        select.from_table = p.from_table
+        select.from_table = p.from_table_aliased
         return select
 
-    @_('from_table join_clause from_table')
-    def from_table(self, p):
-        return Join(left=p.from_table0,
-                    right=p.from_table1,
+    @_('from_table_aliased join_clause from_table_aliased')
+    def from_table_aliased(self, p):
+        return Join(left=p.from_table_aliased0,
+                    right=p.from_table_aliased1,
                     join_type=p.join_clause)
 
-    @_('from_table COMMA from_table')
-    def from_table(self, p):
-        return Join(left=p.from_table0,
-                    right=p.from_table1,
+    @_('from_table_aliased COMMA from_table_aliased')
+    def from_table_aliased(self, p):
+        return Join(left=p.from_table_aliased0,
+                    right=p.from_table_aliased1,
                     join_type=JoinType.INNER_JOIN,
                     implicit=True)
 
-    @_('from_table join_clause from_table ON expr')
-    def from_table(self, p):
-        return Join(left=p.from_table0,
-                    right=p.from_table1,
+    @_('from_table_aliased join_clause from_table_aliased ON expr')
+    def from_table_aliased(self, p):
+        return Join(left=p.from_table_aliased0,
+                    right=p.from_table_aliased1,
                     join_type=p.join_clause,
                     condition=p.expr)
 
     @_('from_table AS identifier',
-       'from_table identifier')
-    def from_table(self, p):
+       'from_table identifier',
+       'from_table')
+    def from_table_aliased(self, p):
         entity = p.from_table
-        entity.alias = p.identifier
+        if hasattr(p, 'identifier'):
+            entity.alias = p.identifier
         return entity
 
     @_('LPAREN query RPAREN')

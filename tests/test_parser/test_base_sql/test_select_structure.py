@@ -738,6 +738,12 @@ class TestSelectStructure:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_double_aliased_table(self, dialect):
+        sql = "select * from table1 zzzzz alias1"
+
+        with pytest.raises(ParsingException):
+            parse_sql(sql, dialect=dialect)
+
 
 @pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
 class TestSelectStructureNoSqlite:
