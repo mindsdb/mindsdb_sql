@@ -947,3 +947,20 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_timeseries_not_change_query(self):
+        sql = "select * from ds.data as ta left join mindsdb.pr as tb where ta.f2 in ('a') and ta.f1 > LATEST"
+        query = parse_sql(sql,  dialect='mindsdb')
+
+        query_tree = query.to_tree()
+
+        plan = plan_query(
+            query,
+            integrations=['ds', 'int'],
+            predictor_namespace='mindsdb',
+            predictor_metadata={
+                'pr': {'timeseries': True, 'window': 3, 'order_by_column': 'f1', 'group_by_column': 'f2'}},
+            default_namespace='mindsdb'
+        )
+
+        assert query.to_tree() == query_tree

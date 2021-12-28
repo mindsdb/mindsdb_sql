@@ -236,7 +236,6 @@ class QueryPlan:
             integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
             integration_selects = [integration_select]
 
-            query.where = find_and_remove_time_filter(query.where, time_filter)
         elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('>', '>='):
             time_filter_date = time_filter.args[1]
             preparation_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
