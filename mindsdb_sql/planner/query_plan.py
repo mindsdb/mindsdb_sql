@@ -295,11 +295,13 @@ class QueryPlan:
 
         # Update reference
         integration_name, table = self.get_integration_path_from_identifier_or_error(table)
+        table_alias = table.alias or Identifier(table.to_string(alias=False).replace('.', '_'))
+
         join = Join(
             left=Identifier(predictor_step.result.ref_name,
                              alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
             right=Identifier(predictor_inputs.ref_name,
-                             alias=table.alias or Identifier(table.to_string(alias=False))),
+                             alias=table_alias),
             join_type=JoinType.LEFT_JOIN)
         final_step = self.add_step(JoinStep(left=predictor_step.result, right=predictor_inputs, query=join))
 
@@ -340,7 +342,7 @@ class QueryPlan:
     def plan_project(self, query, dataframe):
         out_identifiers = []
         for target in query.targets:
-            if isinstance(target, Identifier) or isinstance(target, Star):
+            if isinstance(target, Identifier) or isinstance(target, Star) or isinstance(target, Constant):
                 out_identifiers.append(target)
             else:
                 new_identifier = Identifier(str(target.to_string(alias=False)), alias=target.alias)
