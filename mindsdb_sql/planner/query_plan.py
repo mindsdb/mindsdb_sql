@@ -151,8 +151,7 @@ class QueryPlan:
         project_step = self.plan_project(select, predictor_step.result)
         return predictor_step, project_step
 
-    def plan_join_table_and_predictor(self, query, table, predictor_namespace, predictor):
-        join = query.from_table
+    def plan_predictor(self, query, table, predictor_namespace, predictor):
         integration_select_step = self.plan_integration_select(
             Select(targets=[Star()],
                                             from_table=table,
@@ -168,12 +167,10 @@ class QueryPlan:
                                          dataframe=integration_select_step.result,
                                          predictor=predictor))
 
-        integration_name, table = self.get_integration_path_from_identifier_or_error(table)
-        new_join = Join(left=Identifier(integration_select_step.result.ref_name, alias=table.alias or Identifier(table.to_string(alias=False))),
-                        right=Identifier(predictor_step.result.ref_name, alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
-                        join_type=join.join_type)
-        join_step = self.add_step(JoinStep(left=integration_select_step.result, right=predictor_step.result, query=new_join))
-        return join_step
+        return {
+            'predictor': predictor_step,
+            'data': integration_select_step
+        }
 
     def plan_fetch_timeseries_partitions(self, query, table, predictor_group_by_name):
         query = Select(
@@ -185,7 +182,7 @@ class QueryPlan:
         select_step = self.plan_integration_select(query)
         return select_step
 
-    def plan_join_table_and_timeseries_predictor(self, query, table, predictor_namespace, predictor):
+    def plan_timeseries_predictor(self, query, table, predictor_namespace, predictor):
         predictor_name = predictor.to_string(alias=False)
 
         predictor_time_column_name = self.predictor_metadata[predictor_name]['order_by_column']
@@ -293,21 +290,12 @@ class QueryPlan:
             )
         )
 
-        # Update reference
-        integration_name, table = self.get_integration_path_from_identifier_or_error(table)
-        table_alias = table.alias or Identifier(table.to_string(alias=False).replace('.', '_'))
+        return {
+            'predictor': predictor_step,
+            'data': map_reduce_step,
+            'saved_limit': saved_limit,
+        }
 
-        join = Join(
-            left=Identifier(predictor_step.result.ref_name,
-                             alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
-            right=Identifier(predictor_inputs.ref_name,
-                             alias=table_alias),
-            join_type=JoinType.LEFT_JOIN)
-        final_step = self.add_step(JoinStep(left=predictor_step.result, right=predictor_inputs, query=join))
-
-        if saved_limit:
-            final_step = self.add_step(LimitOffsetStep(dataframe=final_step.result, limit=saved_limit))
-        return final_step
 
     def plan_join_two_tables(self, join):
         select_left_step = self.plan_integration_select(Select(targets=[Star()], from_table=join.left))
@@ -364,8 +352,10 @@ class QueryPlan:
             predictor_namespace = None
             predictor = None
             table = None
+            predictor_is_left = False
             if self.is_predictor(join.left):
                 predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join.left, self.default_namespace)
+                predictor_is_left = True
             else:
                 table = join.left
 
@@ -381,9 +371,37 @@ class QueryPlan:
                 # Then join results of applying mindsdb with table
 
                 if self.predictor_metadata[predictor.to_string(alias=False)].get('timeseries'):
-                    last_step = self.plan_join_table_and_timeseries_predictor(query, table, predictor_namespace, predictor)
+                    predictor_steps = self.plan_timeseries_predictor(query, table, predictor_namespace, predictor)
                 else:
-                    last_step = self.plan_join_table_and_predictor(query, table, predictor_namespace, predictor)
+                    predictor_steps = self.plan_predictor(query, table, predictor_namespace, predictor)
+
+                # add join
+                # Update reference
+                _, table = self.get_integration_path_from_identifier_or_error(table)
+                table_alias = table.alias or Identifier(table.to_string(alias=False).replace('.', '_'))
+
+                left = Identifier(predictor_steps['predictor'].result.ref_name,
+                                   alias=predictor.alias or Identifier(predictor.to_string(alias=False)))
+                right = Identifier(predictor_steps['data'].result.ref_name, alias=table_alias)
+
+                if not predictor_is_left:
+                    # swap join
+                    left, right = right, left
+                new_join = Join(left=left, right=right, join_type=join.join_type)
+
+                left = predictor_steps['predictor'].result
+                right = predictor_steps['data'].result
+                if not predictor_is_left:
+                    # swap join
+                    left, right = right, left
+
+                last_step = self.add_step(JoinStep(left=left, right=right, query=new_join))
+
+                # limit from timeseries
+                if predictor_steps.get('saved_limit'):
+                    last_step = self.add_step(LimitOffsetStep(dataframe=last_step.result,
+                                                              limit=predictor_steps['saved_limit']))
+
             else:
                 # Both arguments are tables, join results of 2 dataframe fetches
 

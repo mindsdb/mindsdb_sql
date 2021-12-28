@@ -14,3 +14,6 @@ class Result:
     @property
     def ref_name(self):
         return f'result_{self.step_num}'
+
+    def __repr__(self):
+        return f'Result(step={self.step_num})'
