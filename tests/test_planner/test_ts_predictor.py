@@ -964,3 +964,20 @@ class TestJoinTimeseriesPredictor:
         )
 
         assert query.to_tree() == query_tree
+
+    def test_timeseries_without_group(self):
+        sql = "select * from ds.data as ta left join mindsdb.pr as tb where ta.f1 > LATEST"
+        query = parse_sql(sql,  dialect='mindsdb')
+
+        query_tree = query.to_tree()
+
+        plan = plan_query(
+            query,
+            integrations=['ds', 'int'],
+            predictor_namespace='mindsdb',
+            predictor_metadata={
+                'pr': {'timeseries': True, 'window': 3, 'order_by_column': 'f1', 'group_by_column': None}},
+            default_namespace='mindsdb'
+        )
+
+        assert query.to_tree() == query_tree

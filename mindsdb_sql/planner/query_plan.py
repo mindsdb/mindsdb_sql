@@ -198,13 +198,12 @@ class QueryPlan:
         if query.group_by or query.having or query.offset:
             raise PlanningException(f'Unsupported query to timeseries predictor: {str(query)}')
 
-        validate_ts_where_condition(query.where, allowed_columns=[predictor_time_column_name, predictor_group_by_name])
+        allowed_columns = [predictor_time_column_name]
+        if predictor_group_by_name is not None:
+            allowed_columns.append(predictor_group_by_name)
+        validate_ts_where_condition(query.where, allowed_columns=allowed_columns)
 
         time_filter = find_time_filter(query.where, time_column_name=predictor_time_column_name)
-
-        no_time_filter_query = copy.deepcopy(query)
-        no_time_filter_query.where = find_and_remove_time_filter(no_time_filter_query.where, time_filter)
-        select_partitions_step = self.plan_fetch_timeseries_partitions(no_time_filter_query, table, predictor_group_by_name)
 
         order_by = [OrderBy(Identifier(parts=[predictor_time_column_name]), direction='DESC')]
 
@@ -263,35 +262,56 @@ class QueryPlan:
                                         )
             integration_selects = [integration_select]
 
-        # Obtain map step for all partitions
-        for integration_select in integration_selects:
-            if not integration_select.where:
-                integration_select.where = BinaryOperation('=', args=[Identifier(predictor_group_by_name), Constant('$var')])
+        if predictor_group_by_name is None:
+            # ts query without grouping
+            # one or multistep
+            if len(integration_selects) == 1:
+                select_partition_step = self.get_integration_select_step(integration_selects[0])
             else:
-                integration_select.where = BinaryOperation('and', args=[integration_select.where,
-                                                           BinaryOperation('=', args=[Identifier(predictor_group_by_name),
-                                                                                  Constant('$var')])])
+                select_partition_step = MultipleSteps(
+                    steps=[self.get_integration_select_step(s) for s in integration_selects], reduce='union')
 
-        if len(integration_selects) == 1:
-            select_partition_step = self.get_integration_select_step(integration_selects[0])
+            # fetch data step
+            data_step = self.add_step(select_partition_step)
         else:
-            select_partition_step = MultipleSteps(steps=[self.get_integration_select_step(s) for s in integration_selects], reduce='union')
+            # inject $var to queries
+            for integration_select in integration_selects:
+                if not integration_select.where:
+                    integration_select.where = BinaryOperation('=', args=[Identifier(predictor_group_by_name),
+                                                                          Constant('$var')])
+                else:
+                    integration_select.where = BinaryOperation('and', args=[integration_select.where,
+                                                                            BinaryOperation('=', args=[
+                                                                                Identifier(predictor_group_by_name),
+                                                                                Constant('$var')])])
+            # one or multistep
+            if len(integration_selects) == 1:
+                select_partition_step = self.get_integration_select_step(integration_selects[0])
+            else:
+                select_partition_step = MultipleSteps(
+                    steps=[self.get_integration_select_step(s) for s in integration_selects], reduce='union')
 
-        map_reduce_step = self.add_step(MapReduceStep(values=select_partitions_step.result, reduce='union', step=select_partition_step))
+            # get groping values
+            no_time_filter_query = copy.deepcopy(query)
+            no_time_filter_query.where = find_and_remove_time_filter(no_time_filter_query.where, time_filter)
+            select_partitions_step = self.plan_fetch_timeseries_partitions(no_time_filter_query, table, predictor_group_by_name)
 
-        predictor_inputs = map_reduce_step.result
+            # sub-query by every grouping value
+            map_reduce_step = self.add_step(MapReduceStep(values=select_partitions_step.result, reduce='union', step=select_partition_step))
+            data_step = map_reduce_step
+
         predictor_step = self.add_step(
             ApplyTimeseriesPredictorStep(
                 output_time_filter=time_filter,
                 namespace=predictor_namespace,
-                dataframe=predictor_inputs,
+                dataframe=data_step.result,
                 predictor=predictor,
             )
         )
 
         return {
             'predictor': predictor_step,
-            'data': map_reduce_step,
+            'data': data_step,
             'saved_limit': saved_limit,
         }
 
