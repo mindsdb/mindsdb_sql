@@ -954,7 +954,7 @@ class TestJoinTimeseriesPredictor:
 
         query_tree = query.to_tree()
 
-        plan = plan_query(
+        plan_query(
             query,
             integrations=['ds', 'int'],
             predictor_namespace='mindsdb',
@@ -966,18 +966,49 @@ class TestJoinTimeseriesPredictor:
         assert query.to_tree() == query_tree
 
     def test_timeseries_without_group(self):
-        sql = "select * from ds.data as ta left join mindsdb.pr as tb where ta.f1 > LATEST"
+        sql = "select * from ds.data.ny_output as ta join mindsdb.pr as tb where ta.f1 > LATEST"
         query = parse_sql(sql,  dialect='mindsdb')
 
-        query_tree = query.to_tree()
+        predictor_window = 3
+        expected_plan = QueryPlan(
+            default_namespace='ds',
+            steps=[
+                FetchDataframeStep(
+                    integration='ds',
+                    query=Select(
+                       targets=[Star()],
+                       from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                       order_by=[OrderBy(Identifier('ta.f1'), direction='DESC')],
+                       limit=Constant(predictor_window),
+                    )
+                ),
+                ApplyTimeseriesPredictorStep(
+                    namespace='mindsdb',
+                    predictor=Identifier('pr', alias=Identifier('tb')),
+                    dataframe=Result(0),
+                    output_time_filter=BinaryOperation('>', args=[Identifier('ta.f1'), Latest()]),
+                ),
+                JoinStep(left=Result(0),
+                         right=Result(1),
+                         query=Join(
+                             left=Identifier('result_0', alias=Identifier('ta')),
+                             right=Identifier('result_1', alias=Identifier('tb')),
+                             join_type=JoinType.JOIN)
+                         ),
+                ProjectStep(dataframe=Result(2), columns=[Star()]),
+            ],
+        )
 
         plan = plan_query(
             query,
             integrations=['ds', 'int'],
             predictor_namespace='mindsdb',
             predictor_metadata={
-                'pr': {'timeseries': True, 'window': 3, 'order_by_column': 'f1', 'group_by_column': None}},
+                'pr': {'timeseries': True, 'window': predictor_window, 'order_by_column': 'f1', 'group_by_column': None}},
             default_namespace='mindsdb'
         )
 
-        assert query.to_tree() == query_tree
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
+
