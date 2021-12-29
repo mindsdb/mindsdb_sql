@@ -1012,3 +1012,55 @@ class TestJoinTimeseriesPredictor:
             assert plan.steps[i] == expected_plan.steps[i]
 
 
+    def test_timeseries_with_between_operator(self):
+        sql = "select * from ds.data.ny_output as ta \
+               left join mindsdb.pr as tb \
+               where ta.f2 between '2020-11-01' and '2020-12-01' and ta.f1 > LATEST"
+        query = parse_sql(sql,  dialect='mindsdb')
+
+        predictor_window = 3
+        expected_plan = QueryPlan(
+            default_namespace='ds',
+            steps=[
+                FetchDataframeStep(integration='ds',
+                                   query=parse_sql("SELECT DISTINCT ta.f2 AS f2 FROM data.ny_output as ta\
+                                                    WHERE ta.f2 BETWEEN '2020-11-01' AND '2020-12-01'")),
+                MapReduceStep(values=Result(0),
+                              reduce='union',
+                              step=FetchDataframeStep(
+                                  integration='ds',
+                                  query=parse_sql(f"SELECT * FROM data.ny_output as ta \
+                                                   WHERE ta.f2 BETWEEN '2020-11-01' AND '2020-12-01' \
+                                                   AND ta.f2 = '$var' \
+                                                   ORDER BY ta.f1 DESC LIMIT {predictor_window}")
+                              ),
+                ),
+                ApplyTimeseriesPredictorStep(
+                    output_time_filter=BinaryOperation('>', args=[Identifier('ta.f1'), Latest()]),
+                    namespace='mindsdb',
+                    predictor=Identifier('pr', alias=Identifier('tb')),
+                    dataframe=Result(1)),
+                JoinStep(left=Result(1),
+                         right=Result(2),
+                         query=Join(
+                             right=Identifier('result_2', alias=Identifier('tb')),
+                             left=Identifier('result_1', alias=Identifier('ta')),
+                             join_type=JoinType.LEFT_JOIN)
+                         ),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=['ds', 'int'],
+            predictor_namespace='mindsdb',
+            predictor_metadata={
+                'pr': {'timeseries': True, 'window': predictor_window, 'order_by_column': 'f1', 'group_by_column': 'f2'}},
+            default_namespace='mindsdb'
+        )
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
+

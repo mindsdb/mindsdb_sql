@@ -1,7 +1,8 @@
 import copy
 
 from mindsdb_sql.exceptions import PlanningException
-from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryOperation, Constant, OrderBy)
+from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryOperation, Constant,
+                                    OrderBy, BetweenOperation)
 
 
 def get_integration_path_from_identifier(identifier):
@@ -118,7 +119,7 @@ def recursively_disambiguate_identifiers_in_select(select, integration_name, tab
         if isinstance(select.from_table, Identifier):
             select.from_table = table
     if select.where:
-        if not isinstance(select.where, BinaryOperation):
+        if not isinstance(select.where, BinaryOperation) and not isinstance(select.where, BetweenOperation):
             raise PlanningException(
                 f'Unsupported where clause {type(select.where)}, only BinaryOperation is supported now.')
 
