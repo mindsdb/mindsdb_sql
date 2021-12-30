@@ -744,6 +744,67 @@ class TestSelectStructure:
         with pytest.raises(ParsingException):
             parse_sql(sql, dialect=dialect)
 
+    def test_window_function(self, dialect):
+        query = "select SUM(col0) OVER (PARTITION BY col1 order by col2) as al from table1 "
+        expected_ast = Select(
+            targets=[
+                WindowFunction(
+                    function=Function(op='sum', args=[Identifier('col0')]),
+                    partition=[Identifier('col1')],
+                    order_by=[OrderBy(field=Identifier('col2'))],
+                    alias=Identifier('al')
+                )
+            ],
+            from_table=Identifier('table1')
+        )
+        ast = parse_sql(query, dialect=dialect)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        # no partition
+        query = "select SUM(col0) OVER (order by col2) from table1 "
+        expected_ast = Select(
+            targets=[
+                WindowFunction(
+                    function=Function(op='sum', args=[Identifier('col0')]),
+                    order_by=[OrderBy(field=Identifier('col2'))],
+                )
+            ],
+            from_table=Identifier('table1')
+        )
+        ast = parse_sql(query, dialect=dialect)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        # no order by
+        query = "select SUM(col0) OVER (PARTITION BY col1) from table1 "
+        expected_ast = Select(
+            targets=[
+                WindowFunction(
+                    function=Function(op='sum', args=[Identifier('col0')]),
+                    partition=[Identifier('col1')],
+                )
+            ],
+            from_table=Identifier('table1')
+        )
+        ast = parse_sql(query, dialect=dialect)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        # just over()
+        query = "select SUM(col0) OVER () from table1 "
+        expected_ast = Select(
+            targets=[
+                WindowFunction(
+                    function=Function(op='sum', args=[Identifier('col0')]),
+                )
+            ],
+            from_table=Identifier('table1')
+        )
+        ast = parse_sql(query, dialect=dialect)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
 
 @pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
 class TestSelectStructureNoSqlite:

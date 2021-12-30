@@ -77,3 +77,51 @@ class Function(Operation):
         args_str = ', '.join([arg.to_string() for arg in self.args])
         distinct_str = 'DISTINCT ' if self.distinct else ''
         return f'{self.op}({distinct_str}{args_str})'
+
+
+class WindowFunction(Operation):
+    def __init__(self, function, partition=None, order_by=None, alias=None):
+        self.function = function
+        self.partition = partition
+        self.order_by = order_by
+        self.alias = alias
+
+    def to_tree(self, *args, level=0, **kwargs):
+        fnc_str = self.function.to_tree(level=level+2)
+        ind = indent(level)
+        ind1 = indent(level+1)
+        partition_str = ''
+        if self.partition is not None:
+            partition_str = f',\n'.join([arg.to_tree(level=level+2) for arg in self.partition])
+            partition_str = f'\n{ind1}partition=\n{partition_str}'
+
+        order_str = ''
+        if self.order_by is not None:
+            order_str = f'\n{ind1}order_by=\n' + ',\n'.join([arg.to_tree(level=level+2) for arg in self.order_by])
+
+        if self.alias is not None:
+            alias_str = f'\n{ind1}alias=' + self.alias.to_string()
+        else:
+            alias_str = ''
+        return f'{ind}WindowFunction(\n' \
+               f'{ind1}function=\n{fnc_str}' \
+               f'{partition_str}' \
+               f'{order_str}' \
+               f'{alias_str}' \
+               f'\n{ind})'
+
+    def to_string(self, *args, **kwargs):
+        fnc_str = self.function.get_string()
+        partition_str = ''
+        if self.partition is not None:
+            partition_str = 'PARTITION BY ' + ', '.join([arg.to_string() for arg in self.partition])
+
+        order_str = ''
+        if self.order_by is not None:
+            order_str = 'ORDER BY ' + ', '.join([arg.to_string() for arg in self.order_by])
+
+        if self.alias is not None:
+            alias_str = self.alias.to_string()
+        else:
+            alias_str = ''
+        return f'{fnc_str} over({partition_str} {order_str}) {alias_str}'

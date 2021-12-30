@@ -541,9 +541,41 @@ class MySQLParser(SQLParser):
     def result_column(self, p):
         return p.star
 
-    @_('expr')
+    @_('expr',
+       'function',
+       'window_function')
     def result_column(self, p):
-        return p.expr
+        return p[0]
+
+    # Window function
+    @_('function OVER LPAREN window RPAREN')
+    def window_function(self, p):
+
+        return WindowFunction(
+            function=p.function,
+            order_by=p.window.get('order_by'),
+            partition=p.window.get('partition'),
+        )
+
+    @_('window PARTITION_BY expr_list')
+    def window(self, p):
+        window = p.window
+        part_by = p.expr_list
+        if not isinstance(part_by, list):
+            part_by = [part_by]
+
+        window['partition'] = part_by
+        return window
+
+    @_('window ORDER_BY ordering_terms')
+    def window(self, p):
+        window = p.window
+        window['order_by'] = p.ordering_terms
+        return window
+
+    @_('empty')
+    def window(self, p):
+        return {}
 
     # OPERATIONS
 
@@ -560,15 +592,15 @@ class MySQLParser(SQLParser):
         return p.expr
 
     @_('DATABASE LPAREN RPAREN')
-    def expr(self, p):
+    def function(self, p):
         return Function(op=p.DATABASE, args=[])
 
     @_('ID LPAREN DISTINCT expr_list RPAREN')
-    def expr(self, p):
+    def function(self, p):
         return Function(op=p.ID, distinct=True, args=p.expr_list)
 
     @_('ID LPAREN expr_list_or_nothing RPAREN')
-    def expr(self, p):
+    def function(self, p):
         args = p.expr_list_or_nothing
         if not args:
             args = []
