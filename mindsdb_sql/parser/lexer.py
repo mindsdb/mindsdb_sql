@@ -45,7 +45,7 @@ class SQLLexer(Lexer):
         PLUS, MINUS, DIVIDE, MODULO,
         EQUALS, NEQUALS, GREATER, GEQ, LESS, LEQ,
         AND, OR, NOT, IS,
-        IN, LIKE, CONCAT, BETWEEN, WINDOW,
+        IN, LIKE, CONCAT, BETWEEN, WINDOW, OVER, PARTITION_BY,
 
         # Data types
         CAST, ID, INTEGER, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE}
@@ -170,6 +170,8 @@ class SQLLexer(Lexer):
     CONCAT = r'\|\|'
     BETWEEN = r'\bBETWEEN\b'
     WINDOW = r'\bWINDOW\b'
+    OVER = r'\bOVER\b'
+    PARTITION_BY = r'\bPARTITION BY\b'
 
     # Data types
     NULL = r'\bNULL\b'
