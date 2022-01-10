@@ -34,7 +34,7 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var')]),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[0]')]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
@@ -59,7 +59,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                        'order_by_column': 'pickup_hour',
-                                       'group_by_column': group_by_column,
+                                       'group_by_columns': [group_by_column],
                                        'window': predictor_window}
                           })
 
@@ -89,7 +89,7 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var')]),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[0]')]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
@@ -114,7 +114,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                        'order_by_column': 'pickup_hour',
-                                       'group_by_column': group_by_column,
+                                       'group_by_columns': [group_by_column],
                                        'window': predictor_window}
                           })
 
@@ -147,7 +147,7 @@ class TestJoinTimeseriesPredictor:
                                                                    from_table=Identifier('data.ny_output',
                                                                                          alias=Identifier('ta')),
                                                                    where=BinaryOperation('=', args=[
-                                                                       Identifier('ta.vendor_id'), Constant('$var')]),
+                                                                       Identifier('ta.vendor_id'), Constant('$var[0]')]),
                                                                    order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                      direction='DESC')],
                                                                    )
@@ -174,7 +174,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                        'order_by_column': 'pickup_hour',
-                                       'group_by_column': 'vendor_id',
+                                       'group_by_columns': [group_by_column],
                                        'window': predictor_window}
                           })
 
@@ -213,7 +213,7 @@ class TestJoinTimeseriesPredictor:
                                                                                              Constant(1)]),
                                                                        BinaryOperation('=', args=[
                                                                            Identifier('ta.vendor_id'),
-                                                                           Constant('$var')]),
+                                                                           Constant('$var[0]')]),
                                                                    ]),
                                                                    order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                      direction='DESC')],
@@ -240,7 +240,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                        'order_by_column': 'pickup_hour',
-                                       'group_by_column': 'vendor_id',
+                                       'group_by_columns': [group_by_column],
                                        'window': predictor_window}
                           })
 
@@ -283,7 +283,7 @@ class TestJoinTimeseriesPredictor:
                                                                                              Constant(1)]),
                                                                        BinaryOperation('=', args=[
                                                                            Identifier('ta.vendor_id'),
-                                                                           Constant('$var')]),
+                                                                           Constant('$var[0]')]),
                                                                    ]),
                                                                    order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                      direction='DESC')],
@@ -314,7 +314,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                       'order_by_column': 'pickup_hour',
-                                      'group_by_column': 'vendor_id',
+                                      'group_by_columns': [group_by_column],
                                       'window': predictor_window}
                           })
 
@@ -367,7 +367,7 @@ class TestJoinTimeseriesPredictor:
                                                                           ]),
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var')])
+                                                                              Constant('$var[0]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -391,7 +391,7 @@ class TestJoinTimeseriesPredictor:
 
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var')])
+                                                                              Constant('$var[0]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -425,7 +425,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                       'order_by_column': 'pickup_hour',
-                                      'group_by_column': 'vendor_id',
+                                      'group_by_columns': [group_by_column],
                                       'window': predictor_window}
                           })
 
@@ -472,7 +472,7 @@ class TestJoinTimeseriesPredictor:
                                                                           ]),
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var')])
+                                                                              Constant('$var[0]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -497,7 +497,7 @@ class TestJoinTimeseriesPredictor:
 
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var')])
+                                                                              Constant('$var[0]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -527,7 +527,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                        'order_by_column': 'pickup_hour',
-                                       'group_by_column': 'vendor_id',
+                                       'group_by_columns': [group_by_column],
                                        'window': predictor_window}
                           })
 
@@ -574,7 +574,7 @@ class TestJoinTimeseriesPredictor:
                                                                           ]),
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var')])
+                                                                              Constant('$var[0]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -599,7 +599,7 @@ class TestJoinTimeseriesPredictor:
 
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var')])
+                                                                              Constant('$var[0]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -629,7 +629,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                        'order_by_column': 'pickup_hour',
-                                       'group_by_column': 'vendor_id',
+                                       'group_by_columns': [group_by_column],
                                        'window': predictor_window}
                           })
 
@@ -673,7 +673,7 @@ class TestJoinTimeseriesPredictor:
                                                                           ]),
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var')])
+                                                                              Constant('$var[0]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -703,7 +703,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                        'order_by_column': 'pickup_hour',
-                                       'group_by_column': 'vendor_id',
+                                       'group_by_columns': [group_by_column],
                                        'window': predictor_window}
                           })
 
@@ -747,7 +747,7 @@ class TestJoinTimeseriesPredictor:
                                                                           ]),
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var')])
+                                                                              Constant('$var[0]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -777,7 +777,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                        'order_by_column': 'pickup_hour',
-                                       'group_by_column': 'vendor_id',
+                                       'group_by_columns': [group_by_column],
                                        'window': predictor_window}
                           })
 
@@ -805,7 +805,7 @@ class TestJoinTimeseriesPredictor:
                        predictor_metadata={
                            'pred': {'timeseries': True,
                                     'order_by_column': 'time',
-                                    'group_by_column': 'asset',
+                                    'group_by_columns': ['asset'],
                                     'window': 5}
                        })
 
@@ -828,7 +828,7 @@ class TestJoinTimeseriesPredictor:
                        predictor_metadata={
                            'pred': {'timeseries': True,
                                     'order_by_column': 'time',
-                                    'group_by_column': 'asset',
+                                    'group_by_columns': ['asset'],
                                     'window': 5}
                        })
 
@@ -855,7 +855,7 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var')]),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[0]')]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
@@ -883,7 +883,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                        'order_by_column': 'pickup_hour',
-                                       'group_by_column': group_by_column,
+                                       'group_by_columns': [group_by_column],
                                        'window': predictor_window}
                           })
 
@@ -913,7 +913,7 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var')]),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[0]')]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
@@ -941,7 +941,7 @@ class TestJoinTimeseriesPredictor:
                           predictor_metadata={
                               'tp3': {'timeseries': True,
                                        'order_by_column': 'pickup_hour',
-                                       'group_by_column': group_by_column,
+                                       'group_by_columns': [group_by_column],
                                        'window': predictor_window}
                           })
 
@@ -959,7 +959,7 @@ class TestJoinTimeseriesPredictor:
             integrations=['ds', 'int'],
             predictor_namespace='mindsdb',
             predictor_metadata={
-                'pr': {'timeseries': True, 'window': 3, 'order_by_column': 'f1', 'group_by_column': 'f2'}},
+                'pr': {'timeseries': True, 'window': 3, 'order_by_column': 'f1', 'group_by_columns': ['f2']}},
             default_namespace='mindsdb'
         )
 
@@ -1004,7 +1004,7 @@ class TestJoinTimeseriesPredictor:
             integrations=['ds', 'int'],
             predictor_namespace='mindsdb',
             predictor_metadata={
-                'pr': {'timeseries': True, 'window': predictor_window, 'order_by_column': 'f1', 'group_by_column': None}},
+                'pr': {'timeseries': True, 'window': predictor_window, 'order_by_column': 'f1', 'group_by_columns': []}},
             default_namespace='mindsdb'
         )
 
@@ -1031,7 +1031,7 @@ class TestJoinTimeseriesPredictor:
                                   integration='ds',
                                   query=parse_sql(f"SELECT * FROM data.ny_output as ta \
                                                    WHERE ta.f2 BETWEEN '2020-11-01' AND '2020-12-01' \
-                                                   AND ta.f2 = '$var' \
+                                                   AND ta.f2 = '$var[0]' \
                                                    ORDER BY ta.f1 DESC LIMIT {predictor_window}")
                               ),
                 ),
@@ -1056,11 +1056,93 @@ class TestJoinTimeseriesPredictor:
             integrations=['ds', 'int'],
             predictor_namespace='mindsdb',
             predictor_metadata={
-                'pr': {'timeseries': True, 'window': predictor_window, 'order_by_column': 'f1', 'group_by_column': 'f2'}},
+                'pr': {'timeseries': True, 'window': predictor_window, 'order_by_column': 'f1', 'group_by_columns': ['f2']}},
             default_namespace='mindsdb'
         )
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
 
+    def test_timeseries_with_multigroup(self):
+        sql = "select * from ds.data.ny_output as ta \
+               left join mindsdb.pr as tb \
+               where ta.f2 > '2020-11-01' and ta.f1 > LATEST"
+        query = parse_sql(sql,  dialect='mindsdb')
 
+        predictor_window = 3
+        expected_plan = QueryPlan(
+            default_namespace='ds',
+            steps=[
+                FetchDataframeStep(integration='ds',
+                                   query=parse_sql("SELECT DISTINCT ta.f2 AS f2, ta.f3 AS f3 FROM data.ny_output as ta\
+                                                    WHERE ta.f2 > '2020-11-01'")),
+                MapReduceStep(values=Result(0),
+                              reduce='union',
+                              step=FetchDataframeStep(
+                                  integration='ds',
+                                  query=Select(
+                                     targets=[Star()],
+                                     from_table=Identifier(parts=['data', 'ny_output'], alias=Identifier(parts=['ta'])),
+                                     where=BinaryOperation(op='and',
+                                       args=(
+                                        BinaryOperation(op='>',
+                                          args=(
+                                            Identifier(parts=['ta', 'f2']),
+                                            Constant(value='2020-11-01')
+                                          )
+                                        ),
+                                        BinaryOperation(op='and',
+                                          args=(
+                                            BinaryOperation(op='=',
+                                              args=(
+                                                Identifier(parts=['ta', 'f2']),
+                                                Constant(value='$var[0]')
+                                              )
+                                            ),
+                                            BinaryOperation(op='=',
+                                              args=(
+                                                Identifier(parts=['ta', 'f3']),
+                                                Constant(value='$var[1]')
+                                              )
+                                            )
+                                          )
+                                        )
+                                      )
+                                     ),
+                                     order_by=[
+                                     OrderBy(field=Identifier(parts=['ta', 'f1']), direction='DESC', nulls='default')
+                                     ],
+                                     limit=Constant(value=3),
+                                  )
+                              ),
+                ),
+                ApplyTimeseriesPredictorStep(
+                    output_time_filter=BinaryOperation('>', args=[Identifier('ta.f1'), Latest()]),
+                    namespace='mindsdb',
+                    predictor=Identifier('pr', alias=Identifier('tb')),
+                    dataframe=Result(1)),
+                JoinStep(left=Result(1),
+                         right=Result(2),
+                         query=Join(
+                             right=Identifier('result_2', alias=Identifier('tb')),
+                             left=Identifier('result_1', alias=Identifier('ta')),
+                             join_type=JoinType.LEFT_JOIN)
+                         ),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=['ds', 'int'],
+            predictor_namespace='mindsdb',
+            predictor_metadata={
+                'pr': {'timeseries': True,
+                       'window': predictor_window,
+                       'order_by_column': 'f1',
+                       'group_by_columns': ['f2', 'f3']}},
+            default_namespace='mindsdb'
+        )
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
