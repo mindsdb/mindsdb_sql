@@ -1,6 +1,9 @@
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.utils import indent
+from mindsdb_sql.parser import ast
 
+import sqlalchemy as sa
+from sqlalchemy.orm.query import aliased
 
 class Select(ASTNode):
 
@@ -84,7 +87,285 @@ class Select(ASTNode):
                   f'\n{ind})'
         return out_str
 
+    def to_column(self, parts):
+        if len(parts) > 3:
+            raise not NotImplementedError(f'Path to long: {parts}')
+
+        colname = parts[-1]
+        col = sa.column(colname)
+
+        if len(parts) == 1:
+            return col
+
+        schema = None
+        if len(parts) == 3:
+            schema = parts[0]
+
+        table = parts[-2]
+
+        return sa.table(table, col, schema=schema).c[colname]
+
+    def get_alias(self, alias):
+        if alias is None or len(alias.parts) == 0:
+            return None
+        if len(alias.parts) > 1:
+            raise NotImplementedError(f'Multiple alias {alias.parts}')
+        return alias.parts[0]
+
+    def to_expression(self, t):
+
+        if isinstance(t, ast.Star):
+            col = '*'
+        elif isinstance(t, ast.Constant):
+            col = sa.literal(t.value)
+            if t.alias:
+                col = col.label(self.get_alias(t.alias))
+        elif isinstance(t, ast.Identifier):
+            col = self.to_column(t.parts)
+            if t.alias:
+                col = col.label(self.get_alias(t.alias))
+        elif isinstance(t, Select):
+            sub_stmt = t.to_statement()
+            col = sub_stmt.scalar_subquery()
+        elif isinstance(t, ast.Function):
+            op = getattr(sa.func, t.op)
+            args = [
+                self.to_expression(i)
+                for i in t.args
+            ]
+            if t.distinct:
+                # set first argument to distinct
+                args[0] = args[0].distinct()
+            col = op(*args)
+        elif isinstance(t, ast.BinaryOperation):
+            opmap = {
+                "+": "__add__",
+                "-": "__sub__",
+                "/": "__div__",
+                "*": "__mul__",
+                "%": "__mod__",
+                "=": "__eq__",
+                "!=": "__ne__",
+                ">": "__gt__",
+                "<": "__lt__",
+                ">=": "__ge__",
+                "<=": "__le__",
+                "is": "is_",
+                "IS NOT": "is_not",
+                "like": "like",
+                "in": "in_",
+                "and": "and_",
+                "or": "or_",
+                "||": "concat",
+            }
+            arg0 = self.to_expression(t.args[0])
+            arg1 = self.to_expression(t.args[1])
+
+            sa_op = getattr(arg0, opmap[t.op])
+
+            col = sa_op(arg1)
+        elif isinstance(t, ast.UnaryOperation):
+            # not or munus
+            opmap = {
+                "NOT": "__invert__",
+                "-": "__neg__",
+            }
+            arg = self.to_expression(t.args[0])
+
+            col = getattr(arg, opmap[t.op])()
+        elif isinstance(t, ast.BetweenOperation):
+            col0 = self.to_expression(t.args[0])
+            lim_down = self.to_expression(t.args[1])
+            lim_up = self.to_expression(t.args[2])
+
+            col = sa.between(col0, lim_down, lim_up)
+        elif isinstance(t, ast.WindowFunction):
+            func = self.to_expression(t.function)
+
+            partition = None
+            if t.partition is not None:
+                partition = [
+                    self.to_expression(i)
+                    for i in t.partition
+                ]
+
+            order_by = None
+            if t.order_by is not None:
+                order_by = []
+                for f in t.order_by:
+                    col0 = self.to_expression(f.field)
+                    if f.direction == 'DESC':
+                        col0 = col0.desc()
+                    order_by.append(col0)
+
+            col = sa.over(
+                func,
+                partition_by=partition,
+                order_by=order_by
+            )
+
+            if t.alias:
+                col = col.label(self.get_alias(t.alias))
+        elif isinstance(t, ast.TypeCast):
+            arg = self.to_expression(t.arg)
+            # TODO how to get type
+            type = getattr(sa.types, t.type_name.upper())
+            col = sa.cast(arg, type)
+        else:
+            # some other complex object?
+            raise NotImplementedError(f'Column {t}')
+            col = sa.text(t.get_string(dialect=dialect, *args, **kwargs))
+
+        return col
+
+    def to_statement(self):
+
+        cols = []
+        for t in self.targets:
+            col = self.to_expression(t)
+            cols.append(col)
+
+        query = sa.select(cols)
+
+        if self.cte is not None:
+            for cte in self.cte:
+                stmt = cte.query.to_statement()
+                alias = cte.name
+
+                query = query.add_cte(stmt.cte(self.get_alias(alias)))
+
+        if self.distinct:
+            query = query.distinct()
+
+        def to_table(node):
+            if isinstance(node, ast.Identifier):
+                table = sa.table('.'.join(node.parts))
+                if node.alias:
+                    table = aliased(table, name=self.get_alias(node.alias))
+
+            elif isinstance(node, Select):
+                sub_stmt = node.to_statement()
+                alias = None
+                if node.alias:
+                    alias = self.get_alias(node.alias)
+                table = sub_stmt.subquery(alias)
+
+            else:
+                raise NotImplementedError(f'Table {node}')
+
+            return table
+
+        if self.from_table is not None:
+
+            if isinstance(self.from_table, ast.Join):
+                join_list = self.prepare_join(self.from_table)
+                # first table
+                table = to_table(join_list[0]['table'])
+                query = query.select_from(table)
+
+                # other tables
+                for item in join_list[1:]:
+                    table = to_table(item['table'])
+                    if item['is_implicit']:
+                        # add to from clause
+                        query = query.select_from(table)
+                    else:
+                        if item['condition'] is None:
+                            # otherwise sqlalchemy raises "Don't know how to join to ..."
+                            condition = sa.text('1==1')
+                        else:
+                            condition = self.to_expression(item['condition'])
+
+                        join_type = item['join_type']
+                        method = 'join'
+                        is_full = False
+                        if join_type == 'LEFT JOIN':
+                            method = 'outerjoin'
+                        if join_type == 'FULL JOIN':
+                            is_full = True
+
+                        # perform join
+                        query = getattr(query, method)(
+                            table,
+                            condition,
+                            full=is_full
+                        )
+
+            else:
+                table = to_table(self.from_table)
+                query = query.select_from(table)
+
+        if self.where is not None:
+            query = query.filter(
+                self.to_expression(self.where)
+            )
+
+        if self.group_by is not None:
+            cols = [
+                self.to_expression(i)
+                for i in self.group_by
+            ]
+            query = query.group_by(*cols)
+
+        if self.having is not None:
+            query = query.having(self.to_expression(self.having))
+
+        if self.order_by is not None:
+            order_by = []
+            for f in self.order_by:
+                col0 = self.to_expression(f.field)
+                if f.direction == 'DESC':
+                    col0 = col0.desc()
+                order_by.append(col0)
+
+            query = query.order_by(*order_by)
+
+        if self.limit is not None:
+            query = query.limit(self.limit)
+
+        if self.offset is not None:
+            query = query.offset(self.offset)
+
+        if self.mode is not None:
+            if self.mode == 'FOR UPDATE':
+                query = query.with_for_update()
+            else:
+                raise NotImplementedError(f'Select mode: {self.mode}')
+
+        return query
+
+    def prepare_join(self, join):
+        # join tree to table list
+
+        if isinstance(join.right, ast.Join):
+            raise NotImplementedError('Wrong join AST')
+
+        items = []
+
+        if isinstance(join.left, ast.Join):
+            # dive to next level
+            items.extend(self.prepare_join(join.left))
+        else:
+            # this is first table
+            items.append(dict(
+                table=join.left
+            ))
+
+        # all properties set to right table
+        items.append(dict(
+            table=join.right,
+            join_type=join.join_type,
+            is_implicit=join.implicit,
+            condition=join.condition
+        ))
+
+        return items
+
     def get_string(self, *args, **kwargs):
+        stmt = self.to_statement()
+        from sqlalchemy.dialects import mysql
+        # print(stmt.compile(dialect=mysql.dialect(), compile_kwargs={'literal_binds': True}))
+
         out_str = ''
         if self.cte is not None:
             cte_str = ', '.join([out.to_string() for out in self.cte])
