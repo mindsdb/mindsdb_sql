@@ -11,3 +11,6 @@ from .explain import *
 from .alter_table import *
 from .insert import *
 from .drop import *
+
+from mindsdb_sql.parser.dialects.mysql.variable import Variable
+from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
