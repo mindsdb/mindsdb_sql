@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.query import aliased
 from sqlalchemy.dialects import mysql, postgresql, sqlite, mssql
 
@@ -41,7 +42,10 @@ class SqlalchemyRender():
         elif isinstance(t, ast.Constant):
             col = sa.literal(t.value)
             if t.alias:
-                col = col.label(self.get_alias(t.alias))
+                alias = self.get_alias(t.alias)
+            else:
+                alias = str(t.value)
+            col = col.label(alias)
         elif isinstance(t, ast.Identifier):
             col = self.to_column(t.parts)
             if t.alias:
@@ -49,6 +53,9 @@ class SqlalchemyRender():
         elif isinstance(t, ast.Select):
             sub_stmt = self.prepare_select(t)
             col = sub_stmt.scalar_subquery()
+            if t.alias:
+                alias = self.get_alias(t.alias)
+                col = col.label(alias)
         elif isinstance(t, ast.Function):
             op = getattr(sa.func, t.op)
             args = [
@@ -59,6 +66,12 @@ class SqlalchemyRender():
                 # set first argument to distinct
                 args[0] = args[0].distinct()
             col = op(*args)
+
+            if t.alias:
+                alias = self.get_alias(t.alias)
+            else:
+                alias = str(t.op)
+            col = col.label(alias)
         elif isinstance(t, ast.BinaryOperation):
             methods = {
                 "+": "__add__",
@@ -96,6 +109,10 @@ class SqlalchemyRender():
                 func = functions[t.op.lower()]
                 col = func(arg0, arg1)
 
+            if t.alias:
+                alias = self.get_alias(t.alias)
+                col = col.label(alias)
+
         elif isinstance(t, ast.UnaryOperation):
             # not or munus
             opmap = {
@@ -106,6 +123,10 @@ class SqlalchemyRender():
 
             method = opmap[t.op.upper()]
             col = getattr(arg, method)()
+            if t.alias:
+                alias = self.get_alias(t.alias)
+                col = col.label(alias)
+
         elif isinstance(t, ast.BetweenOperation):
             col0 = self.to_expression(t.args[0])
             lim_down = self.to_expression(t.args[1])
@@ -147,6 +168,10 @@ class SqlalchemyRender():
                 typename = 'BIGINT'
             type = getattr(sa.types, typename)
             col = sa.cast(arg, type)
+
+            if t.alias:
+                alias = self.get_alias(t.alias)
+                col = col.label(alias)
         elif isinstance(t, ast.Parameter):
             col = sa.column(t.value, is_literal=True)
             if t.alias: raise Exception()
@@ -197,8 +222,7 @@ class SqlalchemyRender():
             parts = node.parts
 
             if len(parts) > 2:
-                # TODO remove
-                # parts = parts[-2:]
+                # TODO tests is failing
                 raise NotImplementedError(f'Path to long: {node.parts}')
 
             schema = None
@@ -220,9 +244,8 @@ class SqlalchemyRender():
             table = sub_stmt.subquery(alias)
 
         else:
-            # TODO delete
-            # table = sa.table('PARAM TABLE')
-            raise NotImplementedError(f'Table {node}')
+            # TODO tests are failing
+            raise NotImplementedError(f'Table {node.__name__}')
 
         return table
 
@@ -240,15 +263,16 @@ class SqlalchemyRender():
                 stmt = self.prepare_select(cte.query)
                 alias = cte.name
 
-                query = query.add_cte(stmt.cte(self.get_alias(alias)))
+                query = query.add_cte(stmt.cte(self.get_alias(alias), nesting=True))
 
         if node.distinct:
             query = query.distinct()
 
         if node.from_table is not None:
+            from_table = node.from_table
 
-            if isinstance(node.from_table, ast.Join):
-                join_list = self.prepare_join(node.from_table)
+            if isinstance(from_table, ast.Join):
+                join_list = self.prepare_join(from_table)
                 # first table
                 table = self.to_table(join_list[0]['table'])
                 query = query.select_from(table)
@@ -261,7 +285,7 @@ class SqlalchemyRender():
                         query = query.select_from(table)
                     else:
                         if item['condition'] is None:
-                            # otherwise sqlalchemy raises "Don't know how to join to ..."
+                            # otherwise, sqlalchemy raises "Don't know how to join to ..."
                             condition = sa.text('1==1')
                         else:
                             condition = self.to_expression(item['condition'])
@@ -280,10 +304,29 @@ class SqlalchemyRender():
                             condition,
                             full=is_full
                         )
+            elif isinstance(from_table, ast.Union):
+                if not(isinstance(from_table.left, ast.Select) and isinstance(from_table.right, ast.Select)):
+                    raise NotImplementedError(f'Unknown UNION {from_table.left.__name__}, {from_table.right.__name__}')
 
-            else:
-                table = self.to_table(node.from_table)
+                left = self.prepare_select(from_table.left)
+                right = self.prepare_select(from_table.right)
+
+                alias = None
+                if from_table.alias:
+                    alias = self.get_alias(from_table.alias)
+
+                table = left.union(right).subquery(alias)
                 query = query.select_from(table)
+
+            elif isinstance(from_table, ast.Select):
+                table = self.to_table(from_table)
+                query = query.select_from(table)
+
+            elif isinstance(from_table, ast.Identifier):
+                table = self.to_table(from_table)
+                query = query.select_from(table)
+            else:
+                raise NotImplementedError(f'Select from {from_table}')
 
         if node.where is not None:
             query = query.filter(
@@ -324,10 +367,20 @@ class SqlalchemyRender():
 
         return query
 
-    def get_string(self, ast_query):
-        if isinstance(ast_query, ast.Select):
-            stmt = self.prepare_select(ast_query)
-        else:
-            raise NotImplementedError(f'Unknown statement: {ast_query.__name__}')
+    def get_string(self, ast_query, with_failback=True):
+        try:
+            if isinstance(ast_query, ast.Select):
+                stmt = self.prepare_select(ast_query)
+            else:
+                raise NotImplementedError(f'Unknown statement: {ast_query.__name__}')
 
-        return str(stmt.compile(dialect=self.dialect, compile_kwargs={'literal_binds': True}))
+            return str(stmt.compile(dialect=self.dialect, compile_kwargs={'literal_binds': True}))
+
+        except (SQLAlchemyError, NotImplementedError) as e:
+            if not with_failback:
+                raise e
+
+            sql_query = str(ast_query)
+            if self.dialect.name == 'postgresql':
+                sql_query = sql_query.replace('`', '')
+            return sql_query
