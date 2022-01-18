@@ -312,38 +312,40 @@ class SQLParser(Parser):
         select.where = where_expr
         return select
 
-    @_('select FROM from_table')
+    @_('select FROM from_table_aliased')
     def select(self, p):
         select = p.select
         ensure_select_keyword_order(select, 'FROM')
-        select.from_table = p.from_table
+        select.from_table = p.from_table_aliased
         return select
 
-    @_('from_table join_clause from_table')
-    def from_table(self, p):
-        return Join(left=p.from_table0,
-                    right=p.from_table1,
+    @_('from_table_aliased join_clause from_table_aliased')
+    def from_table_aliased(self, p):
+        return Join(left=p.from_table_aliased0,
+                    right=p.from_table_aliased1,
                     join_type=p.join_clause)
 
-    @_('from_table COMMA from_table')
-    def from_table(self, p):
-        return Join(left=p.from_table0,
-                    right=p.from_table1,
+    @_('from_table_aliased COMMA from_table_aliased')
+    def from_table_aliased(self, p):
+        return Join(left=p.from_table_aliased0,
+                    right=p.from_table_aliased1,
                     join_type=JoinType.INNER_JOIN,
                     implicit=True)
 
-    @_('from_table join_clause from_table ON expr')
-    def from_table(self, p):
-        return Join(left=p.from_table0,
-                    right=p.from_table1,
+    @_('from_table_aliased join_clause from_table_aliased ON expr')
+    def from_table_aliased(self, p):
+        return Join(left=p.from_table_aliased0,
+                    right=p.from_table_aliased1,
                     join_type=p.join_clause,
                     condition=p.expr)
 
     @_('from_table AS identifier',
-       'from_table identifier')
-    def from_table(self, p):
+       'from_table identifier',
+       'from_table')
+    def from_table_aliased(self, p):
         entity = p.from_table
-        entity.alias = p.identifier
+        if hasattr(p, 'identifier'):
+            entity.alias = p.identifier
         return entity
 
     @_('LPAREN query RPAREN')
@@ -415,9 +417,41 @@ class SQLParser(Parser):
     def result_column(self, p):
         return p.star
 
-    @_('expr')
+    @_('expr',
+       'function',
+       'window_function')
     def result_column(self, p):
-        return p.expr
+        return p[0]
+
+    # Window function
+    @_('function OVER LPAREN window RPAREN')
+    def window_function(self, p):
+
+        return WindowFunction(
+            function=p.function,
+            order_by=p.window.get('order_by'),
+            partition=p.window.get('partition'),
+        )
+
+    @_('window PARTITION_BY expr_list')
+    def window(self, p):
+        window = p.window
+        part_by = p.expr_list
+        if not isinstance(part_by, list):
+            part_by = [part_by]
+
+        window['partition'] = part_by
+        return window
+
+    @_('window ORDER_BY ordering_terms')
+    def window(self, p):
+        window = p.window
+        window['order_by'] = p.ordering_terms
+        return window
+
+    @_('empty')
+    def window(self, p):
+        return {}
 
     # OPERATIONS
 
@@ -434,11 +468,11 @@ class SQLParser(Parser):
         return p.expr
 
     @_('ID LPAREN DISTINCT expr_list RPAREN')
-    def expr(self, p):
+    def function(self, p):
         return Function(op=p.ID, distinct=True, args=p.expr_list)
 
     @_('ID LPAREN expr_list_or_nothing RPAREN')
-    def expr(self, p):
+    def function(self, p):
         args = p.expr_list_or_nothing
         if not args:
             args = []

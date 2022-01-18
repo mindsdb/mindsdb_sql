@@ -7,6 +7,6 @@ from .star import Star
 from .join import Join
 from .type_cast import TypeCast
 from .tuple import Tuple
-from .operation import Operation, BinaryOperation, UnaryOperation, BetweenOperation, Function
+from .operation import Operation, BinaryOperation, UnaryOperation, BetweenOperation, Function, WindowFunction
 from .order_by import OrderBy
 from .parameter import Parameter

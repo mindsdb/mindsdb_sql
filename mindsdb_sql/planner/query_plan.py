@@ -151,8 +151,7 @@ class QueryPlan:
         project_step = self.plan_project(select, predictor_step.result)
         return predictor_step, project_step
 
-    def plan_join_table_and_predictor(self, query, table, predictor_namespace, predictor):
-        join = query.from_table
+    def plan_predictor(self, query, table, predictor_namespace, predictor):
         integration_select_step = self.plan_integration_select(
             Select(targets=[Star()],
                                             from_table=table,
@@ -168,28 +167,33 @@ class QueryPlan:
                                          dataframe=integration_select_step.result,
                                          predictor=predictor))
 
-        integration_name, table = self.get_integration_path_from_identifier_or_error(table)
-        new_join = Join(left=Identifier(integration_select_step.result.ref_name, alias=table.alias or Identifier(table.to_string(alias=False))),
-                        right=Identifier(predictor_step.result.ref_name, alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
-                        join_type=join.join_type)
-        join_step = self.add_step(JoinStep(left=integration_select_step.result, right=predictor_step.result, query=new_join))
-        return join_step
+        return {
+            'predictor': predictor_step,
+            'data': integration_select_step
+        }
 
-    def plan_fetch_timeseries_partitions(self, query, table, predictor_group_by_name):
+    def plan_fetch_timeseries_partitions(self, query, table, predictor_group_by_names):
+        targets = [
+            Identifier(column)
+            for column in predictor_group_by_names
+        ]
+
         query = Select(
             distinct=True,
-            targets=[Identifier(predictor_group_by_name)],
+            targets=targets,
             from_table=table,
             where=query.where,
         )
         select_step = self.plan_integration_select(query)
         return select_step
 
-    def plan_join_table_and_timeseries_predictor(self, query, table, predictor_namespace, predictor):
+    def plan_timeseries_predictor(self, query, table, predictor_namespace, predictor):
         predictor_name = predictor.to_string(alias=False)
 
         predictor_time_column_name = self.predictor_metadata[predictor_name]['order_by_column']
-        predictor_group_by_name = self.predictor_metadata[predictor_name]['group_by_column']
+        predictor_group_by_names = self.predictor_metadata[predictor_name]['group_by_columns']
+        if predictor_group_by_names is None:
+            predictor_group_by_names = []
         predictor_window = self.predictor_metadata[predictor_name]['window']
 
         if query.order_by:
@@ -201,13 +205,12 @@ class QueryPlan:
         if query.group_by or query.having or query.offset:
             raise PlanningException(f'Unsupported query to timeseries predictor: {str(query)}')
 
-        validate_ts_where_condition(query.where, allowed_columns=[predictor_time_column_name, predictor_group_by_name])
+        allowed_columns = [predictor_time_column_name]
+        if len(predictor_group_by_names) > 0:
+            allowed_columns += predictor_group_by_names
+        validate_ts_where_condition(query.where, allowed_columns=allowed_columns)
 
         time_filter = find_time_filter(query.where, time_column_name=predictor_time_column_name)
-
-        no_time_filter_query = copy.deepcopy(query)
-        no_time_filter_query.where = find_and_remove_time_filter(no_time_filter_query.where, time_filter)
-        select_partitions_step = self.plan_fetch_timeseries_partitions(no_time_filter_query, table, predictor_group_by_name)
 
         order_by = [OrderBy(Identifier(parts=[predictor_time_column_name]), direction='DESC')]
 
@@ -239,7 +242,6 @@ class QueryPlan:
             integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
             integration_selects = [integration_select]
 
-            query.where = find_and_remove_time_filter(query.where, time_filter)
         elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('>', '>='):
             time_filter_date = time_filter.args[1]
             preparation_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
@@ -267,45 +269,65 @@ class QueryPlan:
                                         )
             integration_selects = [integration_select]
 
-        # Obtain map step for all partitions
-        for integration_select in integration_selects:
-            if not integration_select.where:
-                integration_select.where = BinaryOperation('=', args=[Identifier(predictor_group_by_name), Constant('$var')])
+        if len(predictor_group_by_names) == 0:
+            # ts query without grouping
+            # one or multistep
+            if len(integration_selects) == 1:
+                select_partition_step = self.get_integration_select_step(integration_selects[0])
             else:
-                integration_select.where = BinaryOperation('and', args=[integration_select.where,
-                                                           BinaryOperation('=', args=[Identifier(predictor_group_by_name),
-                                                                                  Constant('$var')])])
+                select_partition_step = MultipleSteps(
+                    steps=[self.get_integration_select_step(s) for s in integration_selects], reduce='union')
 
-        if len(integration_selects) == 1:
-            select_partition_step = self.get_integration_select_step(integration_selects[0])
+            # fetch data step
+            data_step = self.add_step(select_partition_step)
         else:
-            select_partition_step = MultipleSteps(steps=[self.get_integration_select_step(s) for s in integration_selects], reduce='union')
+            # inject $var to queries
+            for integration_select in integration_selects:
+                condition = None
+                for num, column in enumerate(predictor_group_by_names):
+                    cond = BinaryOperation('=', args=[Identifier(column), Constant(f'$var[{num}]')])
 
-        map_reduce_step = self.add_step(MapReduceStep(values=select_partitions_step.result, reduce='union', step=select_partition_step))
+                    # join to main condition
+                    if condition is None:
+                        condition = cond
+                    else:
+                        condition = BinaryOperation('and', args=[condition, cond])
 
-        predictor_inputs = map_reduce_step.result
+                if not integration_select.where:
+                    integration_select.where = condition
+                else:
+                    integration_select.where = BinaryOperation('and', args=[integration_select.where, condition])
+            # one or multistep
+            if len(integration_selects) == 1:
+                select_partition_step = self.get_integration_select_step(integration_selects[0])
+            else:
+                select_partition_step = MultipleSteps(
+                    steps=[self.get_integration_select_step(s) for s in integration_selects], reduce='union')
+
+            # get groping values
+            no_time_filter_query = copy.deepcopy(query)
+            no_time_filter_query.where = find_and_remove_time_filter(no_time_filter_query.where, time_filter)
+            select_partitions_step = self.plan_fetch_timeseries_partitions(no_time_filter_query, table, predictor_group_by_names)
+
+            # sub-query by every grouping value
+            map_reduce_step = self.add_step(MapReduceStep(values=select_partitions_step.result, reduce='union', step=select_partition_step))
+            data_step = map_reduce_step
+
         predictor_step = self.add_step(
             ApplyTimeseriesPredictorStep(
                 output_time_filter=time_filter,
                 namespace=predictor_namespace,
-                dataframe=predictor_inputs,
+                dataframe=data_step.result,
                 predictor=predictor,
             )
         )
 
-        # Update reference
-        integration_name, table = self.get_integration_path_from_identifier_or_error(table)
-        join = Join(
-            left=Identifier(predictor_step.result.ref_name,
-                             alias=predictor.alias or Identifier(predictor.to_string(alias=False))),
-            right=Identifier(predictor_inputs.ref_name,
-                             alias=table.alias or Identifier(table.to_string(alias=False))),
-            join_type=JoinType.LEFT_JOIN)
-        final_step = self.add_step(JoinStep(left=predictor_step.result, right=predictor_inputs, query=join))
+        return {
+            'predictor': predictor_step,
+            'data': data_step,
+            'saved_limit': saved_limit,
+        }
 
-        if saved_limit:
-            final_step = self.add_step(LimitOffsetStep(dataframe=final_step.result, limit=saved_limit))
-        return final_step
 
     def plan_join_two_tables(self, join):
         select_left_step = self.plan_integration_select(Select(targets=[Star()], from_table=join.left))
@@ -340,7 +362,7 @@ class QueryPlan:
     def plan_project(self, query, dataframe):
         out_identifiers = []
         for target in query.targets:
-            if isinstance(target, Identifier) or isinstance(target, Star):
+            if isinstance(target, Identifier) or isinstance(target, Star) or isinstance(target, Constant):
                 out_identifiers.append(target)
             else:
                 new_identifier = Identifier(str(target.to_string(alias=False)), alias=target.alias)
@@ -362,8 +384,10 @@ class QueryPlan:
             predictor_namespace = None
             predictor = None
             table = None
+            predictor_is_left = False
             if self.is_predictor(join.left):
                 predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join.left, self.default_namespace)
+                predictor_is_left = True
             else:
                 table = join.left
 
@@ -379,9 +403,37 @@ class QueryPlan:
                 # Then join results of applying mindsdb with table
 
                 if self.predictor_metadata[predictor.to_string(alias=False)].get('timeseries'):
-                    last_step = self.plan_join_table_and_timeseries_predictor(query, table, predictor_namespace, predictor)
+                    predictor_steps = self.plan_timeseries_predictor(query, table, predictor_namespace, predictor)
                 else:
-                    last_step = self.plan_join_table_and_predictor(query, table, predictor_namespace, predictor)
+                    predictor_steps = self.plan_predictor(query, table, predictor_namespace, predictor)
+
+                # add join
+                # Update reference
+                _, table = self.get_integration_path_from_identifier_or_error(table)
+                table_alias = table.alias or Identifier(table.to_string(alias=False).replace('.', '_'))
+
+                left = Identifier(predictor_steps['predictor'].result.ref_name,
+                                   alias=predictor.alias or Identifier(predictor.to_string(alias=False)))
+                right = Identifier(predictor_steps['data'].result.ref_name, alias=table_alias)
+
+                if not predictor_is_left:
+                    # swap join
+                    left, right = right, left
+                new_join = Join(left=left, right=right, join_type=join.join_type)
+
+                left = predictor_steps['predictor'].result
+                right = predictor_steps['data'].result
+                if not predictor_is_left:
+                    # swap join
+                    left, right = right, left
+
+                last_step = self.add_step(JoinStep(left=left, right=right, query=new_join))
+
+                # limit from timeseries
+                if predictor_steps.get('saved_limit'):
+                    last_step = self.add_step(LimitOffsetStep(dataframe=last_step.result,
+                                                              limit=predictor_steps['saved_limit']))
+
             else:
                 # Both arguments are tables, join results of 2 dataframe fetches
 

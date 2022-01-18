@@ -5,6 +5,8 @@ from mindsdb_sql.utils import indent
 class Join(ASTNode):
     def __init__(self, join_type, left, right, condition=None, implicit=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if join_type is not None:
+            join_type = join_type.upper()
         self.join_type = join_type
         self.left = left
         self.right = right

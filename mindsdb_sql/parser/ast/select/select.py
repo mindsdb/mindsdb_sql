@@ -15,6 +15,7 @@ class Select(ASTNode):
                  limit=None,
                  offset=None,
                  cte=None,
+                 mode=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.targets = targets
@@ -27,6 +28,7 @@ class Select(ASTNode):
         self.limit = limit
         self.offset = offset
         self.cte = cte
+        self.mode = mode
 
         if self.alias:
             self.parentheses = True
@@ -63,6 +65,7 @@ class Select(ASTNode):
             order_by_str = f'\n{ind1}order_by=[\n{order_by_trees}\n{ind1}],'
         limit_str = f'\n{ind1}limit={self.limit.to_tree(level=0)},' if self.limit else ''
         offset_str = f'\n{ind1}offset={self.offset.to_tree(level=0)},' if self.offset else ''
+        mode_str = f'\n{ind1}mode={self.mode},' if self.mode else ''
 
         out_str = f'{ind}Select(' \
                   f'{cte_str}' \
@@ -77,10 +80,12 @@ class Select(ASTNode):
                   f'{order_by_str}' \
                   f'{limit_str}' \
                   f'{offset_str}' \
+                  f'{mode_str}' \
                   f'\n{ind})'
         return out_str
 
     def get_string(self, *args, **kwargs):
+
         out_str = ''
         if self.cte is not None:
             cte_str = ', '.join([out.to_string() for out in self.cte])
@@ -118,4 +123,8 @@ class Select(ASTNode):
 
         if self.offset is not None:
             out_str += f' OFFSET {self.offset.to_string()}'
+
+        if self.mode is not None:
+            out_str += f' {self.mode}'
         return out_str
+
