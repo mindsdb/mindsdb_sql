@@ -18,7 +18,7 @@ class TestCreatePredictor:
                 GROUP BY f_group_1, f_group_2
                 WINDOW 100
                 HORIZON 7
-                USING {"x": 1, "y": "a"}
+                USING x=1, y= "a", z=0.7
                 """ % keyword
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreatePredictor(
@@ -35,7 +35,7 @@ class TestCreatePredictor:
             group_by=[Identifier('f_group_1'), Identifier('f_group_2')],
             window=100,
             horizon=7,
-            using=dict(x=1, y="a"),
+            using=dict(x=1, y="a", z=0.7),
         )
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()

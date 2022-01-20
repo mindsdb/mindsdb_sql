@@ -330,10 +330,9 @@ class MindsDBParser(Parser):
     def drop_dataset(self, p):
         return DropDataset(p.identifier)
 
-    # CREATE PREDICTOR
-    @_('create_predictor USING json')
+    @_('create_predictor USING kw_parameter_list')
     def create_predictor(self, p):
-        p.create_predictor.using = p.json
+        p.create_predictor.using = p.kw_parameter_list
         return p.create_predictor
 
     @_('create_predictor HORIZON integer')
@@ -857,6 +856,20 @@ class MindsDBParser(Parser):
     @_('string')
     def constant(self, p):
         return Constant(value=str(p[0]))
+
+    @_('kw_parameter',
+       'kw_parameter_list COMMA kw_parameter')
+    def kw_parameter_list(self, p):
+        params = getattr(p, 'kw_parameter_list', {})
+        params.update(p.kw_parameter)
+        return params
+
+    @_('identifier EQUALS string')
+    @_('identifier EQUALS integer')
+    @_('identifier EQUALS float')
+    def kw_parameter(self, p):
+        key = '.'.join(p.identifier.parts)
+        return {key: p[2]}
 
     @_('quote_string',
        'dquote_string')
