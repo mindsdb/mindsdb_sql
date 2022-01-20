@@ -1,5 +1,5 @@
 from mindsdb_sql.parser.ast import Show
-from mindsdb_sql.utils import indent
+from mindsdb_sql.parser.utils import indent
 
 
 class ShowIndex(Show):

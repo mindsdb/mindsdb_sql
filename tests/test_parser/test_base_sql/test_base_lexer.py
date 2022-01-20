@@ -7,6 +7,12 @@ from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 @pytest.mark.parametrize('lexer', [SQLLexer(), MySQLLexer(), MindsDBLexer()])
 class TestLexer:
     def test_select_basic(self, lexer):
+        # different lexer behavior
+        if isinstance(lexer, MindsDBLexer):
+            fnc = str
+        else:
+            fnc = lambda x: x
+
         sql = f'SELECT 1'
         tokens = list(lexer.tokenize(sql))
 
@@ -14,13 +20,13 @@ class TestLexer:
         assert tokens[0].value == 'SELECT'
 
         assert tokens[1].type == 'INTEGER'
-        assert tokens[1].value == 1
+        assert tokens[1].value == fnc(1)
 
         sql = f'select 1'
         tokens = list(lexer.tokenize(sql))
         assert tokens[0].type == 'SELECT'
         assert tokens[1].type == 'INTEGER'
-        assert tokens[1].value == 1
+        assert tokens[1].value == fnc(1)
 
         sql = f'select a'
         tokens = list(lexer.tokenize(sql))
@@ -29,6 +35,12 @@ class TestLexer:
         assert tokens[1].value == 'a'
 
     def test_select_basic_ignored_symbols(self, lexer):
+        # different lexer behavior
+        if isinstance(lexer, MindsDBLexer):
+            fnc = str
+        else:
+            fnc = lambda x: x
+
         sql = f'SELECT \t\r\n1'
         tokens = list(lexer.tokenize(sql))
 
@@ -36,13 +48,13 @@ class TestLexer:
         assert tokens[0].value == 'SELECT'
 
         assert tokens[1].type == 'INTEGER'
-        assert tokens[1].value == 1
+        assert tokens[1].value == fnc(1)
 
         sql = f'select 1'
         tokens = list(lexer.tokenize(sql))
         assert tokens[0].type == 'SELECT'
         assert tokens[1].type == 'INTEGER'
-        assert tokens[1].value == 1
+        assert tokens[1].value == fnc(1)
 
         sql = f'select a'
         tokens = list(lexer.tokenize(sql))

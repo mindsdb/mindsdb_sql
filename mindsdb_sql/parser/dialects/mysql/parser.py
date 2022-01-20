@@ -1,12 +1,11 @@
 from mindsdb_sql.parser.logger import ParserLogger
 from mindsdb_sql.parser.parser import SQLParser
-from mindsdb_sql.parser.ast.drop import DropDatabase
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mysql.lexer import MySQLLexer
 from mindsdb_sql.parser.dialects.mysql.variable import Variable
 from mindsdb_sql.parser.dialects.mysql.show_index import ShowIndex
 from mindsdb_sql.exceptions import ParsingException
-from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
+from mindsdb_sql.parser.utils import ensure_select_keyword_order, JoinType
 
 """
 Unfortunately the rules are not iherited from base SQLParser, because it just doesn't work with Sly due to metaclass magic.

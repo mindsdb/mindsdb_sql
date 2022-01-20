@@ -1,5 +1,5 @@
 from mindsdb_sql import ParsingException
-from mindsdb_sql.utils import to_single_line
+from mindsdb_sql.parser.utils import to_single_line
 
 
 class ASTNode:

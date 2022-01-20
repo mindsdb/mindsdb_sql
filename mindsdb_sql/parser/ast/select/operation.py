@@ -1,6 +1,6 @@
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.exceptions import ParsingException
-from mindsdb_sql.utils import indent
+from mindsdb_sql.parser.utils import indent
 
 
 class Operation(ASTNode):

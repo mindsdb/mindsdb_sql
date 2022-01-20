@@ -1,5 +1,4 @@
 from mindsdb_sql.parser.ast.base import ASTNode
-from mindsdb_sql.utils import indent
 
 
 class Latest(ASTNode):
