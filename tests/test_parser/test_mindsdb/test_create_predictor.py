@@ -3,7 +3,7 @@ import pytest
 from mindsdb_sql import parse_sql, ParsingException
 from mindsdb_sql.parser.dialects.mindsdb import *
 from mindsdb_sql.parser.ast import *
-from mindsdb_sql.utils import to_single_line
+from mindsdb_sql.parser.utils import to_single_line
 
 
 class TestCreatePredictor:

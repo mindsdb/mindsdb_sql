@@ -3,7 +3,7 @@ import pytest
 from mindsdb_sql import parse_sql
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.exceptions import ParsingException
-from mindsdb_sql.utils import JoinType
+from mindsdb_sql.parser.utils import JoinType
 
 
 @pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])

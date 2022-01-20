@@ -1,6 +1,6 @@
 import json
 from mindsdb_sql.parser.ast.base import ASTNode
-from mindsdb_sql.utils import indent
+from mindsdb_sql.parser.utils import indent
 
 
 class CreatePredictor(ASTNode):
