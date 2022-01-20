@@ -21,22 +21,12 @@ from mindsdb_sql.utils import JoinType
 
 
 class QueryPlan:
-    def __init__(self,
-                 integrations=None,
-                 predictor_namespace=None,
-                 predictor_metadata=None,
-                 steps=None,
-                 default_namespace=None):
-        self.integrations = [int.lower() for int in integrations] if integrations else []
-        self.predictor_namespace = predictor_namespace.lower() if predictor_namespace else 'mindsdb'
-        self.predictor_metadata = predictor_metadata or defaultdict(dict)
+    def __init__(self, steps=None, **kwargs):
         self.steps = []
 
         if steps:
             for step in steps:
                 self.add_step(step)
-
-        self.default_namespace = default_namespace
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -49,9 +39,10 @@ class QueryPlan:
             if step != other_step:
                 return False
 
-        if self.result_refs != other.result_refs:
-            return False
-        return True
+        # What is it?
+        # if self.result_refs != other.result_refs:
+        #     return False
+        # return True
 
     @property
     def last_step_index(self):
@@ -62,6 +53,27 @@ class QueryPlan:
             step.step_num = len(self.steps)
         self.steps.append(step)
         return self.steps[-1]
+
+
+class QueryPlanner():
+
+    def __init__(self,
+                 query,
+                 integrations=None,
+                 predictor_namespace=None,
+                 predictor_metadata=None,
+                 default_namespace=None):
+        self.query = query
+        self.plan = QueryPlan()
+
+        self.integrations = [int.lower() for int in integrations] if integrations else []
+        self.predictor_namespace = predictor_namespace.lower() if predictor_namespace else 'mindsdb'
+        self.predictor_metadata = predictor_metadata or defaultdict(dict)
+        self.steps = []
+        self.default_namespace = default_namespace
+
+        self.columns = []
+        self.params = []
 
     def is_predictor(self, identifier):
         parts = identifier.parts
@@ -104,21 +116,21 @@ class QueryPlan:
     def plan_integration_select(self, select):
         """Plan for a select query that can be fully executed in an integration"""
 
-        return self.add_step(self.get_integration_select_step(select))
+        return self.plan.add_step(self.get_integration_select_step(select))
 
     def plan_integration_nested_select(self, select):
         fetch_df_select = copy.deepcopy(select)
         deepest_select = get_deepest_select(fetch_df_select)
         integration_name, table = self.get_integration_path_from_identifier_or_error(deepest_select.from_table)
         recursively_disambiguate_identifiers(deepest_select, integration_name, table)
-        return self.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
+        return self.plan.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
     def plan_select_from_predictor(self, select):
         predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(select.from_table, self.default_namespace)
 
         if select.where == BinaryOperation('=', args=[Constant(1), Constant(0)]):
             # Hardcoded mysql way of getting predictor columns
-            predictor_step = self.add_step(
+            predictor_step = self.plan.add_step(
                 GetPredictorColumns(namespace=predictor_namespace,
                                       predictor=predictor)
             )
@@ -143,7 +155,7 @@ class QueryPlan:
 
             recursively_extract_column_values(where_clause, row_dict, predictor)
 
-            predictor_step = self.add_step(
+            predictor_step = self.plan.add_step(
                 ApplyPredictorRowStep(namespace=predictor_namespace,
                                                 predictor=predictor,
                                                 row_dict=row_dict)
@@ -163,7 +175,7 @@ class QueryPlan:
                                             offset=query.offset,
                                             )
         )
-        predictor_step = self.add_step(ApplyPredictorStep(namespace=predictor_namespace,
+        predictor_step = self.plan.add_step(ApplyPredictorStep(namespace=predictor_namespace,
                                          dataframe=integration_select_step.result,
                                          predictor=predictor))
 
@@ -279,7 +291,7 @@ class QueryPlan:
                     steps=[self.get_integration_select_step(s) for s in integration_selects], reduce='union')
 
             # fetch data step
-            data_step = self.add_step(select_partition_step)
+            data_step = self.plan.add_step(select_partition_step)
         else:
             # inject $var to queries
             for integration_select in integration_selects:
@@ -310,10 +322,10 @@ class QueryPlan:
             select_partitions_step = self.plan_fetch_timeseries_partitions(no_time_filter_query, table, predictor_group_by_names)
 
             # sub-query by every grouping value
-            map_reduce_step = self.add_step(MapReduceStep(values=select_partitions_step.result, reduce='union', step=select_partition_step))
+            map_reduce_step = self.plan.add_step(MapReduceStep(values=select_partitions_step.result, reduce='union', step=select_partition_step))
             data_step = map_reduce_step
 
-        predictor_step = self.add_step(
+        predictor_step = self.plan.add_step(
             ApplyTimeseriesPredictorStep(
                 output_time_filter=time_filter,
                 namespace=predictor_namespace,
@@ -357,7 +369,7 @@ class QueryPlan:
         new_join.condition.args = new_condition_args
         new_join.left = Identifier(left_table_path, alias=left_table.alias)
         new_join.right = Identifier(right_table_path, alias=right_table.alias)
-        return self.add_step(JoinStep(left=select_left_step.result, right=select_right_step.result, query=new_join))
+        return self.plan.add_step(JoinStep(left=select_left_step.result, right=select_right_step.result, query=new_join))
 
     def plan_project(self, query, dataframe):
         out_identifiers = []
@@ -367,7 +379,7 @@ class QueryPlan:
             else:
                 new_identifier = Identifier(str(target.to_string(alias=False)), alias=target.alias)
                 out_identifiers.append(new_identifier)
-        return self.add_step(ProjectStep(dataframe=dataframe, columns=out_identifiers))
+        return self.plan.add_step(ProjectStep(dataframe=dataframe, columns=out_identifiers))
 
     def plan_join(self, query):
         join = query.from_table
@@ -427,11 +439,11 @@ class QueryPlan:
                     # swap join
                     left, right = right, left
 
-                last_step = self.add_step(JoinStep(left=left, right=right, query=new_join))
+                last_step = self.plan.add_step(JoinStep(left=left, right=right, query=new_join))
 
                 # limit from timeseries
                 if predictor_steps.get('saved_limit'):
-                    last_step = self.add_step(LimitOffsetStep(dataframe=last_step.result,
+                    last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result,
                                                               limit=predictor_steps['saved_limit']))
 
             else:
@@ -440,7 +452,7 @@ class QueryPlan:
                 join_step = self.plan_join_two_tables(join)
                 last_step = join_step
                 if query.where:
-                    last_step = self.add_step(FilterStep(dataframe=last_step.result, query=query.where))
+                    last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.where))
 
                 if query.group_by:
                     group_by_targets = []
@@ -448,18 +460,18 @@ class QueryPlan:
                         target_copy = copy.deepcopy(t)
                         target_copy.alias = None
                         group_by_targets.append(target_copy)
-                    last_step = self.add_step(GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets))
+                    last_step = self.plan.add_step(GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets))
 
                 if query.having:
-                    last_step = self.add_step(FilterStep(dataframe=last_step.result, query=query.having))
+                    last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.having))
 
                 if query.order_by:
-                    last_step = self.add_step(OrderByStep(dataframe=last_step.result, order_by=query.order_by))
+                    last_step = self.plan.add_step(OrderByStep(dataframe=last_step.result, order_by=query.order_by))
 
                 if query.limit is not None or query.offset is not None:
                     limit = query.limit.value if query.limit is not None else None
                     offset = query.offset.value if query.offset is not None else None
-                    last_step = self.add_step(LimitOffsetStep(dataframe=last_step.result, limit=limit, offset=offset))
+                    last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result, limit=limit, offset=offset))
 
         else:
             raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')
@@ -484,9 +496,12 @@ class QueryPlan:
         query1 = self.plan_select(query.left)
         query2 = self.plan_select(query.right)
 
-        return self.add_step(UnionStep(left=query1.result, right=query2.result, unique=query.unique))
+        return self.plan.add_step(UnionStep(left=query1.result, right=query2.result, unique=query.unique))
 
-    def from_query(self, query):
+    # method for compatibility
+    def from_query(self):
+        query = self.query
+
         if isinstance(query, Select):
             self.plan_select(query)
         elif isinstance(query, Union):
@@ -494,4 +509,86 @@ class QueryPlan:
         else:
             raise PlanningException(f'Unsupported query type {type(query)}')
 
-        return self
+        return self.plan
+    #
+    # def get_columns(self):
+    #     if self.columns is None:
+    #         raise PlanningException('Statement is not prepared')
+    #     return self.columns
+    #
+    # def execute_plan(self):
+    #     ...
+    #
+    # def prepare_join(self, join):
+    #     # join tree to table list
+    #
+    #     if isinstance(join.right, Join):
+    #         raise NotImplementedError('Wrong join AST')
+    #
+    #     items = []
+    #
+    #     if isinstance(join.left, ast.Join):
+    #         # dive to next level
+    #         items.extend(self.prepare_join(join.left))
+    #     else:
+    #         # this is first table
+    #         items.append(dict(
+    #             table=join.left
+    #         ))
+    #
+    #     # all properties set to right table
+    #     items.append(dict(
+    #         table=join.right,
+    #         join_type=join.join_type,
+    #         is_implicit=join.implicit,
+    #         condition=join.condition
+    #     ))
+    #
+    #     return items
+    #
+    # def prepare_select(self, query):
+    #
+    #     cols = []
+    #     for t in query.targets:
+    #         if isinstance(t, Star):
+    #             # need to get all tables from "from"
+    #             ...
+    #
+    #         col = self.to_expression(t)
+    #         cols.append(col)
+    #
+    #     if query.from_table is not None:
+    #         from_table = query.from_table
+    #         if isinstance(from_table, Join):
+    #             ...
+    #         elif isinstance(from_table, ast.Union):
+    #             ...
+    #         elif isinstance(from_table, ast.Select):
+    #             ...
+    #         elif isinstance(from_table, ast.Identifier):
+    #             ...
+    #         else:
+    #             raise NotImplementedError(f'Select from {from_table}')
+    #
+    #
+    #     return query
+    #
+    # def prepare_steps(self):
+    #
+    #     # get columns
+    #     if isinstance(self.query, Select):
+    #         # prepare select
+    #
+    #         ...
+    #
+    #     else:
+    #         raise NotImplementedError(self.query.__name__)
+    #
+    #     # get count of parameters
+    #
+    #
+    #
+    #
+    #     ...
+    #
+

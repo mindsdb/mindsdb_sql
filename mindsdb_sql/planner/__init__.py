@@ -1,6 +1,6 @@
-from .query_plan import QueryPlan
+from .query_plan import QueryPlanner, QueryPlan
 
 
 def plan_query(query, *args, **kwargs):
-    return QueryPlan(*args, **kwargs).from_query(query)
+    return QueryPlanner(query, *args, **kwargs).from_query()
 
