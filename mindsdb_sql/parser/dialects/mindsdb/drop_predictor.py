@@ -1,6 +1,5 @@
-import json
 from mindsdb_sql.parser.ast.drop import Drop
-from mindsdb_sql.utils import indent
+from mindsdb_sql.parser.utils import indent
 
 
 class DropPredictor(Drop):

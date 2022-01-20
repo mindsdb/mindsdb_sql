@@ -1,13 +1,13 @@
 import json
 from mindsdb_sql.parser.ast.base import ASTNode
-from mindsdb_sql.utils import indent
+from mindsdb_sql.parser.utils import indent
 
 
 class CreatePredictor(ASTNode):
     def __init__(self,
                  name,
                  integration_name,
-                 query,
+                 query_str,
                  targets,
                  datasource_name=None,
                  order_by=None,
@@ -19,7 +19,7 @@ class CreatePredictor(ASTNode):
         super().__init__(*args, **kwargs)
         self.name = name
         self.integration_name = integration_name
-        self.query = query
+        self.query_str = query_str
         self.targets = targets
         self.datasource_name = datasource_name
         self.order_by = order_by
@@ -34,7 +34,7 @@ class CreatePredictor(ASTNode):
 
         name_str = f'\n{ind1}name={self.name.to_tree()},'
         integration_name_str = f'\n{ind1}integration_name={self.integration_name.to_tree()},'
-        query_str = f'\n{ind1}query={self.query.to_tree(level=level+1)},'
+        query_str = f'\n{ind1}query={self.query_str},'
 
         datasource_name_str = ''
         if self.datasource_name:
@@ -80,7 +80,7 @@ class CreatePredictor(ASTNode):
         using_str = f'USING {json.dumps(self.using)}' if self.using is not None else ''
         datasource_name_str = f'AS {self.datasource_name.to_string()} ' if self.datasource_name is not None else ''
 
-        query_str = self.query.to_string()
+        query_str = self.query_str
 
         out_str = f'CREATE PREDICTOR {self.name.to_string()} FROM {self.integration_name.to_string()} WITH ({query_str}) ' \
                   f'{datasource_name_str}' \

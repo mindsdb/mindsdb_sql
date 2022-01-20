@@ -1,8 +1,8 @@
 import json
+
 from sly import Parser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.ast.drop import DropDatabase, DropView
-from mindsdb_sql.parser.dialects.mindsdb.drop_integration import DropIntegration
 from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
@@ -14,7 +14,11 @@ from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.parser.dialects.mindsdb.retrain_predictor import RetrainPredictor
 from mindsdb_sql.parser.logger import ParserLogger
-from mindsdb_sql.utils import ensure_select_keyword_order, JoinType
+from mindsdb_sql.parser.utils import ensure_select_keyword_order, JoinType, tokens_to_string
+
+all_tokens_list = MindsDBLexer.tokens.copy()
+all_tokens_list.remove('RPAREN')
+all_tokens_list.remove('LPAREN')
 
 """
 Unfortunately the rules are not iherited from base SQLParser, because it just doesn't work with Sly due to metaclass magic.
@@ -326,20 +330,19 @@ class MindsDBParser(Parser):
     def drop_dataset(self, p):
         return DropDataset(p.identifier)
 
-    # CREATE PREDICTOR
-    @_('create_predictor USING JSON')
+    @_('create_predictor USING kw_parameter_list')
     def create_predictor(self, p):
-        p.create_predictor.using = p.JSON
+        p.create_predictor.using = p.kw_parameter_list
         return p.create_predictor
 
-    @_('create_predictor HORIZON INTEGER')
+    @_('create_predictor HORIZON integer')
     def create_predictor(self, p):
-        p.create_predictor.horizon = p.INTEGER
+        p.create_predictor.horizon = p.integer
         return p.create_predictor
 
-    @_('create_predictor WINDOW INTEGER')
+    @_('create_predictor WINDOW integer')
     def create_predictor(self, p):
-        p.create_predictor.window = p.INTEGER
+        p.create_predictor.window = p.integer
         return p.create_predictor
 
     @_('create_predictor GROUP_BY expr_list')
@@ -356,15 +359,15 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR identifier FROM identifier WITH LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
-    @_('CREATE PREDICTOR identifier FROM identifier LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
-    @_('CREATE TABLE identifier FROM identifier WITH LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
-    @_('CREATE TABLE identifier FROM identifier LPAREN select RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier WITH LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE TABLE identifier FROM identifier WITH LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE TABLE identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
     def create_predictor(self, p):
         return CreatePredictor(
             name=p.identifier0,
             integration_name=p.identifier1,
-            query=p.select,
+            query_str=tokens_to_string(p.raw_query),
             datasource_name=p.optional_data_source_name,
             targets=p.result_columns,
         )
@@ -378,14 +381,14 @@ class MindsDBParser(Parser):
         pass
 
     # CREATE INTEGRATION
-    @_('CREATE datasource_engine COMMA PARAMETERS EQUALS JSON',
-       'CREATE datasource_engine COMMA PARAMETERS JSON',
-       'CREATE datasource_engine PARAMETERS EQUALS JSON',
-       'CREATE datasource_engine PARAMETERS JSON')
+    @_('CREATE datasource_engine COMMA PARAMETERS EQUALS json',
+       'CREATE datasource_engine COMMA PARAMETERS json',
+       'CREATE datasource_engine PARAMETERS EQUALS json',
+       'CREATE datasource_engine PARAMETERS json')
     def create_integration(self, p):
         return CreateDatasource(name=p.datasource_engine['id'],
                                  engine=p.datasource_engine['engine'],
-                                 parameters=p.JSON)
+                                 parameters=p.json)
 
     @_('DATASOURCE ID WITH ENGINE EQUALS string',
        'DATASOURCE ID WITH ENGINE string',
@@ -842,20 +845,34 @@ class MindsDBParser(Parser):
     def constant(self, p):
         return Constant(value=False)
 
-    @_('INTEGER')
+    @_('integer')
     def constant(self, p):
-        return Constant(value=int(p.INTEGER))
+        return Constant(value=int(p.integer))
 
-    @_('FLOAT')
+    @_('float')
     def constant(self, p):
-        return Constant(value=float(p.FLOAT))
+        return Constant(value=float(p.float))
 
     @_('string')
     def constant(self, p):
         return Constant(value=str(p[0]))
 
-    @_('QUOTE_STRING')
-    @_('DQUOTE_STRING')
+    @_('kw_parameter',
+       'kw_parameter_list COMMA kw_parameter')
+    def kw_parameter_list(self, p):
+        params = getattr(p, 'kw_parameter_list', {})
+        params.update(p.kw_parameter)
+        return params
+
+    @_('identifier EQUALS string')
+    @_('identifier EQUALS integer')
+    @_('identifier EQUALS float')
+    def kw_parameter(self, p):
+        key = '.'.join(p.identifier.parts)
+        return {key: p[2]}
+
+    @_('quote_string',
+       'dquote_string')
     def string(self, p):
         return p[0]
 
@@ -872,7 +889,7 @@ class MindsDBParser(Parser):
        'PREDICT',
        'PREDICTOR',
        'PREDICTORS',
-       'DQUOTE_STRING')
+       'dquote_string')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)
@@ -880,6 +897,48 @@ class MindsDBParser(Parser):
     @_('PARAMETER')
     def parameter(self, p):
         return Parameter(value=p.PARAMETER)
+
+
+    # convert to types
+
+    @_('FLOAT')
+    def float(self, p):
+        return float(p[0])
+
+    @_('INTEGER')
+    def integer(self, p):
+        return int(p[0])
+
+    @_('JSON')
+    def json(self, p):
+        # TODO parse json as BNF
+        return json.loads(p[0])
+
+    @_('QUOTE_STRING')
+    def quote_string(self, p):
+        return p[0].strip('\'')
+
+    @_('DQUOTE_STRING')
+    def dquote_string(self, p):
+        return p[0].strip('\"')
+
+    # for raw query
+
+    @_('LPAREN raw_query RPAREN')
+    def raw_query(self, p):
+        return [ p._slice[0] ] + p[1] + [ p._slice[2] ]
+
+    @_('raw_query LPAREN RPAREN')
+    def raw_query(self, p):
+        return p[0] + [ p._slice[1], p._slice[2] ]
+
+    @_('raw_query raw_query')
+    def raw_query(self, p):
+        return p[0] + p[1]
+
+    @_(*all_tokens_list)
+    def raw_query(self, p):
+        return p._slice
 
     @_('')
     def empty(self, p):

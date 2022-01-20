@@ -8,7 +8,7 @@ from mindsdb_sql.planner import plan_query, QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, ApplyTimeseriesPredictorStep,
                                        LimitOffsetStep, MapReduceStep, MultipleSteps, JoinStep)
-from mindsdb_sql.utils import JoinType
+from mindsdb_sql.parser.utils import JoinType
 
 
 class TestJoinTimeseriesPredictor:

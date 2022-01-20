@@ -1,10 +1,9 @@
 import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
-from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, Operation, OrderBy,
-                                    BetweenOperation, Union, Use)
+from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
+                                    BetweenOperation, Union)
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
-from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep, GetPredictorColumns)
@@ -17,7 +16,6 @@ from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        get_deepest_select,
                                        recursively_extract_column_values,
                                        recursively_check_join_identifiers_for_ambiguity)
-from mindsdb_sql.utils import JoinType
 
 
 class QueryPlan:

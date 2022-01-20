@@ -57,3 +57,35 @@ def to_single_line(text):
     text = text.replace('\t', ' ')
     text = ' '.join(text.split())
     return text
+
+
+def tokens_to_string(tokens):
+    # converts list of token (after lexer) to original string
+
+    line_num = tokens[0].lineno
+    shift = tokens[0].index
+    last_pos = 0
+    content, line = '', ''
+
+    for token in tokens:
+        if token.lineno != line_num:
+            # go to new line
+            content += line + '\n'
+            line = ''
+            line_num = token.lineno
+
+            # because sly parser store only absolute position index:
+            #   memorizing last token index to shift next lne
+            shift = last_pos + 1
+
+        # filling space between tokens
+        line += ' '*(token.index - shift - len(line))
+
+        # add token
+        line += token.value
+
+        last_pos = token.index + len(token.value)
+
+    # last line
+    content += line
+    return content

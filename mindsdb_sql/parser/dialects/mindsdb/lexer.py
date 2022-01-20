@@ -10,7 +10,7 @@ as a string.
 """
 class MindsDBLexer(Lexer):
     reflags = re.IGNORECASE
-    ignore = ' \t\n\r'
+    ignore = ' \t\r'
     ignore_multi_comment = r'/\*.*?\*/'
     ignore_line_comment = r'--[^\n]*'
 
@@ -229,25 +229,24 @@ class MindsDBLexer(Lexer):
 
     @_(r'\d+\.\d+')
     def FLOAT(self, t):
-        t.value = float(t.value)
         return t
 
     @_(r'\d+')
     def INTEGER(self, t):
-        t.value = int(t.value)
         return t
 
     @_(r'\{[\s\S]*}')
     def JSON(self, t):
-        t.value = json.loads(t.value)
         return t
 
     @_(r"'[^']*'")
     def QUOTE_STRING(self, t):
-        t.value = t.value.strip('\'')
         return t
 
     @_(r'"[^"]*"')
     def DQUOTE_STRING(self, t):
-        t.value = t.value.strip('\"')
         return t
+
+    @_(r'\n+')
+    def ignore_newline(self, t):
+        self.lineno += len(t.value)
