@@ -34,7 +34,7 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[0]')]),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[vendor_id]')]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
@@ -89,7 +89,7 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[0]')]),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[vendor_id]')]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
@@ -147,7 +147,7 @@ class TestJoinTimeseriesPredictor:
                                                                    from_table=Identifier('data.ny_output',
                                                                                          alias=Identifier('ta')),
                                                                    where=BinaryOperation('=', args=[
-                                                                       Identifier('ta.vendor_id'), Constant('$var[0]')]),
+                                                                       Identifier('ta.vendor_id'), Constant('$var[vendor_id]')]),
                                                                    order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                      direction='DESC')],
                                                                    )
@@ -213,7 +213,7 @@ class TestJoinTimeseriesPredictor:
                                                                                              Constant(1)]),
                                                                        BinaryOperation('=', args=[
                                                                            Identifier('ta.vendor_id'),
-                                                                           Constant('$var[0]')]),
+                                                                           Constant('$var[vendor_id]')]),
                                                                    ]),
                                                                    order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                      direction='DESC')],
@@ -283,7 +283,7 @@ class TestJoinTimeseriesPredictor:
                                                                                              Constant(1)]),
                                                                        BinaryOperation('=', args=[
                                                                            Identifier('ta.vendor_id'),
-                                                                           Constant('$var[0]')]),
+                                                                           Constant('$var[vendor_id]')]),
                                                                    ]),
                                                                    order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                      direction='DESC')],
@@ -367,7 +367,7 @@ class TestJoinTimeseriesPredictor:
                                                                           ]),
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var[0]')])
+                                                                              Constant('$var[vendor_id]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -391,7 +391,7 @@ class TestJoinTimeseriesPredictor:
 
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var[0]')])
+                                                                              Constant('$var[vendor_id]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -472,7 +472,7 @@ class TestJoinTimeseriesPredictor:
                                                                           ]),
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var[0]')])
+                                                                              Constant('$var[vendor_id]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -497,7 +497,7 @@ class TestJoinTimeseriesPredictor:
 
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var[0]')])
+                                                                              Constant('$var[vendor_id]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -574,7 +574,7 @@ class TestJoinTimeseriesPredictor:
                                                                           ]),
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var[0]')])
+                                                                              Constant('$var[vendor_id]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -599,7 +599,7 @@ class TestJoinTimeseriesPredictor:
 
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var[0]')])
+                                                                              Constant('$var[vendor_id]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -673,7 +673,7 @@ class TestJoinTimeseriesPredictor:
                                                                           ]),
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var[0]')])
+                                                                              Constant('$var[vendor_id]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -747,7 +747,7 @@ class TestJoinTimeseriesPredictor:
                                                                           ]),
                                                                           BinaryOperation('=', args=[
                                                                               Identifier('ta.vendor_id'),
-                                                                              Constant('$var[0]')])
+                                                                              Constant('$var[vendor_id]')])
                                                                       ]),
                                                                       order_by=[OrderBy(Identifier('ta.pickup_hour'),
                                                                                         direction='DESC')],
@@ -855,7 +855,7 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[0]')]),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[vendor_id]')]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
@@ -913,7 +913,7 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[Star()],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[0]')]),
+                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[vendor_id]')]),
                                                 order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
                                                 )
                                    ),
@@ -1031,7 +1031,7 @@ class TestJoinTimeseriesPredictor:
                                   integration='ds',
                                   query=parse_sql(f"SELECT * FROM data.ny_output as ta \
                                                    WHERE ta.f2 BETWEEN '2020-11-01' AND '2020-12-01' \
-                                                   AND ta.f2 = '$var[0]' \
+                                                   AND ta.f2 = '$var[f2]' \
                                                    ORDER BY ta.f1 DESC LIMIT {predictor_window}")
                               ),
                 ),
@@ -1096,13 +1096,13 @@ class TestJoinTimeseriesPredictor:
                                             BinaryOperation(op='=',
                                               args=(
                                                 Identifier(parts=['ta', 'f2']),
-                                                Constant(value='$var[0]')
+                                                Constant(value='$var[f2]')
                                               )
                                             ),
                                             BinaryOperation(op='=',
                                               args=(
                                                 Identifier(parts=['ta', 'f3']),
-                                                Constant(value='$var[1]')
+                                                Constant(value='$var[f3]')
                                               )
                                             )
                                           )
