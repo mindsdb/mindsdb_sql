@@ -31,6 +31,7 @@ class SQLParser(Parser):
        'union',
        'select',
        'insert',
+       'delete',
        'drop_view',
        )
     def query(self, p):
@@ -130,6 +131,18 @@ class SQLParser(Parser):
        'STATUS')
     def show_category(self, p):
         return ' '.join([x for x in p])
+
+    # DELETE
+    @_('DELETE FROM from_table WHERE expr')
+    @_('DELETE FROM from_table')
+    def delete(self, p):
+        where = getattr(p, 'expr', None)
+
+        if where is not None and not isinstance(where, Operation):
+            raise ParsingException(
+                f"WHERE must contain an operation that evaluates to a boolean, got: {str(where)}")
+
+        return Delete(table=p.from_table, where=where)
 
     # INSERT
     @_('INSERT INTO from_table LPAREN result_columns RPAREN select')

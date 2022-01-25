@@ -52,7 +52,7 @@ class MindsDBLexer(Lexer):
         UNION, ALL,
 
         # DML
-        INSERT, INTO, VALUES,
+        INSERT, DELETE, INTO, VALUES,
 
         # Special
         DOT, COMMA, LPAREN, RPAREN, PARAMETER,
@@ -183,6 +183,7 @@ class MindsDBLexer(Lexer):
 
     # DML
     INSERT = r'\bINSERT\b'
+    DELETE = r'\bDELETE\b'
     INTO = r'\bINTO\b'
     VALUES = r'\bVALUES\b'
 
