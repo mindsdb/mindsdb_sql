@@ -6,6 +6,7 @@ class PlanStep:
     def __init__(self, step_num=None, references=None):
         self.step_num = step_num
         self.references = references or []
+        self.result_data = None
 
     @property
     def result(self):
@@ -28,6 +29,8 @@ class PlanStep:
         attrs_str = ', '.join([f'{k}={str(v)}' for k, v in attrs_dict.items()])
         return f'{self.__class__.__name__}({attrs_str})'
 
+    def set_result(self, result):
+        self.result_data = result
 
 class ProjectStep(PlanStep):
     """Selects columns from a dataframe"""
@@ -163,6 +166,14 @@ class GetPredictorColumns(PlanStep):
         super().__init__(*args, **kwargs)
         self.namespace = namespace
         self.predictor = predictor
+
+
+class GetTableColumns(PlanStep):
+    """Returns an empty dataframe of shape and columns like predictor results."""
+    def __init__(self, namespace, table, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.namespace = namespace
+        self.table = table
 
 
 class MapReduceStep(PlanStep):

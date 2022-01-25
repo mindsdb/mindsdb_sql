@@ -3,10 +3,13 @@ from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
                                     BetweenOperation, Union)
+from mindsdb_sql.parser import ast
+
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
-                                       UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep, GetPredictorColumns)
+                                       UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep,
+                                       GetPredictorColumns, GetTableColumns)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
@@ -15,7 +18,9 @@ from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        disambiguate_predictor_column_identifier, recursively_disambiguate_identifiers,
                                        get_deepest_select,
                                        recursively_extract_column_values,
-                                       recursively_check_join_identifiers_for_ambiguity)
+                                       recursively_check_join_identifiers_for_ambiguity,
+                                       query_traversal,
+                                       convert_join_to_list)
 
 
 class QueryPlan:
@@ -81,13 +86,14 @@ class QueryPlanner():
             return True
         return False
 
-    def is_integration_table(self, identifier):
-        parts = identifier.parts
-        if parts[0].lower() in self.integrations:
-            return True
-        elif len(parts) == 1 and self.default_namespace in self.integrations:
-            return True
-        return False
+    # not used
+    # def is_integration_table(self, identifier):
+    #     parts = identifier.parts
+    #     if parts[0].lower() in self.integrations:
+    #         return True
+    #     elif len(parts) == 1 and self.default_namespace in self.integrations:
+    #         return True
+    #     return False
 
     def get_integration_path_from_identifier_or_error(self, identifier, recurse=True):
         try:
@@ -508,85 +514,241 @@ class QueryPlanner():
             raise PlanningException(f'Unsupported query type {type(query)}')
 
         return self.plan
-    #
-    # def get_columns(self):
-    #     if self.columns is None:
-    #         raise PlanningException('Statement is not prepared')
-    #     return self.columns
-    #
-    # def execute_plan(self):
-    #     ...
-    #
-    # def prepare_join(self, join):
-    #     # join tree to table list
-    #
-    #     if isinstance(join.right, Join):
-    #         raise NotImplementedError('Wrong join AST')
-    #
-    #     items = []
-    #
-    #     if isinstance(join.left, ast.Join):
-    #         # dive to next level
-    #         items.extend(self.prepare_join(join.left))
-    #     else:
-    #         # this is first table
-    #         items.append(dict(
-    #             table=join.left
-    #         ))
-    #
-    #     # all properties set to right table
-    #     items.append(dict(
-    #         table=join.right,
-    #         join_type=join.join_type,
-    #         is_implicit=join.implicit,
-    #         condition=join.condition
-    #     ))
-    #
-    #     return items
-    #
-    # def prepare_select(self, query):
-    #
-    #     cols = []
-    #     for t in query.targets:
-    #         if isinstance(t, Star):
-    #             # need to get all tables from "from"
-    #             ...
-    #
-    #         col = self.to_expression(t)
-    #         cols.append(col)
-    #
-    #     if query.from_table is not None:
-    #         from_table = query.from_table
-    #         if isinstance(from_table, Join):
-    #             ...
-    #         elif isinstance(from_table, ast.Union):
-    #             ...
-    #         elif isinstance(from_table, ast.Select):
-    #             ...
-    #         elif isinstance(from_table, ast.Identifier):
-    #             ...
-    #         else:
-    #             raise NotImplementedError(f'Select from {from_table}')
-    #
-    #
-    #     return query
-    #
-    # def prepare_steps(self):
-    #
-    #     # get columns
-    #     if isinstance(self.query, Select):
-    #         # prepare select
-    #
-    #         ...
-    #
-    #     else:
-    #         raise NotImplementedError(self.query.__name__)
-    #
-    #     # get count of parameters
-    #
-    #
-    #
-    #
-    #     ...
-    #
+
+    def get_columns(self):
+        if self.columns is None:
+            raise PlanningException('Statement is not prepared')
+        return self.columns
+
+    def execute_plan(self):
+        ...
+
+
+
+
+
+    def prepare_select(self, query):
+        query = copy.deepcopy(query)
+
+        # find all parameters
+        params = []
+        def params_replace(node):
+            if isinstance(node, ast.Parameter):
+                params.append(node)
+                # return ast.Constant('0')
+
+        query = query_traversal(query, params_replace)
+
+        # get all tables from 1st level of query
+        tables_map = {}
+        tables = []
+        if query.from_table is not None:
+
+            if isinstance(query.from_table, Join):
+                # get all tables
+                join_tables = convert_join_to_list(query.from_table)
+            else:
+                join_tables = [dict(table=query.from_table)]
+
+            for join_table in join_tables:
+                table = join_table['table']
+                if isinstance(table, Identifier):
+                    # disambiguate
+
+                    if self.is_predictor(table):
+                        ds, table = get_predictor_namespace_and_name_from_identifier(table, self.default_namespace)
+                        is_predictor = True
+
+                    else:
+                        ds, table = self.get_integration_path_from_identifier_or_error(table)
+                        is_predictor = False
+
+                    if table.alias is not None:
+                        # access by alias if table is having alias
+                        keys = [table.alias.to_string()]
+
+                    else:
+                        # access by table name, in all variants
+                        keys = []
+                        parts = []
+                        # in reverse order
+                        for p in table.parts[::-1]:
+                            parts.insert(0, p)
+                            keys.append('.'.join(parts))
+
+                    # remember table
+                    for key in keys:
+                        table = dict(
+                            ds=ds,
+                            name=table,
+                            is_predictor=is_predictor
+                        )
+                        tables_map[key] = table
+                        tables.append(table)
+
+                elif isinstance(table, Select):
+                    # TODO nested select
+                    raise NotImplementedError(f'Select from {table}')
+                else:
+                    raise NotImplementedError(f'Select from {table}')
+
+        # get targets
+        columns = []
+        get_all_tables = False
+        for t in query.targets:
+            # column alias
+            if t.alias is not None:
+                alias = t.alias.to_string()
+            else:
+                # unknown
+                alias = None
+
+            column = {
+                'alias': alias
+            }
+
+            if isinstance(t, Star):
+                if len(tables) == 0:
+                    # if "from" is emtpy we can't make plan
+                    raise PlanningException("Can't find table to get fields")
+
+                column['is_star'] = True
+                get_all_tables = True
+
+            elif isinstance(t, Identifier):
+                if column['alias'] is None:
+                    column['alias'] = t.parts[-1]
+
+                # set name
+                column['name'] = t.parts[-1]
+
+                # get tables to check
+                if len(t.parts) == 1:
+                    # table is not known
+                    get_all_tables = True
+                else:
+                    # try to find table
+                    table_parts = t.parts[:-1]
+                    table_name = '.'.join(table_parts)
+                    if table_name in tables_map:
+                        column['table'] = tables_map[table_name]
+
+                    elif len(table_parts > 1):
+                        # maybe datasource is 1st part
+                        table_parts = table_parts[1:]
+                        table_name = '.'.join(table_parts)
+                        if table_name in tables_map:
+                            column['table'] = tables_map[table_name]
+            elif isinstance(t, ast.Constant):
+                if column['alias'] is None:
+                    column['alias'] = str(t.value)
+                column['type'] = type(t.value)
+            else:
+                # TODO go down into lower level.
+                #  It can be function, operation, select.
+                #  But now show it as string
+
+                # TODO add several known types for function, i.e ABS-int
+
+                # TODO TypeCast - as casted type
+                column['type'] = str
+
+            columns.append(column)
+
+        # get columns from tables:
+        request_tables = set()
+        for column in columns:
+            if 'table' in column:
+                request_tables.add(column['table']['name'])
+
+        for table in tables:
+            if get_all_tables or table['name'] in request_tables:
+                if table['is_predictor']:
+                    step = GetPredictorColumns(namespace=table['ds'], predictor=table['name'])
+                else:
+                    step = GetTableColumns(namespace=table['ds'], table=table['name'])
+                yield step
+
+                # save results
+                table['columns'] = step.result_data
+                table['columns_map'] = {
+                    i['name']: i
+                    for i in table['columns']
+                }
+
+        #  create columns list
+        columns_result = []
+        for i, column in enumerate(columns):
+            if column['is_star']:
+                # add data from all tables
+                for table in tables:
+                    if 'columns' in table:
+                        for col in table['columns']:
+                            # col = {name: 'col', type: 'str'}
+                            col['ds'] = table['ds']
+                            col['alias'] = col['name']
+                            col['table'] = table['name']
+                            columns_result.append(col)
+                        else:
+                            ...
+                            # TODO raise ?
+
+                # to next column
+                continue
+
+            elif 'name' in column:
+                # is Identifier
+                col_name = column['name']
+                if 'table' in column:
+                    table = column['table']
+                    if col_name in table['columns_map']:
+                        column['type'] = table['columns_map'][col_name]['type']
+                    else:
+                        raise PlanningException(f'Column not found {col_name}')
+                else:
+                    # table is not found, looking for in all tables
+                    for table in tables:
+                        col = table['columns_map'].get(col_name)
+                        if col in table['columns_map']:
+                            column['type'] = table['columns_map'][col_name]['type']
+                            break
+
+            # forcing alias
+            if column['alias'] is None:
+                column['alias'] = f'column_{i}'
+
+            columns_result.append(dict(
+                alias=column['alias'],
+                type=column['type'],
+                name=column['name'],
+                table=column['table']['name'],
+                ds=column['table']['ds'],
+            ))
+
+        self.prepared_statement = dict(
+            columns = columns_result,
+            params = params
+        )
+        # TODO what to do in Project step? connect columns and
+        #  tests
+        #  rethink
+
+    def prepare_steps(self):
+
+        # get columns
+        if isinstance(self.query, Select):
+            # prepare select
+
+            ...
+
+        else:
+            raise NotImplementedError(self.query.__name__)
+
+        # get count of parameters
+
+
+
+
+        ...
+
 
