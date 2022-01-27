@@ -903,6 +903,8 @@ class MindsDBParser(Parser):
     @_('ID',
        'CHARSET',
        'TABLES',
+       'VIEW',
+       'VIEWS',
        # Mindsdb specific
        'STATUS',
        'PREDICT',
