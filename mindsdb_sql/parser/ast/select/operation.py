@@ -79,8 +79,9 @@ class Function(Operation):
         return f'{self.op}({distinct_str}{args_str})'
 
 
-class WindowFunction(Operation):
+class WindowFunction(ASTNode):
     def __init__(self, function, partition=None, order_by=None, alias=None):
+        super().__init__()
         self.function = function
         self.partition = partition
         self.order_by = order_by
@@ -125,3 +126,28 @@ class WindowFunction(Operation):
         else:
             alias_str = ''
         return f'{fnc_str} over({partition_str} {order_str}) {alias_str}'
+
+
+class Object(ASTNode):
+    def __init__(self, type, params=None, **kwargs):
+        super().__init__(**kwargs)
+
+        self.type = type
+        self.params = params
+
+    def to_tree(self, *args, level=0, **kwargs):
+        ind = indent(level)
+
+        params = [
+            f'{k}={v}'
+            for k, v in self.params.items()
+        ]
+        params_str = ': '.join(params)
+
+        return f'{ind}Object(type={repr(self.type)}, params={{params_str}})'
+
+    def to_string(self, *args, **kwargs):
+        return self.to_tree()
+
+    def __repr__(self):
+        return self.to_tree()

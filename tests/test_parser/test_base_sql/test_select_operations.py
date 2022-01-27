@@ -451,6 +451,18 @@ class TestOperations:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_select_from_view_kw(self, dialect):
+        for table in ['view.t','views.t']:
+            sql = f'select * from {table}'
+
+            ast = parse_sql(sql, dialect=dialect)
+            expected_ast = Select(targets=[Star()],
+                                  from_table=Identifier.from_path_str(table)
+                                 )
+            assert ast.to_tree() == expected_ast.to_tree()
+            assert str(ast) == str(expected_ast)
+
+
 # it doesn't work in sqlite
 @pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
 class TestOperationsNoSqlite:

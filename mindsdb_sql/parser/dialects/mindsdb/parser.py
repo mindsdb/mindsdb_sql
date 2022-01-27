@@ -872,6 +872,10 @@ class MindsDBParser(Parser):
     def constant(self, p):
         return Constant(value=str(p[0]))
 
+    @_('ID LPAREN kw_parameter_list RPAREN')
+    def object(self, p):
+        return Object(type=p.ID, params=p.kw_parameter_list)
+
     @_('kw_parameter',
        'kw_parameter_list COMMA kw_parameter')
     def kw_parameter_list(self, p):
@@ -882,6 +886,8 @@ class MindsDBParser(Parser):
     @_('identifier EQUALS string')
     @_('identifier EQUALS integer')
     @_('identifier EQUALS float')
+    @_('identifier EQUALS object')
+    @_('identifier EQUALS JSON')
     def kw_parameter(self, p):
         key = '.'.join(p.identifier.parts)
         return {key: p[2]}
@@ -899,6 +905,8 @@ class MindsDBParser(Parser):
     @_('ID',
        'CHARSET',
        'TABLES',
+       'VIEW',
+       'VIEWS',
        # Mindsdb specific
        'STATUS',
        'PREDICT',

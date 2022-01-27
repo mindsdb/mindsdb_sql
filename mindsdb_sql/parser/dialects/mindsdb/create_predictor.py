@@ -77,7 +77,7 @@ class CreatePredictor(ASTNode):
         group_by_str = f'GROUP BY {", ".join([out.to_string() for out in self.group_by])} ' if self.group_by else ''
         window_str = f'WINDOW {self.window} ' if self.window is not None else ''
         horizon_str = f'HORIZON {self.horizon} ' if self.horizon is not None else ''
-        using_str = f'USING {json.dumps(self.using)}' if self.using is not None else ''
+        using_str = f'USING {str(self.using)}' if self.using is not None else ''
         datasource_name_str = f'AS {self.datasource_name.to_string()} ' if self.datasource_name is not None else ''
 
         query_str = self.query_str
