@@ -307,12 +307,14 @@ class MindsDBParser(Parser):
         return Use(value=p.identifier)
 
     # CREATE VIEW
-    @_('CREATE VIEW ID create_view_from_table_or_nothing AS LPAREN select RPAREN')
-    @_('CREATE DATASET ID create_view_from_table_or_nothing AS LPAREN select RPAREN')
+    @_('CREATE VIEW ID create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
+    @_('CREATE DATASET ID create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
     def create_view(self, p):
+        query_str = tokens_to_string(p.raw_query)
+
         return CreateView(name=p.ID,
                           from_table=p.create_view_from_table_or_nothing,
-                          query=p.select)
+                          query_str=query_str)
 
     @_('FROM identifier')
     def create_view_from_table_or_nothing(self, p):
