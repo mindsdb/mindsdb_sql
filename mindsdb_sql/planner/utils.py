@@ -205,10 +205,10 @@ def get_deepest_select(select):
     return get_deepest_select(select.from_table)
 
 
-def query_traversal(node, callback):
+def query_traversal(node, callback, is_table=False):
     # traversal query tree to find and replace nodes
 
-    res = callback(node)
+    res = callback(node, is_table=is_table)
     if res is not None:
         # node is going to be replaced
         return res
@@ -228,7 +228,7 @@ def query_traversal(node, callback):
             node.cte = array
 
         if node.from_table is not None:
-            node_out = query_traversal(node.from_table, callback)
+            node_out = query_traversal(node.from_table, callback, is_table=True)
             if node_out is not None:
                 node.from_table = node_out
 
@@ -270,12 +270,16 @@ def query_traversal(node, callback):
     # elif isinstance(node, ast.Delete):
     #     TODO
     elif isinstance(node, ast.Join):
-        node_out = query_traversal(node.right, callback)
+        node_out = query_traversal(node.right, callback, is_table=True)
         if node_out is not None:
             node.right = node_out
-        node_out = query_traversal(node.left, callback)
+        node_out = query_traversal(node.left, callback, is_table=True)
         if node_out is not None:
             node.left = node_out
+        if node.condition is not None:
+            node_out = query_traversal(node.condition, callback)
+            if node_out is not None:
+                node.condition = node_out
     elif isinstance(node, ast.Function) \
             or isinstance(node, ast.BinaryOperation)\
             or isinstance(node, ast.UnaryOperation) \
