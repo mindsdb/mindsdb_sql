@@ -18,7 +18,8 @@ class TestCreateDatasource:
         assert tokens[7].type == 'COMMA'
         assert tokens[8].type == 'PARAMETERS'
         assert tokens[9].type == 'EQUALS'
-        assert tokens[10].type == 'JSON'
+        # next tokens come separately, not just single JSON
+        # assert tokens[10].type == 'JSON'
 
     def test_create_datasource_ok(self, ):
         # variants with or without ',' and '='
