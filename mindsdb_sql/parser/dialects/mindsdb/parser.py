@@ -885,10 +885,64 @@ class MindsDBParser(Parser):
     @_('identifier EQUALS integer')
     @_('identifier EQUALS float')
     @_('identifier EQUALS object')
-    @_('identifier EQUALS JSON')
+    @_('identifier EQUALS json')
     def kw_parameter(self, p):
         key = '.'.join(p.identifier.parts)
         return {key: p[2]}
+
+
+    # json
+
+    @_('LBRACE json_element_list RBRACE')
+    @_('LBRACE RBRACE')
+    def json(self, p):
+        params = getattr(p, 'json_element_list', {})
+        return params
+
+    @_('json_element')
+    @_('json_element_list COMMA json_element')
+    def json_element_list(self, p):
+        params = getattr(p, 'json_element_list', {})
+        params.update(p.json_element)
+        return params
+
+    @_('string COLON json_value')
+    def json_element(self, p):
+        return {p.string: p.json_value}
+
+    # json_array
+
+    @_('LBRACKET json_array_list RBRACKET')
+    @_('LBRACKET RBRACKET')
+    def json_array(self, p):
+        arr = getattr(p, 'json_array_list', [])
+        return arr
+
+    @_('json_value')
+    @_('json_array_list COMMA json_value')
+    def json_array_list(self, p):
+        arr = getattr(p, 'json_array_list', [])
+        arr.append(p.json_value)
+        return arr
+
+    @_('float',
+       'string',
+       'integer',
+       'NULL',
+       'TRUE',
+       'FALSE',
+       'json_array',
+       'json')
+    def json_value(self, p):
+
+        if hasattr(p, 'NULL'):
+            return None
+        elif hasattr(p, 'TRUE'):
+            return True
+        elif hasattr(p, 'FALSE'):
+            return False
+        return p[0]
+
 
     @_('quote_string',
        'dquote_string')
@@ -929,11 +983,6 @@ class MindsDBParser(Parser):
     @_('INTEGER')
     def integer(self, p):
         return int(p[0])
-
-    @_('JSON')
-    def json(self, p):
-        # TODO parse json as BNF
-        return json.loads(p[0])
 
     @_('QUOTE_STRING')
     def quote_string(self, p):
