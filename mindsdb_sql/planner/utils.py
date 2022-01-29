@@ -288,7 +288,7 @@ def query_traversal(node, callback, is_table=False):
         for arg in node.args:
             node_out = query_traversal(arg, callback) or arg
             array.append(node_out)
-        node.arg = array
+        node.args = array
     elif isinstance(node, ast.WindowFunction):
         query_traversal(node.function, callback)
         if node.partition is not None:

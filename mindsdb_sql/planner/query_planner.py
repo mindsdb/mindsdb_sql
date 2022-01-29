@@ -500,6 +500,10 @@ class QueryPlanner():
         statement_planner = PreparedStatementPlanner(self)
         return statement_planner.fetch(row_count)
 
+    def close(self):
+
+        statement_planner = PreparedStatementPlanner(self)
+        return statement_planner.close()
 
     def get_statement_info(self):
         statement_planner = PreparedStatementPlanner(self)
