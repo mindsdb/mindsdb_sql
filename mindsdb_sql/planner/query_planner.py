@@ -267,7 +267,7 @@ class QueryPlanner():
             for integration_select in integration_selects:
                 condition = None
                 for num, column in enumerate(predictor_group_by_names):
-                    cond = BinaryOperation('=', args=[Identifier(column), Constant(f'$var[{num}]')])
+                    cond = BinaryOperation('=', args=[Identifier(column), Constant(f'$var[{column}]')])
 
                     # join to main condition
                     if condition is None:
