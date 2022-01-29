@@ -13,6 +13,7 @@ class Table:
         self.name = node.to_string(alias=False)
         self.columns = None
         self.columns_map = None
+        self.keys = None
 
 
 class Column:
@@ -96,7 +97,7 @@ class PreparedStatementPlanner():
             'columns': columns_result
         }
 
-    def get_column_table(self, t):
+    def get_table_of_column(self, t):
 
         tables_map = self.planner.statement.tables_map
 
@@ -114,6 +115,39 @@ class PreparedStatementPlanner():
                 table_name = '.'.join(table_parts)
                 if table_name in tables_map:
                     return tables_map[table_name]
+
+    def table_from_identifier(self, table):
+        # disambiguate
+        if self.planner.is_predictor(table):
+            ds, table = utils.get_predictor_namespace_and_name_from_identifier(table, self.planner.default_namespace)
+            is_predictor = True
+
+        else:
+            ds, table = self.planner.get_integration_path_from_identifier_or_error(table)
+            is_predictor = False
+
+        if table.alias is not None:
+            # access by alias if table is having alias
+            keys = [table.alias.to_string()]
+
+        else:
+            # access by table name, in all variants
+            keys = []
+            parts = []
+            # in reverse order
+            for p in table.parts[::-1]:
+                parts.insert(0, p)
+                keys.append('.'.join(parts))
+
+        # remember table
+        tbl = Table(
+            ds=ds,
+            node=table,
+            is_predictor=is_predictor
+        )
+        tbl.keys = keys
+
+        return tbl
 
     def prepare_select(self, query):
         # prepare select with or without predictor
@@ -145,53 +179,26 @@ class PreparedStatementPlanner():
             else:
                 join_tables = [dict(table=query.from_table)]
 
+            if isinstance(query.from_table, ast.Select):
+                # nested select, get only last select
+                join_tables = [utils.get_deepest_select(query.from_table)]
+
             for i, join_table in enumerate(join_tables):
                 table = join_table['table']
                 if isinstance(table, ast.Identifier):
-                    # disambiguate
+                    tbl = self.table_from_identifier(table)
 
-                    if self.planner.is_predictor(table):
+                    if tbl.is_predictor:
                         # Is the last table?
                         if i + 1 < len(join_tables):
                             raise PlanningException(f'Predictor must be last table in query')
 
-                        ds, table = utils.get_predictor_namespace_and_name_from_identifier(table, self.planner.default_namespace)
-                        is_predictor = True
-
-                    else:
-                        ds, table = self.planner.get_integration_path_from_identifier_or_error(table)
-                        is_predictor = False
-
-                    if table.alias is not None:
-                        # access by alias if table is having alias
-                        keys = [table.alias.to_string()]
-
-                    else:
-                        # access by table name, in all variants
-                        keys = []
-                        parts = []
-                        # in reverse order
-                        for p in table.parts[::-1]:
-                            parts.insert(0, p)
-                            keys.append('.'.join(parts))
-
-                    # remember table
-                    tbl = Table(
-                        ds=ds,
-                        node=table,
-                        is_predictor=is_predictor
-                    )
                     stmt.tables_lvl1.append(tbl)
-                    for key in keys:
+                    for key in tbl.keys:
                         stmt.tables_map[key] = tbl
 
-
-                elif isinstance(table, ast.Select):
-
-                    # TODO nested select
-                    continue
                 else:
-                    # not add unknown table to looking list
+                    # don't add unknown table to looking list
                     continue
 
         # is there any predictors at other levels?
@@ -223,7 +230,7 @@ class PreparedStatementPlanner():
                 if alias is None:
                     alias = t.parts[-1]
 
-                table = self.get_column_table(t)
+                table = self.get_table_of_column(t)
                 if table is None:
                     # table is not known
                     get_all_tables = True
@@ -324,6 +331,41 @@ class PreparedStatementPlanner():
         # save columns
         stmt.columns = columns_result
 
+    def prepare_insert(self, query):
+        stmt = self.planner.statement
+
+        # get table columns
+        table = self.table_from_identifier(query.table)
+        if table.is_predictor:
+            step = steps.GetPredictorColumns(namespace=table.ds, predictor=table.name)
+        else:
+            step = steps.GetTableColumns(namespace=table.ds, table=table.name)
+        yield step
+
+        # save results
+        table.columns = [Column(name=i['name'], type=i['type']) for i in step.result_data]
+
+        # map by names
+        table.columns_map = {
+            i.name: i
+            for i in table.columns
+        }
+
+        # save results
+        columns_result = []
+        for col in query.columns:
+            col_name = col.parts[-1]
+
+            column = Column(table=table, name=col_name)
+
+            col = table.columns_map.get(col_name)
+            if col is not None:
+                column.type = col.type
+
+            columns_result.append(column)
+
+        stmt.columns = columns_result
+
 
     def prepare_steps(self, query):
 
@@ -351,6 +393,11 @@ class PreparedStatementPlanner():
         if isinstance(query, ast.Select):
             # prepare select
             return self.prepare_select(query)
+        if isinstance(query, ast.Union):
+            # get column definition only from select
+            return self.prepare_select(query.left)
+        if isinstance(query, ast.Insert):
+            return self.prepare_insert(query)
 
         else:
             raise NotImplementedError(query.__name__)
@@ -458,7 +505,7 @@ class PreparedStatementPlanner():
                 # add predictor fields from join condition to targets
                 def find_predictor_columns(node, **kwargs):
                     if isinstance(node, ast.Identifier):
-                        tbl = self.get_column_table(node)
+                        tbl = self.get_table_of_column(node)
                         if tbl.is_predictor:
                             col = Column(node)
                             col.table = tbl
