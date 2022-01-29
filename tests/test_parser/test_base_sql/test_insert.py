@@ -5,7 +5,7 @@ from mindsdb_sql.parser.ast import *
 
 
 @pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
-class TestDDL:
+class TestInsert:
 
     def test_insert(self, dialect):
         sql = "INSERT INTO tbl_name(a, c) VALUES (1, 3), (4, 5)"

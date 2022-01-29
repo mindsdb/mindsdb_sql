@@ -55,6 +55,7 @@ class MindsDBParser(Parser):
        'union',
        'select',
        'insert',
+       'delete',
        'drop_database',
        'drop_view',
        )
@@ -260,6 +261,18 @@ class MindsDBParser(Parser):
     def show_category(self, p):
         return ' '.join([x for x in p])
 
+    # DELETE
+    @_('DELETE FROM from_table WHERE expr')
+    @_('DELETE FROM from_table')
+    def delete(self, p):
+        where = getattr(p, 'expr', None)
+
+        if where is not None and not isinstance(where, Operation):
+            raise ParsingException(
+                f"WHERE must contain an operation that evaluates to a boolean, got: {str(where)}")
+
+        return Delete(table=p.from_table, where=where)
+
     # INSERT
     @_('INSERT INTO from_table LPAREN result_columns RPAREN select')
     @_('INSERT INTO from_table select')
@@ -294,12 +307,14 @@ class MindsDBParser(Parser):
         return Use(value=p.identifier)
 
     # CREATE VIEW
-    @_('CREATE VIEW ID create_view_from_table_or_nothing AS LPAREN select RPAREN')
-    @_('CREATE DATASET ID create_view_from_table_or_nothing AS LPAREN select RPAREN')
+    @_('CREATE VIEW ID create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
+    @_('CREATE DATASET ID create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
     def create_view(self, p):
+        query_str = tokens_to_string(p.raw_query)
+
         return CreateView(name=p.ID,
                           from_table=p.create_view_from_table_or_nothing,
-                          query=p.select)
+                          query_str=query_str)
 
     @_('FROM identifier')
     def create_view_from_table_or_nothing(self, p):
@@ -857,6 +872,10 @@ class MindsDBParser(Parser):
     def constant(self, p):
         return Constant(value=str(p[0]))
 
+    @_('ID LPAREN kw_parameter_list RPAREN')
+    def object(self, p):
+        return Object(type=p.ID, params=p.kw_parameter_list)
+
     @_('kw_parameter',
        'kw_parameter_list COMMA kw_parameter')
     def kw_parameter_list(self, p):
@@ -867,9 +886,65 @@ class MindsDBParser(Parser):
     @_('identifier EQUALS string')
     @_('identifier EQUALS integer')
     @_('identifier EQUALS float')
+    @_('identifier EQUALS object')
+    @_('identifier EQUALS json')
     def kw_parameter(self, p):
         key = '.'.join(p.identifier.parts)
         return {key: p[2]}
+
+
+    # json
+
+    @_('LBRACE json_element_list RBRACE')
+    @_('LBRACE RBRACE')
+    def json(self, p):
+        params = getattr(p, 'json_element_list', {})
+        return params
+
+    @_('json_element')
+    @_('json_element_list COMMA json_element')
+    def json_element_list(self, p):
+        params = getattr(p, 'json_element_list', {})
+        params.update(p.json_element)
+        return params
+
+    @_('string COLON json_value')
+    def json_element(self, p):
+        return {p.string: p.json_value}
+
+    # json_array
+
+    @_('LBRACKET json_array_list RBRACKET')
+    @_('LBRACKET RBRACKET')
+    def json_array(self, p):
+        arr = getattr(p, 'json_array_list', [])
+        return arr
+
+    @_('json_value')
+    @_('json_array_list COMMA json_value')
+    def json_array_list(self, p):
+        arr = getattr(p, 'json_array_list', [])
+        arr.append(p.json_value)
+        return arr
+
+    @_('float',
+       'string',
+       'integer',
+       'NULL',
+       'TRUE',
+       'FALSE',
+       'json_array',
+       'json')
+    def json_value(self, p):
+
+        if hasattr(p, 'NULL'):
+            return None
+        elif hasattr(p, 'TRUE'):
+            return True
+        elif hasattr(p, 'FALSE'):
+            return False
+        return p[0]
+
 
     @_('quote_string',
        'dquote_string')
@@ -884,6 +959,8 @@ class MindsDBParser(Parser):
     @_('ID',
        'CHARSET',
        'TABLES',
+       'VIEW',
+       'VIEWS',
        # Mindsdb specific
        'STATUS',
        'PREDICT',
@@ -908,11 +985,6 @@ class MindsDBParser(Parser):
     @_('INTEGER')
     def integer(self, p):
         return int(p[0])
-
-    @_('JSON')
-    def json(self, p):
-        # TODO parse json as BNF
-        return json.loads(p[0])
 
     @_('QUOTE_STRING')
     def quote_string(self, p):

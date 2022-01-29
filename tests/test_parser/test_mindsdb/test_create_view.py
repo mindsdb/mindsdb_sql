@@ -26,8 +26,7 @@ class TestCreateView:
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateView(name='my_view',
                                   from_table=Identifier('integr'),
-                                  query=Select(targets=[Star()],
-                                               from_table=Identifier('pred')))
+                                  query_str="SELECT * FROM pred")
 
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
@@ -37,8 +36,7 @@ class TestCreateView:
         sql = "CREATE VIEW my_view AS ( SELECT * FROM pred )"
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateView(name='my_view',
-                                  query=Select(targets=[Star()],
-                                               from_table=Identifier('pred')))
+                                  query_str="SELECT * FROM pred")
 
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
@@ -49,8 +47,7 @@ class TestCreateView:
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateView(name='my_view',
                                   from_table=Identifier('integr'),
-                                  query=Select(targets=[Star()],
-                                               from_table=Identifier('pred')))
+                                  query_str="SELECT * FROM pred")
 
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
@@ -59,8 +56,7 @@ class TestCreateView:
         sql = "CREATE DATASET my_view AS ( SELECT * FROM pred )"
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateView(name='my_view',
-                                  query=Select(targets=[Star()],
-                                               from_table=Identifier('pred')))
+                                  query_str="SELECT * FROM pred")
 
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()

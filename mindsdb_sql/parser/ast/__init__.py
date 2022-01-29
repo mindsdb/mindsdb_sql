@@ -10,6 +10,7 @@ from .commit_transaction import *
 from .explain import *
 from .alter_table import *
 from .insert import *
+from .delete import *
 from .drop import *
 
 from mindsdb_sql.parser.dialects.mysql.variable import Variable

@@ -5,12 +5,12 @@ from mindsdb_sql.parser.utils import indent
 class CreateView(ASTNode):
     def __init__(self,
                  name,
-                 query,
+                 query_str,
                  from_table=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
-        self.query = query
+        self.query_str = query_str
         self.from_table = from_table
 
     def to_tree(self, *args, level=0, **kwargs):
@@ -18,7 +18,7 @@ class CreateView(ASTNode):
         ind1 = indent(level+1)
         name_str = f'\n{ind1}name={repr(self.name)},'
         from_table_str = f'\n{ind1}from_table=\n{self.from_table.to_tree(level=level+2)},' if self.from_table else ''
-        query_str = f'\n{ind1}query=\n{self.query.to_tree(level=level+2)},'
+        query_str = f'\n{ind1}query="{self.query_str}"'
 
         out_str = f'{ind}CreateView(' \
                   f'{name_str}' \
@@ -29,6 +29,6 @@ class CreateView(ASTNode):
 
     def get_string(self, *args, **kwargs):
         from_str = f'FROM {str(self.from_table)} ' if self.from_table else ''
-        out_str = f'CREATE VIEW {str(self.name)} {from_str}AS ( {str(self.query)} )'
+        out_str = f'CREATE VIEW {str(self.name)} {from_str}AS ( {self.query_str} )'
 
         return out_str
