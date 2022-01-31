@@ -1,4 +1,3 @@
-import json
 import re
 from sly import Lexer
 
@@ -56,6 +55,8 @@ class MindsDBLexer(Lexer):
 
         # Special
         DOT, COMMA, LPAREN, RPAREN, PARAMETER,
+        # json
+        LBRACE, RBRACE, LBRACKET, RBRACKET, COLON,
 
         # Operators
         PLUS, MINUS, DIVIDE, MODULO,
@@ -65,8 +66,6 @@ class MindsDBLexer(Lexer):
 
         # Data types
         CAST, ID, INTEGER, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE,
-
-        JSON,
 
     }
 
@@ -193,6 +192,12 @@ class MindsDBLexer(Lexer):
     LPAREN = r'\('
     RPAREN = r'\)'
     PARAMETER = r'\?'
+    # json
+    LBRACE = r'\{'
+    RBRACE = r'\}'
+    LBRACKET = r'\['
+    RBRACKET = r'\]'
+    COLON = r'\:'
 
     # Operators
     PLUS = r'\+'
@@ -234,10 +239,6 @@ class MindsDBLexer(Lexer):
 
     @_(r'\d+')
     def INTEGER(self, t):
-        return t
-
-    @_(r'\{[\s\S]*}')
-    def JSON(self, t):
         return t
 
     @_(r"'[^']*'")

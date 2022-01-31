@@ -11,20 +11,25 @@ class TestCreatePredictor:
     def test_create_predictor_full(self, keyword):
         sql = """CREATE %s pred
                 FROM integration_name 
-                WITH (selct * FROM not some actually ( ) not sql (name))
+                WITH (selct * FROM not some actually ( {'t': [1,2.1,[], {}, False, true, null]} ) not sql (name))
                 AS ds_name
                 PREDICT f1 as f1_alias, f2
                 ORDER BY f_order_1 ASC, f_order_2, f_order_3 DESC
                 GROUP BY f_group_1, f_group_2
                 WINDOW 100
                 HORIZON 7
-                USING x=1, y= "a", z=0.7
+                USING 
+                    x."part 2".part3=1, 
+                    y= "a", 
+                    z=0.7,
+                    j={'t': [1,2.1,[], {}, False, true, null]},
+                    q=Filter(a='c', b=2, j={"ar": [1], 'j': {"d": "d"}})
                 """ % keyword
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreatePredictor(
             name=Identifier('pred'),
             integration_name=Identifier('integration_name'),
-            query_str="selct * FROM not some actually ( ) not sql (name)",
+            query_str="selct * FROM not some actually ( {'t': [1,2.1,[], {}, False, true, null]} ) not sql (name)",
             datasource_name=Identifier('ds_name'),
             targets=[Identifier('f1', alias=Identifier('f1_alias')),
                              Identifier('f2')],
@@ -35,7 +40,17 @@ class TestCreatePredictor:
             group_by=[Identifier('f_group_1'), Identifier('f_group_2')],
             window=100,
             horizon=7,
-            using=dict(x=1, y="a", z=0.7),
+            using={
+                'x.part 2.part3': 1,
+                'y': "a",
+                'z': 0.7,
+                'j': {'t': [1,2.1,[], {}, False, True, None]},
+                'q': Object(type='Filter', params={
+                    'a': 'c',
+                    'b': 1,
+                    'j': {"ar": [1], 'j': {"d": "d"}}
+                })
+            },
         )
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()

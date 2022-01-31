@@ -614,6 +614,7 @@ class SQLParser(Parser):
        'CHARSET',
        'TABLES',
        'STATUS',
+       'VIEW',
        'DQUOTE_STRING')
     def identifier(self, p):
         value = p[0]
