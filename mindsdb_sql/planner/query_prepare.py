@@ -2,12 +2,12 @@ import copy
 from mindsdb_sql.parser import ast
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.planner import steps
-from mindsdb_sql.planner import utils, query_plan
+from mindsdb_sql.planner import utils
 
 
 class Table:
     def __init__(self,  node=None, ds=None, is_predictor=None):
-        self.node = node,
+        self.node = node
         self.is_predictor = is_predictor
         self.ds = ds
         self.name = node.to_string(alias=False)
@@ -181,7 +181,11 @@ class PreparedStatementPlanner():
 
             if isinstance(query.from_table, ast.Select):
                 # nested select, get only last select
-                join_tables = [utils.get_deepest_select(query.from_table)]
+                join_tables = [
+                    dict(
+                        table=utils.get_deepest_select(query.from_table).from_table
+                    )
+                ]
 
             for i, join_table in enumerate(join_tables):
                 table = join_table['table']
@@ -241,6 +245,12 @@ class PreparedStatementPlanner():
                 if alias is None:
                     alias = str(t.value)
                 column.type = self.get_type_of_var(t.value)
+            elif isinstance(t, ast.Function):
+                # mysql function
+                if t.op == 'connection_id':
+                    column.type = 'int'
+                else:
+                    column.type = 'str'
             else:
                 # TODO go down into lower level.
                 #  It can be function, operation, select.
@@ -249,7 +259,7 @@ class PreparedStatementPlanner():
                 # TODO add several known types for function, i.e ABS-int
 
                 # TODO TypeCast - as casted type
-                column.type = str
+                column.type = 'str'
 
             if alias is not None:
                 column.alias = alias
@@ -264,19 +274,20 @@ class PreparedStatementPlanner():
         for table in stmt.tables_lvl1:
             if get_all_tables or table.name in request_tables:
                 if table.is_predictor:
-                    step = steps.GetPredictorColumns(namespace=table.ds, predictor=table.name)
+                    step = steps.GetPredictorColumns(namespace=table.ds, predictor=table.node)
                 else:
                     step = steps.GetTableColumns(namespace=table.ds, table=table.name)
                 yield step
 
                 # save results
-                table.columns = [Column(name=i['name'], type=i['type']) for i in step.result_data]
+                if step.result_data is not None:
+                    table.columns = [Column(name=i['name'], type=i['type']) for i in step.result_data]
 
-                # for unnamed columns
-                table.columns_map = {
-                    i.name: i
-                    for i in table.columns
-                }
+                    # for unnamed columns
+                    table.columns_map = {
+                        i.name: i
+                        for i in table.columns
+                    }
 
         # === create columns list ===
         columns_result = []
@@ -285,7 +296,7 @@ class PreparedStatementPlanner():
                 # add data from all tables
                 for table in stmt.tables_lvl1:
                     if table.columns is None:
-                        raise PlanningException('Table is not found')
+                        raise PlanningException(f'Table is not found {table.name}')
 
                     for col in table.columns:
                         # col = {name: 'col', type: 'str'}
@@ -303,18 +314,24 @@ class PreparedStatementPlanner():
                 col_name = column.name
                 if column.table is not None:
                     table = column.table
-                    if col_name in table.columns_map:
-                        column.type = table.columns_map[col_name].type
-                    else:
-                        raise PlanningException(f'Column not found {col_name}')
+                    if table.columns_map is not None:
+                        if col_name in table.columns_map:
+                            column.type = table.columns_map[col_name].type
+                        else:
+                            # print(col_name, table.name, query.to_string())
+                            # continue
+                            raise PlanningException(f'Column not found {col_name}')
+
+
                 else:
                     # table is not found, looking for in all tables
                     for table in stmt.tables_lvl1:
-                        col = table.columns_map.get(col_name)
-                        if col is not None:
-                            column.type = col.type
-                            column.table = table
-                            break
+                        if table.columns_map is not None:
+                            col = table.columns_map.get(col_name)
+                            if col is not None:
+                                column.type = col.type
+                                column.table = table
+                                break
 
 
 
@@ -366,6 +383,13 @@ class PreparedStatementPlanner():
 
         stmt.columns = columns_result
 
+    def prepare_show(self, query):
+        stmt = self.planner.statement
+
+        stmt.columns = [
+            Column(name='Variable_name', type='str'),
+            Column(name='Value', type='str'),
+        ]
 
     def prepare_steps(self, query):
 
@@ -398,7 +422,11 @@ class PreparedStatementPlanner():
             return self.prepare_select(query.left)
         if isinstance(query, ast.Insert):
             return self.prepare_insert(query)
-
+        if isinstance(query, ast.Delete):
+            ...
+            # TODO do we need columns?
+        if isinstance(query, ast.Show):
+            return self.prepare_show(query)
         else:
             raise NotImplementedError(query.__name__)
 
@@ -436,95 +464,22 @@ class PreparedStatementPlanner():
         # prevent from second execution
         stmt.params = None
 
-        return self.plan_query(query)
+        if isinstance(query, ast.Select) or isinstance(query, ast.Union):
+            return self.plan_query(query)
+        else:
+            return []
 
     def plan_query(self, query):
-
+        # use v1 planner
         self.planner.from_query(query)
         step = None
         for step in self.planner.plan.steps:
-
+            # print(step)
             yield step
 
         # save results from last_step
         stmt = self.planner.statement
         stmt.result = step.result_data
-
-
-    def plan_query_v2(self, query):
-        # Not used yet
-        raise NotImplementedError()
-
-        stmt = self.planner.statement
-        columns_result = stmt.columns
-
-        # === plan ===
-        plan = query_plan.QueryPlan()
-        # query_properties = {}
-
-        # is predictor in query
-        lvl1_predictors = [i for i in stmt.tables_lvl1 if i.is_predictor]
-        if len(lvl1_predictors) == 0:
-            # no predictor: run query as is
-            plan.add_step(self.planner.get_integration_select_step(query))
-
-            # query_properties['no_predictors'] = True
-        else:
-            # predictor is the only table?
-            if isinstance(query.from_table, ast.Identifier) and self.planner.is_predictor(query.from_table):
-                # Only predictor
-                # TODO self.plan_select_from_predictor(query)
-
-                plan.add_step(self.planner.plan_select_from_predictor(query))
-
-                # query_properties['no_tables'] = True
-            else:
-                # this is predictor with table
-
-                # remove predictor from query
-                prediction_props = {}
-
-                def remove_predictor(node, is_table, **kwargs):
-
-                    if isinstance(node, ast.Join):
-                        if self.planner.is_predictor(node.right):
-                            # remember conditions
-                            prediction_props['conditions'] = node.condition
-
-                            # left only left join
-                            return node.left
-
-                utils.query_traversal(query, remove_predictor)
-
-                # remove predictor fields from targets
-                columns_result2 = []
-                for col in columns_result:
-                    if not col.table.is_predictor:
-                        columns_result2.append(col)
-
-                # add predictor fields from join condition to targets
-                def find_predictor_columns(node, **kwargs):
-                    if isinstance(node, ast.Identifier):
-                        tbl = self.get_table_of_column(node)
-                        if tbl.is_predictor:
-                            col = Column(node)
-                            col.table = tbl
-                            columns_result2.append(col)
-
-                utils.query_traversal(prediction_props['conditions'], find_predictor_columns)
-
-                predictor = lvl1_predictors[0].name
-
-                # TODO move predictor planning from old planner
-                # if self.planner.predictor_metadata[predictor].get('timeseries'):
-                #     predictor_steps = self.planner.plan_timeseries_predictor(query, table, predictor_namespace, predictor)
-                # else:
-                #     predictor_steps = self.planner.plan_predictor(query, table, predictor_namespace, predictor)
-                #
-                # ...
-
-            # returns no steps
-            return self.plan
 
 
     def fetch(self, row_count):
@@ -541,3 +496,79 @@ class PreparedStatementPlanner():
     def close(self):
         # clear
         self.planner.statement = None
+
+
+    # def plan_query_v2(self, query):
+    #     # Not used yet
+    #     raise NotImplementedError()
+    #
+    #     stmt = self.planner.statement
+    #     columns_result = stmt.columns
+    #
+    #     # === plan ===
+    #     plan = query_plan.QueryPlan()
+    #     # query_properties = {}
+    #
+    #     # is predictor in query
+    #     lvl1_predictors = [i for i in stmt.tables_lvl1 if i.is_predictor]
+    #     if len(lvl1_predictors) == 0:
+    #         # no predictor: run query as is
+    #         plan.add_step(self.planner.get_integration_select_step(query))
+    #
+    #         # query_properties['no_predictors'] = True
+    #     else:
+    #         # predictor is the only table?
+    #         if isinstance(query.from_table, ast.Identifier) and self.planner.is_predictor(query.from_table):
+    #             # Only predictor
+    #             # TODO self.plan_select_from_predictor(query)
+    #
+    #             plan.add_step(self.planner.plan_select_from_predictor(query))
+    #
+    #             # query_properties['no_tables'] = True
+    #         else:
+    #             # this is predictor with table
+    #
+    #             # remove predictor from query
+    #             prediction_props = {}
+    #
+    #             def remove_predictor(node, is_table, **kwargs):
+    #
+    #                 if isinstance(node, ast.Join):
+    #                     if self.planner.is_predictor(node.right):
+    #                         # remember conditions
+    #                         prediction_props['conditions'] = node.condition
+    #
+    #                         # left only left join
+    #                         return node.left
+    #
+    #             utils.query_traversal(query, remove_predictor)
+    #
+    #             # remove predictor fields from targets
+    #             columns_result2 = []
+    #             for col in columns_result:
+    #                 if not col.table.is_predictor:
+    #                     columns_result2.append(col)
+    #
+    #             # add predictor fields from join condition to targets
+    #             def find_predictor_columns(node, **kwargs):
+    #                 if isinstance(node, ast.Identifier):
+    #                     tbl = self.get_table_of_column(node)
+    #                     if tbl.is_predictor:
+    #                         col = Column(node)
+    #                         col.table = tbl
+    #                         columns_result2.append(col)
+    #
+    #             utils.query_traversal(prediction_props['conditions'], find_predictor_columns)
+    #
+    #             predictor = lvl1_predictors[0].name
+    #
+    #             # TODO move predictor planning from old planner
+    #             # if self.planner.predictor_metadata[predictor].get('timeseries'):
+    #             #     predictor_steps = self.planner.plan_timeseries_predictor(query, table, predictor_namespace, predictor)
+    #             # else:
+    #             #     predictor_steps = self.planner.plan_predictor(query, table, predictor_namespace, predictor)
+    #             #
+    #             # ...
+    #
+    #         # returns no steps
+    #         return self.plan

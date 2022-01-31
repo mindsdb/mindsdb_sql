@@ -19,6 +19,10 @@ class PlanStep:
             return False
 
         for k in vars(self):
+            # skip result comparison
+            if k == 'result_data':
+                continue
+
             if getattr(self, k) != getattr(other, k):
                 return False
 

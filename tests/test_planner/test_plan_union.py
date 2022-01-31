@@ -1,5 +1,6 @@
 from mindsdb_sql.parser.ast import *
-from mindsdb_sql.planner import plan_query, QueryPlan
+from mindsdb_sql.planner import plan_query
+from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        UnionStep)
