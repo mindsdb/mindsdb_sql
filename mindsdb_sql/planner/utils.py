@@ -313,6 +313,27 @@ def query_traversal(node, callback, is_table=False):
             node_out = query_traversal(node2, callback) or node2
             array.append(node_out)
         node.items = array
+    elif isinstance(node, ast.Insert):
+        if not node.values is None:
+            rows = []
+            for row in node.values:
+                items = []
+                for item in row:
+                    item2 = query_traversal(item, callback) or item
+                    items.append(item2)
+                rows.append(row)
+            node.values = rows
+
+        if not node.from_select is None:
+            node_out = query_traversal(node.from_table, callback)
+            if node_out is not None:
+                node.from_select = node_out
+    elif isinstance(node, ast.Delete):
+        if node.where is not None:
+            node_out = query_traversal(node.where, callback)
+            if node_out is not None:
+                node.where = node_out
+    # TODO update statement
 
 
 def convert_join_to_list(join):

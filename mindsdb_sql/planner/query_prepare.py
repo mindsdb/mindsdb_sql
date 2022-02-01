@@ -14,6 +14,10 @@ class Table:
         self.columns = None
         self.columns_map = None
         self.keys = None
+        if node.alias:
+            self.alias = node.alias.to_string()
+        else:
+            self.alias = self.name
 
 
 class Column:
@@ -42,8 +46,9 @@ class Column:
 class Statement:
     def __init__(self):
         self.columns = None
-        self.raw_query = None
+        # self.query = None
         self.params = None
+        self.result = None
 
         # Tables on first level of select
         self.tables_lvl1 = None
@@ -88,7 +93,8 @@ class PreparedStatementPlanner():
                 alias=column.alias,
                 type=column.type,
                 name=column.name,
-                table=table,
+                table_name=table,
+                table_alias=table,
                 ds=ds,
             ))
 
@@ -378,6 +384,9 @@ class PreparedStatementPlanner():
             col = table.columns_map.get(col_name)
             if col is not None:
                 column.type = col.type
+            else:
+                # forcing type
+                column.type = 'str'
 
             columns_result.append(column)
 
@@ -396,7 +405,7 @@ class PreparedStatementPlanner():
         stmt = Statement()
         self.planner.statement = stmt
 
-        stmt.query = query
+        self.planner.query = query
 
         query = copy.deepcopy(query)
 
@@ -431,7 +440,7 @@ class PreparedStatementPlanner():
             raise NotImplementedError(query.__name__)
 
 
-    def execute_steps(self, params):
+    def execute_steps(self, params=None):
         # find all parameters
         stmt = self.planner.statement
 
@@ -448,18 +457,21 @@ class PreparedStatementPlanner():
                 raise Exception('something wrong')
             targets.append(col.node)
 
-        if len(params) != len(stmt.params):
-            raise PlanningException("Count of execution parameters don't match prepared statement")
+        query = self.planner.query
 
-        def params_replace(node, **kwargs):
-            if isinstance(node, ast.Parameter):
-                value = params.pop()
-                return ast.Constant(value)
+        if params is not None:
 
-        # put parameters into query
-        query = stmt.query
-        utils.query_traversal(query, params_replace)
-        stmt.query = query
+            if len(params) != len(stmt.params):
+                raise PlanningException("Count of execution parameters don't match prepared statement")
+
+            def params_replace(node, **kwargs):
+                if isinstance(node, ast.Parameter):
+                    value = params.pop()
+                    return ast.Constant(value)
+
+            # put parameters into query
+            utils.query_traversal(query, params_replace)
+            self.planner.query = query
 
         # prevent from second execution
         stmt.params = None

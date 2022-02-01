@@ -41,8 +41,7 @@ class QueryPlanner():
         self.steps = []
         self.default_namespace = default_namespace
 
-        self.columns = []
-        self.params = []
+        self.statement = None
 
     def is_predictor(self, identifier):
         parts = identifier.parts
@@ -473,6 +472,10 @@ class QueryPlanner():
         if query is None:
             query = self.query
 
+        if self.statement is not None:
+            # query is prepared
+            return self.execute_steps()
+
         if isinstance(query, Select):
             self.plan_select(query)
         elif isinstance(query, Union):
@@ -488,20 +491,17 @@ class QueryPlanner():
         # return generator
         return statement_planner.prepare_steps(query)
 
-    def execute_steps(self, params):
-
+    def execute_steps(self, params=None):
         statement_planner = PreparedStatementPlanner(self)
 
         # return generator
         return statement_planner.execute_steps(params)
 
     def fetch(self, row_count):
-
         statement_planner = PreparedStatementPlanner(self)
         return statement_planner.fetch(row_count)
 
     def close(self):
-
         statement_planner = PreparedStatementPlanner(self)
         return statement_planner.close()
 
