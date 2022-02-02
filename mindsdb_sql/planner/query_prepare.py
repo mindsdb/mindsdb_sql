@@ -71,7 +71,7 @@ class PreparedStatementPlanner():
         elif isinstance(v, float):
             return 'float'
         elif isinstance(v, int):
-            return 'int'
+            return 'integer'
 
         return 'str'
 
@@ -254,7 +254,7 @@ class PreparedStatementPlanner():
             elif isinstance(t, ast.Function):
                 # mysql function
                 if t.op == 'connection_id':
-                    column.type = 'int'
+                    column.type = 'integer'
                 else:
                     column.type = 'str'
             else:
@@ -366,7 +366,19 @@ class PreparedStatementPlanner():
         yield step
 
         # save results
-        table.columns = [Column(name=i['name'], type=i['type']) for i in step.result_data]
+        column_info = step.result_data.columns
+        if not isinstance(column_info, list):
+            # is predictor columns
+            column_info = column_info.values()[0]
+        table.columns = []
+        for col in column_info:
+            if isinstance(col, tuple):
+                # is predictor
+                col = dict(name=col[0], type='str')
+            table.columns.append(
+                Column(name=col['name'],
+                       type=col['type'])
+            )
 
         # map by names
         table.columns_map = {
