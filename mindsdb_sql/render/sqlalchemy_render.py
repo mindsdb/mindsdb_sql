@@ -1,7 +1,8 @@
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.query import aliased
-from sqlalchemy.dialects import mysql, postgresql, sqlite, mssql
+from sqlalchemy.dialects import mysql, postgresql, sqlite, mssql, firebird, oracle, sybase
+
 
 from mindsdb_sql.parser import ast
 
@@ -15,6 +16,10 @@ class SqlalchemyRender():
             'postgres': postgresql,
             'sqlite': sqlite,
             'mssql': mssql,
+            'firebird': firebird,
+            'oracle': oracle,
+            'sybase': sybase,
+            'Snowflake': oracle,
         }
 
         self.dialect = dialects[dialect_name].dialect()
