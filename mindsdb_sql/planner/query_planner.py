@@ -497,13 +497,13 @@ class QueryPlanner():
         # return generator
         return statement_planner.execute_steps(params)
 
-    def fetch(self, row_count):
-        statement_planner = PreparedStatementPlanner(self)
-        return statement_planner.fetch(row_count)
-
-    def close(self):
-        statement_planner = PreparedStatementPlanner(self)
-        return statement_planner.close()
+    # def fetch(self, row_count):
+    #     statement_planner = PreparedStatementPlanner(self)
+    #     return statement_planner.fetch(row_count)
+    #
+    # def close(self):
+    #     statement_planner = PreparedStatementPlanner(self)
+    #     return statement_planner.close()
 
     def get_statement_info(self):
         statement_planner = PreparedStatementPlanner(self)
