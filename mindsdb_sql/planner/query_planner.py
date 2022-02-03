@@ -186,9 +186,9 @@ class QueryPlanner():
         if query.group_by or query.having or query.offset:
             raise PlanningException(f'Unsupported query to timeseries predictor: {str(query)}')
 
-        allowed_columns = [predictor_time_column_name]
+        allowed_columns = [predictor_time_column_name.lower()]
         if len(predictor_group_by_names) > 0:
-            allowed_columns += predictor_group_by_names
+            allowed_columns += [i.lower() for i in predictor_group_by_names]
         validate_ts_where_condition(query.where, allowed_columns=allowed_columns)
 
         time_filter = find_time_filter(query.where, time_column_name=predictor_time_column_name)

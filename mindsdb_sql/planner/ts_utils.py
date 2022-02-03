@@ -12,8 +12,8 @@ def find_time_filter(op, time_column_name):
             raise PlanningException('Can provide only one filter by predictor order_by column, found two')
 
         return left or right
-    elif ((isinstance(op.args[0], Identifier) and op.args[0].parts[-1] == time_column_name) or
-          (isinstance(op.args[1], Identifier) and op.args[1].parts[-1] == time_column_name)):
+    elif ((isinstance(op.args[0], Identifier) and op.args[0].parts[-1].lower() == time_column_name.lower()) or
+          (isinstance(op.args[1], Identifier) and op.args[1].parts[-1].lower() == time_column_name.lower())):
         return op
 
 
@@ -54,7 +54,7 @@ def validate_ts_where_condition(op, allowed_columns, allow_and=True):
 
     for arg in op.args:
         if isinstance(arg, Identifier):
-            if arg.parts[-1] not in allowed_columns:
+            if arg.parts[-1].lower() not in allowed_columns:
                 raise PlanningException(
                     f'For time series predictor only the following columns are allowed in WHERE: {str(allowed_columns)}, found instead: {str(arg)}.')
 
