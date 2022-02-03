@@ -2,7 +2,8 @@ import pytest
 
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import *
-from mindsdb_sql.planner import plan_query, QueryPlan
+from mindsdb_sql.planner import plan_query
+from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, GroupByStep, LimitOffsetStep, OrderByStep)
 from mindsdb_sql.parser.utils import JoinType

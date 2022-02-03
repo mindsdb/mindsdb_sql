@@ -3,7 +3,7 @@ import copy
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryOperation, Constant,
                                     OrderBy, BetweenOperation)
-
+from mindsdb_sql.parser import ast
 
 def get_integration_path_from_identifier(identifier):
     parts = identifier.parts
@@ -203,3 +203,162 @@ def get_deepest_select(select):
     if not select.from_table or not isinstance(select.from_table, Select):
         return select
     return get_deepest_select(select.from_table)
+
+
+def query_traversal(node, callback, is_table=False):
+    # traversal query tree to find and replace nodes
+
+    res = callback(node, is_table=is_table)
+    if res is not None:
+        # node is going to be replaced
+        return res
+
+    if isinstance(node, ast.Select):
+        array = []
+        for node2 in node.targets:
+            node_out = query_traversal(node2, callback) or node2
+            array.append(node_out)
+        node.targets = array
+
+        if node.cte is not None:
+            array = []
+            for cte in node.cte:
+                node_out = query_traversal(cte.query, callback) or cte
+                array.append(node_out)
+            node.cte = array
+
+        if node.from_table is not None:
+            node_out = query_traversal(node.from_table, callback, is_table=True)
+            if node_out is not None:
+                node.from_table = node_out
+
+        if node.where is not None:
+            node_out = query_traversal(node.where, callback)
+            if node_out is not None:
+                node.where = node_out
+
+        if node.group_by is not None:
+            array = []
+            for node2 in node.group_by:
+                node_out = query_traversal(node2, callback) or node2
+                array.append(node_out)
+            node.group_by = array
+
+        if node.having is not None:
+            node_out = query_traversal(node.having, callback)
+            if node_out is not None:
+                node.having = node_out
+
+        if node.order_by is not None:
+            array = []
+            for node2 in node.order_by:
+                node_out = query_traversal(node2, callback) or node2
+                array.append(node_out)
+            node.order_by = array
+
+    elif isinstance(node, ast.Union):
+        node_out = query_traversal(node.left, callback)
+        if node_out is not None:
+            node.left = node_out
+        node_out= query_traversal(node.right, callback)
+        if node_out is not None:
+            node.right = node_out
+    # elif isinstance(node, ast.Update):
+    #     TODO
+    # elif isinstance(node, ast.Insert):
+    #     TODO
+    # elif isinstance(node, ast.Delete):
+    #     TODO
+    elif isinstance(node, ast.Join):
+        node_out = query_traversal(node.right, callback, is_table=True)
+        if node_out is not None:
+            node.right = node_out
+        node_out = query_traversal(node.left, callback, is_table=True)
+        if node_out is not None:
+            node.left = node_out
+        if node.condition is not None:
+            node_out = query_traversal(node.condition, callback)
+            if node_out is not None:
+                node.condition = node_out
+    elif isinstance(node, ast.Function) \
+            or isinstance(node, ast.BinaryOperation)\
+            or isinstance(node, ast.UnaryOperation) \
+            or isinstance(node, ast.BetweenOperation):
+        array = []
+        for arg in node.args:
+            node_out = query_traversal(arg, callback) or arg
+            array.append(node_out)
+        node.args = array
+    elif isinstance(node, ast.WindowFunction):
+        query_traversal(node.function, callback)
+        if node.partition is not None:
+            array = []
+            for node2 in node.partition:
+                node_out = query_traversal(node2, callback) or node2
+                array.append(node_out)
+            node.partition = array
+        if node.order_by is not None:
+            array = []
+            for node2 in node.order_by:
+                node_out = query_traversal(node2, callback) or node2
+                array.append(node_out)
+            node.partition = array
+    elif isinstance(node, ast.TypeCast):
+        node_out = query_traversal(node.arg, callback)
+        if node_out is not None:
+            node.arg = node_out
+    elif isinstance(node, ast.Tuple):
+        array = []
+        for node2 in node.items:
+            node_out = query_traversal(node2, callback) or node2
+            array.append(node_out)
+        node.items = array
+    elif isinstance(node, ast.Insert):
+        if not node.values is None:
+            rows = []
+            for row in node.values:
+                items = []
+                for item in row:
+                    item2 = query_traversal(item, callback) or item
+                    items.append(item2)
+                rows.append(row)
+            node.values = rows
+
+        if not node.from_select is None:
+            node_out = query_traversal(node.from_table, callback)
+            if node_out is not None:
+                node.from_select = node_out
+    elif isinstance(node, ast.Delete):
+        if node.where is not None:
+            node_out = query_traversal(node.where, callback)
+            if node_out is not None:
+                node.where = node_out
+    # TODO update statement
+
+
+def convert_join_to_list(join):
+    # join tree to table list
+
+    if isinstance(join.right, ast.Join):
+        raise NotImplementedError('Wrong join AST')
+
+    items = []
+
+    if isinstance(join.left, ast.Join):
+        # dive to next level
+        items.extend(convert_join_to_list(join.left))
+    else:
+        # this is first table
+        items.append(dict(
+            table=join.left
+        ))
+
+    # all properties set to right table
+    items.append(dict(
+        table=join.right,
+        join_type=join.join_type,
+        is_implicit=join.implicit,
+        condition=join.condition
+    ))
+
+    return items

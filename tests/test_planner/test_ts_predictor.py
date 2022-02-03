@@ -4,7 +4,8 @@ from mindsdb_sql import parse_sql
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
-from mindsdb_sql.planner import plan_query, QueryPlan
+from mindsdb_sql.planner import plan_query
+from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, ApplyTimeseriesPredictorStep,
                                        LimitOffsetStep, MapReduceStep, MultipleSteps, JoinStep)
@@ -714,7 +715,7 @@ class TestJoinTimeseriesPredictor:
         predictor_window = 10
         group_by_column = 'vendor_id'
 
-        sql = "select * from  mindsdb.tp3 as tb left join mysql.data.ny_output as ta where ta.pickup_hour <= 10 and ta.vendor_id = 1"
+        sql = "select * from mysql.data.ny_output as ta left join mindsdb.tp3 as tb where ta.pickup_hour <= 10 and ta.vendor_id = 1"
 
         query = parse_sql(sql, dialect='mindsdb')
 
@@ -760,11 +761,11 @@ class TestJoinTimeseriesPredictor:
                     predictor=Identifier('tp3', alias=Identifier('tb')),
                     dataframe=Result(1),
                 ),
-                JoinStep(left=Result(2),
-                         right=Result(1),
+                JoinStep(left=Result(1),
+                         right=Result(2),
                          query=Join(
-                             left=Identifier('result_2', alias=Identifier('tb')),
-                             right=Identifier('result_1', alias=Identifier('ta')),
+                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2', alias=Identifier('tb')),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -1063,7 +1064,7 @@ class TestJoinTimeseriesPredictor:
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
 
-    def test_timeseries_with_multigroup(self):
+    def test_timeseries_with_multigroup_and_different_case(self):
         sql = "select * from ds.data.ny_output as ta \
                left join mindsdb.pr as tb \
                where ta.f2 > '2020-11-01' and ta.f1 > LATEST"
@@ -1074,7 +1075,7 @@ class TestJoinTimeseriesPredictor:
             default_namespace='ds',
             steps=[
                 FetchDataframeStep(integration='ds',
-                                   query=parse_sql("SELECT DISTINCT ta.f2 AS f2, ta.f3 AS f3 FROM data.ny_output as ta\
+                                   query=parse_sql("SELECT DISTINCT ta.F2 AS F2, ta.f3 AS f3 FROM data.ny_output as ta\
                                                     WHERE ta.f2 > '2020-11-01'")),
                 MapReduceStep(values=Result(0),
                               reduce='union',
@@ -1095,8 +1096,8 @@ class TestJoinTimeseriesPredictor:
                                           args=(
                                             BinaryOperation(op='=',
                                               args=(
-                                                Identifier(parts=['ta', 'f2']),
-                                                Constant(value='$var[f2]')
+                                                Identifier(parts=['ta', 'F2']),
+                                                Constant(value='$var[F2]')
                                               )
                                             ),
                                             BinaryOperation(op='=',
@@ -1110,7 +1111,7 @@ class TestJoinTimeseriesPredictor:
                                       )
                                      ),
                                      order_by=[
-                                     OrderBy(field=Identifier(parts=['ta', 'f1']), direction='DESC', nulls='default')
+                                     OrderBy(field=Identifier(parts=['ta', 'F1']), direction='DESC', nulls='default')
                                      ],
                                      limit=Constant(value=3),
                                   )
@@ -1139,8 +1140,8 @@ class TestJoinTimeseriesPredictor:
             predictor_metadata={
                 'pr': {'timeseries': True,
                        'window': predictor_window,
-                       'order_by_column': 'f1',
-                       'group_by_columns': ['f2', 'f3']}},
+                       'order_by_column': 'F1',
+                       'group_by_columns': ['F2', 'f3']}},
             default_namespace='mindsdb'
         )
 
