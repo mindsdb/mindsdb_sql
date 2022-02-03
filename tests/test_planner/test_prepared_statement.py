@@ -76,7 +76,7 @@ def plan_query_patch(query, **kwargs):
         step.set_result(result)
         steps.append(step)
 
-    plan.fetch(10)
+    # plan.fetch(10)
     plan.steps = steps
     return plan
 

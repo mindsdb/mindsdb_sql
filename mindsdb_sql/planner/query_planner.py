@@ -472,10 +472,6 @@ class QueryPlanner():
         if query is None:
             query = self.query
 
-        if self.statement is not None:
-            # query is prepared
-            return self.execute_steps()
-
         if isinstance(query, Select):
             self.plan_select(query)
         elif isinstance(query, Union):

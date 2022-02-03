@@ -501,25 +501,25 @@ class PreparedStatementPlanner():
             # print(step)
             yield step
 
-        # save results from last_step
-        stmt = self.planner.statement
-        stmt.result = step.result_data
+        # # save results from last_step
+        # stmt = self.planner.statement
+        # stmt.result = step.result_data
 
-
-    def fetch(self, row_count):
-        # split the query to predictor and rest of the query
-
-        stmt = self.planner.statement
-        offset = stmt.offset
-        offset2 = offset + row_count
-
-        stmt.offset = offset2
-
-        return stmt.result[offset: offset2]
-
-    def close(self):
-        # clear
-        self.planner.statement = None
+    # not used yet
+    # def fetch(self, row_count):
+    #     # split the query to predictor and rest of the query
+    #
+    #     stmt = self.planner.statement
+    #     offset = stmt.offset
+    #     offset2 = offset + row_count
+    #
+    #     stmt.offset = offset2
+    #
+    #     return stmt.result[offset: offset2]
+    #
+    # def close(self):
+    #     # clear
+    #     self.planner.statement = None
 
 
     # def plan_query_v2(self, query):
