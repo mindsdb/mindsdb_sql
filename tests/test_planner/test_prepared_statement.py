@@ -13,6 +13,9 @@ from tests.test_planner import test_ts_predictor
 
 class FakeExecutor:
 
+    def list_cols_return(self, columns):
+        return {'columns': columns}
+
     def execute(self, step):
 
         if isinstance(step, steps.ProjectStep)\
@@ -24,7 +27,7 @@ class FakeExecutor:
             ]
         if isinstance(step, steps.GetTableColumns):
             if step.table in ('tab', 'tab1', 'data.ny_output', 'data'):
-                return [
+                return self.list_cols_return([
                     {'name': 'id', 'type': 'int'},
                     {'name': 'name', 'type': 'str'},
                     {'name': 'a column with spaces', 'type': 'str'},
@@ -33,11 +36,12 @@ class FakeExecutor:
                     {'name': 'time', 'type': 'datetime'},
                     {'name': 'predicted', 'type': 'float'},
                     {'name': 'target', 'type': 'float'},
-                ]
+                    {'name': 'sqft', 'type': 'float'},
+                ])
             return None
         if isinstance(step, steps.GetPredictorColumns):
             if step.predictor.parts[-1] in ('pred', 'tp3', 'pr'):
-                return [
+                return self.list_cols_return([
                     {'name': 'id', 'type': 'int'},
                     {'name': 'value', 'type': 'str'},
                     {'name': 'predicted', 'type': 'int'},
@@ -47,7 +51,7 @@ class FakeExecutor:
                     {'name': 'time', 'type': 'datetime'},
                     {'name': 'price', 'type': 'float'},
                     {'name': 'target', 'type': 'float'},
-                ]
+                ])
         else:
             return None
 
