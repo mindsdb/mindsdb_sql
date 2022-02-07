@@ -335,7 +335,7 @@ class PreparedStatementPlanner():
 
             elif column.name is not None:
                 # is Identifier
-                col_name = column.name
+                col_name = column.name.upper()
                 if column.table is not None:
                     table = column.table
                     if table.columns_map is not None:
