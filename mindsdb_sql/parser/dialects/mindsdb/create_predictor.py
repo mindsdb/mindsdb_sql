@@ -6,9 +6,9 @@ from mindsdb_sql.parser.utils import indent
 class CreatePredictor(ASTNode):
     def __init__(self,
                  name,
-                 integration_name,
-                 query_str,
                  targets,
+                 integration_name=None,
+                 query_str=None,
                  datasource_name=None,
                  order_by=None,
                  group_by=None,
@@ -33,7 +33,12 @@ class CreatePredictor(ASTNode):
         ind1 = indent(level+1)
 
         name_str = f'\n{ind1}name={self.name.to_tree()},'
-        integration_name_str = f'\n{ind1}integration_name={self.integration_name.to_tree()},'
+
+        if self.integration_name is not None:
+            integration_name_str = f'\n{ind1}integration_name={self.integration_name.to_tree()},'
+        else:
+            integration_name_str = 'None'
+
         query_str = f'\n{ind1}query={self.query_str},'
 
         datasource_name_str = ''
@@ -80,9 +85,15 @@ class CreatePredictor(ASTNode):
         using_str = f'USING {str(self.using)}' if self.using is not None else ''
         datasource_name_str = f'AS {self.datasource_name.to_string()} ' if self.datasource_name is not None else ''
 
-        query_str = self.query_str
+        query_str = ''
+        if self.query_str is not None:
+            query_str = f'WITH ({self.query_str}) '
 
-        out_str = f'CREATE PREDICTOR {self.name.to_string()} FROM {self.integration_name.to_string()} WITH ({query_str}) ' \
+        integration_name_str = ''
+        if self.integration_name is not None:
+            integration_name_str = f'FROM {self.integration_name.to_string()} '
+
+        out_str = f'CREATE PREDICTOR {self.name.to_string()} {integration_name_str}{query_str}' \
                   f'{datasource_name_str}' \
                   f'PREDICT {targets_str} ' \
                   f'{order_by_str}' \

@@ -125,3 +125,19 @@ class TestCreatePredictor:
 
         with pytest.raises(ParsingException):
             parse_sql(sql, dialect='mindsdb')
+
+    def test_create_predictor_empty_fields(self):
+        sql = """CREATE PREDICTOR xxx 
+                PREDICT sss
+                """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreatePredictor(
+            name=Identifier('xxx'),
+            integration_name=None,
+            query_str=None,
+            datasource_name=None,
+            targets=[Identifier('sss')],
+        )
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+

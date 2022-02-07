@@ -378,12 +378,24 @@ class MindsDBParser(Parser):
     @_('CREATE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
     @_('CREATE TABLE identifier FROM identifier WITH LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
     @_('CREATE TABLE identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier PREDICT result_columns')
     def create_predictor(self, p):
+
+        query_str = None
+        if hasattr(p, 'raw_query'):
+            query_str = tokens_to_string(p.raw_query)
+
+        if hasattr(p, 'identifier'):
+            # single identifier field
+            name = p.identifier
+        else:
+            name = p.identifier0
+
         return CreatePredictor(
-            name=p.identifier0,
-            integration_name=p.identifier1,
-            query_str=tokens_to_string(p.raw_query),
-            datasource_name=p.optional_data_source_name,
+            name=name,
+            integration_name=getattr(p, 'identifier1', None),
+            query_str=query_str,
+            datasource_name=getattr(p, 'optional_data_source_name', None),
             targets=p.result_columns,
         )
 
