@@ -302,7 +302,7 @@ class TestOperations:
         expected_where = BinaryOperation(op='IN',
                                          args=[
                                              Identifier.from_path_str('col1'),
-                                             Tuple(items=[Constant('a'), Constant("b")]),
+                                             Tuple(items=[Identifier('a'), Identifier("b")]),
                                          ])
         print(ast.where.to_tree())
         print(expected_where.to_tree())
