@@ -600,11 +600,6 @@ class SQLParser(Parser):
     def constant(self, p):
         return Constant(value=float(p.FLOAT))
 
-    @_('QUOTE_STRING')
-    @_('DQUOTE_STRING')
-    def constant(self, p):
-        return Constant(value=str(p[0]))
-
     @_('identifier DOT identifier')
     def identifier(self, p):
         p.identifier0.parts += p.identifier1.parts
@@ -619,6 +614,11 @@ class SQLParser(Parser):
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)
+
+    @_('QUOTE_STRING')
+    @_('DQUOTE_STRING')
+    def constant(self, p):
+        return Constant(value=str(p[0]))
 
     @_('PARAMETER')
     def parameter(self, p):
