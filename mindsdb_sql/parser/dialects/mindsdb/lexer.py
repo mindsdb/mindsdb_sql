@@ -232,7 +232,7 @@ class MindsDBLexer(Lexer):
     def ID(self, t):
         return t
 
-    @_(r'\d+\.\d+')
+    @_(r'\d+\.\d*')
     def FLOAT(self, t):
         return t
 

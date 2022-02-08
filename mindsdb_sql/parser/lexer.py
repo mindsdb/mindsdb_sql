@@ -183,7 +183,7 @@ class SQLLexer(Lexer):
     def ID(self, t):
         return t
 
-    @_(r'\d+\.\d+')
+    @_(r'\d+\.\d*')
     def FLOAT(self, t):
         t.value = float(t.value)
         return t

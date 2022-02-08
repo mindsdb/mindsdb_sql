@@ -74,15 +74,17 @@ class TestLexer:
                 assert t.type == 'ID'
 
     def test_select_float(self, lexer):
-        for float in [0.0, 1.000, 0.1, 1.0, 99999.9999]:
-            sql = f'SELECT {float}'
+        for val in [0.0, 1.000, 0.1, 1.0, 99999.9999, '3.']:
+            sql = f'SELECT {val}'
             tokens = list(SQLLexer().tokenize(sql))
 
             assert tokens[0].type == 'SELECT'
             assert tokens[0].value == 'SELECT'
 
             assert tokens[1].type == 'FLOAT'
-            assert tokens[1].value == float
+            if not isinstance(val, float):
+                val = float(val)
+            assert tokens[1].value == val
 
     def test_select_strings(self, lexer):
         sql = 'SELECT "a", "b", "c"'
