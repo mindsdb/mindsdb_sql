@@ -309,6 +309,8 @@ class MindsDBParser(Parser):
     # CREATE VIEW
     @_('CREATE VIEW ID create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
     @_('CREATE DATASET ID create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
+    @_('CREATE VIEW ID create_view_from_table_or_nothing LPAREN raw_query RPAREN')
+    @_('CREATE DATASET ID create_view_from_table_or_nothing LPAREN raw_query RPAREN')
     def create_view(self, p):
         query_str = tokens_to_string(p.raw_query)
 
