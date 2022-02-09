@@ -30,7 +30,7 @@ class TestShow:
         for cat in categories:
             sql = f"SHOW {cat}"
             ast = parse_sql(sql, dialect=dialect)
-            expected_ast = Show(category=cat, condition=None, expression=None)
+            expected_ast = Show(category=cat)
 
             assert str(ast).lower() == sql.lower()
             assert str(ast) == str(expected_ast)
@@ -50,7 +50,7 @@ class TestShow:
     def test_show_tables_from_db(self, dialect):
         sql = "SHOW tables from db"
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Show(category='tables', condition='from', expression=Identifier('db'))
+        expected_ast = Show(category='tables', from_table=Identifier('db'))
 
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
@@ -59,8 +59,8 @@ class TestShow:
     def test_show_function_status(self, dialect):
         sql = "show function status where Db = 'MINDSDB' AND Name LIKE '%'"
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Show(category='function status', condition='where',
-                            expression=BinaryOperation('and', args=[
+        expected_ast = Show(category='function status',
+                            where=BinaryOperation('and', args=[
                                 BinaryOperation('=', args=[Identifier('Db'), Constant('MINDSDB')]),
                                 BinaryOperation('like', args=[Identifier('Name'), Constant('%')])
                             ]),
@@ -74,8 +74,8 @@ class TestShow:
     def test_show_character_set(self, dialect):
         sql = "show character set where charset = 'utf8mb4'"
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Show(category='character set', condition='where',
-                            expression=BinaryOperation('=', args=[Identifier('charset'), Constant('utf8mb4')]),
+        expected_ast = Show(category='character set',
+                            where=BinaryOperation('=', args=[Identifier('charset'), Constant('utf8mb4')]),
                         )
 
         assert str(ast).lower() == sql.lower()

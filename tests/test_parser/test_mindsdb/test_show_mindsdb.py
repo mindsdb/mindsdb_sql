@@ -16,7 +16,7 @@ class TestShowMindsdb:
                         'ALL']:
             sql = f"SHOW {keyword}"
             ast = parse_sql(sql, dialect='mindsdb')
-            expected_ast = Show(category=keyword, condition=None, expression=None)
+            expected_ast = Show(category=keyword)
 
             assert str(ast).lower() == sql.lower()
             assert str(ast) == str(expected_ast)
@@ -26,7 +26,7 @@ class TestShowMindsdb:
         for keyword in ['VIEWS', 'TABLES']:
             sql = f"SHOW {keyword} from integration_name"
             ast = parse_sql(sql, dialect='mindsdb')
-            expected_ast = Show(category=keyword, condition='from', expression=Identifier('integration_name'))
+            expected_ast = Show(category=keyword, from_table=Identifier('integration_name'))
 
             assert str(ast).lower() == sql.lower()
             assert str(ast) == str(expected_ast)

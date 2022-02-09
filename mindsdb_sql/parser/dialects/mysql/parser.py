@@ -3,7 +3,6 @@ from mindsdb_sql.parser.parser import SQLParser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mysql.lexer import MySQLLexer
 from mindsdb_sql.parser.dialects.mysql.variable import Variable
-from mindsdb_sql.parser.dialects.mysql.show_index import ShowIndex
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.utils import ensure_select_keyword_order, JoinType
 
@@ -188,35 +187,27 @@ class MySQLParser(SQLParser):
 
 
     # Show
-    @_('SHOW show_category show_condition_or_nothing')
+    @_('show WHERE expr')
     def show(self, p):
-        condition = p.show_condition_or_nothing['condition'] if p.show_condition_or_nothing else None
-        expression = p.show_condition_or_nothing['expression'] if p.show_condition_or_nothing else None
-        return Show(category=p.show_category,
-                    condition=condition,
-                    expression=expression)
+        command = p.show
+        command.where = p.expr
+        return command
 
-    @_('SHOW INDEX FROM identifier FROM identifier')
+    @_('show FROM expr')
     def show(self, p):
-        return ShowIndex(table=p.identifier0,
-                         db=p.identifier1)
+        command = p.show
+        from0 = command.from_table
+        if from0 is not None:
+            if not isinstance(p.expr, Identifier) or not isinstance(from0, Identifier):
+                raise ParsingException("Can't parse FROM identifier")
+            p.expr.parts = p.expr.parts + from0.parts
 
-    @_('SHOW INDEX FROM identifier')
+        command.from_table = p.expr
+        return command
+
+    @_('SHOW show_category')
     def show(self, p):
-        return ShowIndex(table=p.identifier)
-
-    @_('show_condition_token expr',
-       'empty')
-    def show_condition_or_nothing(self, p):
-        if not p[0]:
-            return None
-        return dict(condition=p[0], expression=p[1])
-
-    @_('WHERE',
-       'FROM',
-       'LIKE')
-    def show_condition_token(self, p):
-        return p[0]
+        return Show(category=p.show_category)
 
     @_('SCHEMAS',
        'DATABASES',
@@ -229,6 +220,7 @@ class MySQLParser(SQLParser):
        'GLOBAL VARIABLES',
        'PROCEDURE STATUS',
        'FUNCTION STATUS',
+       'INDEX',
        'CREATE TABLE',
        'WARNINGS',
        'ENGINES',

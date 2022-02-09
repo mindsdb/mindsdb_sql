@@ -88,26 +88,27 @@ class SQLParser(Parser):
         return Set(category=p.ID.lower(), arg=p.identifier)
 
     # Show
-    @_('SHOW show_category show_condition_or_nothing')
+    @_('show WHERE expr')
     def show(self, p):
-        condition = p.show_condition_or_nothing['condition'] if p.show_condition_or_nothing else None
-        expression = p.show_condition_or_nothing['expression'] if p.show_condition_or_nothing else None
-        return Show(category=p.show_category,
-                    condition=condition,
-                    expression=expression)
+        command = p.show
+        command.where = p.expr
+        return command
 
-    @_('show_condition_token expr',
-       'empty')
-    def show_condition_or_nothing(self, p):
-        if not p[0]:
-            return None
-        return dict(condition=p[0], expression=p[1])
+    @_('show FROM expr')
+    def show(self, p):
+        command = p.show
+        from0 = command.from_table
+        if from0 is not None:
+            if not isinstance(p.expr, Identifier) or not isinstance(from0, Identifier):
+                raise ParsingException("Can't parse FROM identifier")
+            p.expr.parts = p.expr.parts + from0.parts
 
-    @_('WHERE',
-       'FROM',
-       'LIKE')
-    def show_condition_token(self, p):
-        return p[0]
+        command.from_table = p.expr
+        return command
+
+    @_('SHOW show_category')
+    def show(self, p):
+        return Show(category=p.show_category)
 
     @_('SCHEMAS',
        'DATABASES',
