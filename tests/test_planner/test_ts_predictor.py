@@ -301,7 +301,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=parse_sql("SELECT DISTINCT ta.vendor_id AS vendor_id FROM data.ny_output AS ta\
-                                                   WHERE ta.pickup_hour BETWEEN 1 AND 10 AND ta.vendor_id = 1")
+                                                   WHERE ta.vendor_id = 1")
                                    ),
                 MapReduceStep(values=Result(0),
                               reduce='union',

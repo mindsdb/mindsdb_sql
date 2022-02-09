@@ -38,7 +38,6 @@ class QueryPlanner():
         self.integrations = [int.lower() for int in integrations] if integrations else []
         self.predictor_namespace = predictor_namespace.lower() if predictor_namespace else 'mindsdb'
         self.predictor_metadata = predictor_metadata or defaultdict(dict)
-        self.steps = []
         self.default_namespace = default_namespace
 
         self.statement = None

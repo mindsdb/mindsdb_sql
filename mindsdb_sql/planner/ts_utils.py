@@ -1,5 +1,5 @@
 from mindsdb_sql.exceptions import PlanningException
-from mindsdb_sql.parser.ast import Identifier, Operation, BinaryOperation
+from mindsdb_sql.parser.ast import Identifier, Operation, BinaryOperation, BetweenOperation
 
 
 def find_time_filter(op, time_column_name):
@@ -27,7 +27,7 @@ def replace_time_filter(op, time_filter, new_filter):
 
 
 def find_and_remove_time_filter(op, time_filter):
-    if isinstance(op, BinaryOperation):
+    if isinstance(op, BinaryOperation) or isinstance(op, BetweenOperation):
         if op == time_filter:
             return None
         elif op.op == 'and':
