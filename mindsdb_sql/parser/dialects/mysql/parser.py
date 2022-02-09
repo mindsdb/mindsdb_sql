@@ -213,6 +213,7 @@ class MySQLParser(SQLParser):
        'DATABASES',
        'TABLES',
        'FULL TABLES',
+       'FULL COLUMNS',
        'VARIABLES',
        'PLUGINS',
        'SESSION VARIABLES',

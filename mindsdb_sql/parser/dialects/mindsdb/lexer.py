@@ -37,7 +37,7 @@ class MindsDBLexer(Lexer):
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
         PERSIST, PERSIST_ONLY, DEFAULT,
-        IF_EXISTS,
+        IF_EXISTS, COLUMNS,
 
 
         # SELECT Keywords
@@ -144,6 +144,7 @@ class MindsDBLexer(Lexer):
     PERSIST_ONLY = r'\bPERSIST_ONLY\b'
     DEFAULT = r'\bDEFAULT\b'
     IF_EXISTS = r'\bIF[\s]+EXISTS\b'
+    COLUMNS = r'\bCOLUMNS\b'
 
     # SELECT
 

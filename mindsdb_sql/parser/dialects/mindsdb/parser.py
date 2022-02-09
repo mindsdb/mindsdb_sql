@@ -233,6 +233,7 @@ class MindsDBParser(Parser):
        'DATABASES',
        'TABLES',
        'FULL TABLES',
+       'FULL COLUMNS',
        'VARIABLES',
        'PLUGINS',
        'SESSION VARIABLES',

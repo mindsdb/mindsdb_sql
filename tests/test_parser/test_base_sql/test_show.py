@@ -82,6 +82,32 @@ class TestShow:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+    def test_from_where(self, dialect):
+        sql = "SHOW FULL TABLES FROM ttt WHERE xxx LIKE 'zzz'"
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Show(
+            category='FULL TABLES',
+            from_table=Identifier('ttt'),
+            where=BinaryOperation('like', args=[
+                Identifier('xxx'),
+                Constant('zzz')]),
+        )
+
+        assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_full_columns(self, dialect):
+        sql = "SHOW FULL COLUMNS FROM `concrete` FROM `files`"
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Show(
+            category='FULL COLUMNS',
+            from_table=Identifier('files.concrete')
+        )
+
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
 
 class TestShowAdapted:
 
