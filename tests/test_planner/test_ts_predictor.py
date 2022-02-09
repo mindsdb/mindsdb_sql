@@ -33,11 +33,8 @@ class TestJoinTimeseriesPredictor:
                 MapReduceStep(values=Result(0),
                               reduce='union',
                               step=FetchDataframeStep(integration='mysql',
-                                   query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[vendor_id]')]),
-                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
-                                                )
+                                   query=parse_sql("SELECT * FROM data.ny_output AS ta\
+                                    WHERE ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC")
                                    ),
                               ),
                 ApplyTimeseriesPredictorStep(namespace='mindsdb',
@@ -88,11 +85,8 @@ class TestJoinTimeseriesPredictor:
                 MapReduceStep(values=Result(0),
                               reduce='union',
                               step=FetchDataframeStep(integration='mysql',
-                                   query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[vendor_id]')]),
-                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
-                                                )
+                                   query=parse_sql("SELECT * FROM data.ny_output AS ta\
+                                    WHERE ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC")
                                    ),
                               ),
                 ApplyTimeseriesPredictorStep(namespace='mindsdb',
@@ -143,17 +137,12 @@ class TestJoinTimeseriesPredictor:
                                    ),
                 MapReduceStep(values=Result(0),
                               reduce='union',
-                              step=FetchDataframeStep(integration='mysql',
-                                                      query=Select(targets=[Star()],
-                                                                   from_table=Identifier('data.ny_output',
-                                                                                         alias=Identifier('ta')),
-                                                                   where=BinaryOperation('=', args=[
-                                                                       Identifier('ta.vendor_id'), Constant('$var[vendor_id]')]),
-                                                                   order_by=[OrderBy(Identifier('ta.pickup_hour'),
-                                                                                     direction='DESC')],
-                                                                   )
-                                                      ),
+                              step=FetchDataframeStep(
+                                  integration='mysql',
+                                  query=parse_sql("SELECT * FROM data.ny_output AS ta\
+                                   WHERE ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC")
                               ),
+                ),
                 ApplyTimeseriesPredictorStep(namespace='mindsdb',
                                              predictor=Identifier('tp3', alias=Identifier('tb')),
                                              dataframe=Result(1)),
@@ -204,23 +193,13 @@ class TestJoinTimeseriesPredictor:
                                    ),
                 MapReduceStep(values=Result(0),
                               reduce='union',
-                              step=FetchDataframeStep(integration='mysql',
-                                                      query=Select(targets=[Star()],
-                                                                   from_table=Identifier('data.ny_output',
-                                                                                         alias=Identifier('ta')),
-                                                                   where=BinaryOperation('and', args=[
-                                                                       BinaryOperation('=',
-                                                                                       args=[Identifier('ta.vendor_id'),
-                                                                                             Constant(1)]),
-                                                                       BinaryOperation('=', args=[
-                                                                           Identifier('ta.vendor_id'),
-                                                                           Constant('$var[vendor_id]')]),
-                                                                   ]),
-                                                                   order_by=[OrderBy(Identifier('ta.pickup_hour'),
-                                                                                     direction='DESC')],
-                                                                   )
-                                                      ),
+                              step=FetchDataframeStep(
+                                  integration='mysql',
+                                  query=parse_sql("SELECT * FROM data.ny_output AS ta\
+                                     WHERE ta.vendor_id = 1 AND ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' \
+                                     ORDER BY ta.pickup_hour DESC")
                               ),
+                ),
                 ApplyTimeseriesPredictorStep(namespace='mindsdb',
                                              predictor=Identifier('tp3', alias=Identifier('tb')),
                                              dataframe=Result(1)),
@@ -274,22 +253,11 @@ class TestJoinTimeseriesPredictor:
                                    ),
                 MapReduceStep(values=Result(0),
                               reduce='union',
-                              step=FetchDataframeStep(integration='mysql',
-                                                      query=Select(targets=[Star()],
-                                                                   from_table=Identifier('data.ny_output',
-                                                                                         alias=Identifier('ta')),
-                                                                   where=BinaryOperation('and', args=[
-                                                                       BinaryOperation('=',
-                                                                                       args=[Identifier('ta.vendor_id'),
-                                                                                             Constant(1)]),
-                                                                       BinaryOperation('=', args=[
-                                                                           Identifier('ta.vendor_id'),
-                                                                           Constant('$var[vendor_id]')]),
-                                                                   ]),
-                                                                   order_by=[OrderBy(Identifier('ta.pickup_hour'),
-                                                                                     direction='DESC')],
-                                                                   limit=Constant(predictor_window),
-                                                                   )
+                              step=FetchDataframeStep(
+                                  integration='mysql',
+                                  query=parse_sql(f"SELECT * FROM data.ny_output AS ta\
+                                    WHERE ta.vendor_id = 1 AND ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]'\
+                                    ORDER BY ta.pickup_hour DESC LIMIT {predictor_window}")
                                                       ),
                               ),
                 ApplyTimeseriesPredictorStep(
@@ -325,79 +293,34 @@ class TestJoinTimeseriesPredictor:
     def test_join_predictor_timeseries_between(self):
         predictor_window = 5
         group_by_column = 'vendor_id'
-        query = Select(targets=[Star()],
-                       from_table=Join(left=Identifier('mysql.data.ny_output', alias=Identifier('ta')),
-                                       right=Identifier('mindsdb.tp3', alias=Identifier('tb')),
-                                       join_type=JoinType.LEFT_JOIN,
-                                       implicit=True),
-                       where=BinaryOperation('and', args=[
-                           BetweenOperation(args=[Identifier('ta.pickup_hour'), Constant(1), Constant(10)]),
-                           BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
-                       ]),
-                       )
+        query = parse_sql("SELECT * FROM mysql.data.ny_output AS ta\
+                                        left join mindsdb.tp3 AS tb\
+                           WHERE ta.pickup_hour BETWEEN 1 AND 10 AND ta.vendor_id = 1")
 
         expected_plan = QueryPlan(
             steps=[
                 FetchDataframeStep(integration='mysql',
-                                   query=Select(targets=[
-                                       Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
-                                       from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                       where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
-                                       distinct=True,
-                                   )
+                                   query=parse_sql("SELECT DISTINCT ta.vendor_id AS vendor_id FROM data.ny_output AS ta\
+                                                   WHERE ta.pickup_hour BETWEEN 1 AND 10 AND ta.vendor_id = 1")
                                    ),
                 MapReduceStep(values=Result(0),
                               reduce='union',
                               step=MultipleSteps(
                                   reduce='union',
                                   steps=[
-                                      FetchDataframeStep(integration='mysql',
-                                                         query=Select(targets=[Star()],
-                                                                      from_table=Identifier('data.ny_output',
-                                                                                            alias=Identifier('ta')),
-                                                                      where=BinaryOperation('and', args=[
-                                                                          BinaryOperation('and', args=[
-                                                                              BinaryOperation('<',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.pickup_hour'),
-                                                                                                  Constant(1)]),
-                                                                              BinaryOperation('=',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.vendor_id'),
-                                                                                                  Constant(1)]),
-                                                                          ]),
-                                                                          BinaryOperation('=', args=[
-                                                                              Identifier('ta.vendor_id'),
-                                                                              Constant('$var[vendor_id]')])
-                                                                      ]),
-                                                                      order_by=[OrderBy(Identifier('ta.pickup_hour'),
-                                                                                        direction='DESC')],
-                                                                      limit=Constant(predictor_window),
-                                                                      ),
-                                                         ),
-                                      FetchDataframeStep(integration='mysql',
-                                                         query=Select(targets=[Star()],
-                                                                      from_table=Identifier('data.ny_output',
-                                                                                            alias=Identifier('ta')),
-                                                                      where=BinaryOperation('and', args=[
-                                                                          BinaryOperation('and', args=[
-                                                                              BetweenOperation(
-                                                                                  args=[Identifier('ta.pickup_hour'),
-                                                                                        Constant(1), Constant(10)]),
-                                                                              BinaryOperation('=',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.vendor_id'),
-                                                                                                  Constant(1)]),
-                                                                          ]),
-
-                                                                          BinaryOperation('=', args=[
-                                                                              Identifier('ta.vendor_id'),
-                                                                              Constant('$var[vendor_id]')])
-                                                                      ]),
-                                                                      order_by=[OrderBy(Identifier('ta.pickup_hour'),
-                                                                                        direction='DESC')],
-                                                                      ),
-                                                         ),
+                                      FetchDataframeStep(
+                                          integration='mysql',
+                                          query=parse_sql(f"SELECT * FROM data.ny_output AS ta \
+                                          WHERE ta.pickup_hour < 1 AND ta.vendor_id = 1 and ta.pickup_hour is not null \
+                                          AND ta.vendor_id = '$var[vendor_id]' \
+                                          ORDER BY ta.pickup_hour DESC LIMIT {predictor_window}"),
+                                      ),
+                                      FetchDataframeStep(
+                                          integration='mysql',
+                                          query=parse_sql("SELECT * FROM data.ny_output AS ta\
+                                           WHERE ta.pickup_hour BETWEEN 1 AND 10 AND ta.vendor_id = 1 and ta.pickup_hour is not null \
+                                            AND ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC"),
+                                      ),
 
                                   ]
                               )),
@@ -456,54 +379,18 @@ class TestJoinTimeseriesPredictor:
                               step=MultipleSteps(
                                   reduce='union',
                                   steps=[
-                                      FetchDataframeStep(integration='mysql',
-                                                         query=Select(targets=[Star()],
-                                                                      from_table=Identifier('data.ny_output',
-                                                                                            alias=Identifier('ta')),
-                                                                      where=BinaryOperation('and', args=[
-                                                                          BinaryOperation('and', args=[
-                                                                              BinaryOperation('<=',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.pickup_hour'),
-                                                                                                  Constant(10)]),
-                                                                              BinaryOperation('=',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.vendor_id'),
-                                                                                                  Constant(1)]),
-                                                                          ]),
-                                                                          BinaryOperation('=', args=[
-                                                                              Identifier('ta.vendor_id'),
-                                                                              Constant('$var[vendor_id]')])
-                                                                      ]),
-                                                                      order_by=[OrderBy(Identifier('ta.pickup_hour'),
-                                                                                        direction='DESC')],
-                                                                      limit=Constant(predictor_window),
-                                                                      ),
-                                                         ),
-                                      FetchDataframeStep(integration='mysql',
-                                                         query=Select(targets=[Star()],
-                                                                      from_table=Identifier('data.ny_output',
-                                                                                            alias=Identifier('ta')),
-                                                                      where=BinaryOperation('and', args=[
-                                                                          BinaryOperation('and', args=[
-                                                                              BinaryOperation('>',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.pickup_hour'),
-                                                                                                  Constant(10)]),
-                                                                              BinaryOperation('=',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.vendor_id'),
-                                                                                                  Constant(1)]),
-                                                                          ]),
-
-                                                                          BinaryOperation('=', args=[
-                                                                              Identifier('ta.vendor_id'),
-                                                                              Constant('$var[vendor_id]')])
-                                                                      ]),
-                                                                      order_by=[OrderBy(Identifier('ta.pickup_hour'),
-                                                                                        direction='DESC')],
-                                                                      ),
-                                                         ),
+                                      FetchDataframeStep(
+                                          integration='mysql',
+                                          query=parse_sql(f"SELECT * FROM data.ny_output AS ta \
+                                          WHERE ta.pickup_hour <= 10 AND ta.vendor_id = 1 and ta.pickup_hour is not null \
+                                          AND ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC LIMIT {predictor_window}"),
+                                      ),
+                                      FetchDataframeStep(
+                                          integration='mysql',
+                                          query=parse_sql("SELECT * FROM data.ny_output AS ta \
+                                          WHERE ta.pickup_hour > 10 AND ta.vendor_id = 1 and ta.pickup_hour is not null \
+                                          AND ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC"),
+                                      ),
 
                                   ]
                               )),
@@ -558,54 +445,18 @@ class TestJoinTimeseriesPredictor:
                               step=MultipleSteps(
                                   reduce='union',
                                   steps=[
-                                      FetchDataframeStep(integration='mysql',
-                                                         query=Select(targets=[Star()],
-                                                                      from_table=Identifier('data.ny_output',
-                                                                                            alias=Identifier('ta')),
-                                                                      where=BinaryOperation('and', args=[
-                                                                          BinaryOperation('and', args=[
-                                                                              BinaryOperation('<',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.pickup_hour'),
-                                                                                                  Constant(10)]),
-                                                                              BinaryOperation('=',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.vendor_id'),
-                                                                                                  Constant(1)]),
-                                                                          ]),
-                                                                          BinaryOperation('=', args=[
-                                                                              Identifier('ta.vendor_id'),
-                                                                              Constant('$var[vendor_id]')])
-                                                                      ]),
-                                                                      order_by=[OrderBy(Identifier('ta.pickup_hour'),
-                                                                                        direction='DESC')],
-                                                                      limit=Constant(predictor_window),
-                                                                      ),
-                                                         ),
-                                      FetchDataframeStep(integration='mysql',
-                                                         query=Select(targets=[Star()],
-                                                                      from_table=Identifier('data.ny_output',
-                                                                                            alias=Identifier('ta')),
-                                                                      where=BinaryOperation('and', args=[
-                                                                          BinaryOperation('and', args=[
-                                                                              BinaryOperation('>=',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.pickup_hour'),
-                                                                                                  Constant(10)]),
-                                                                              BinaryOperation('=',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.vendor_id'),
-                                                                                                  Constant(1)]),
-                                                                          ]),
-
-                                                                          BinaryOperation('=', args=[
-                                                                              Identifier('ta.vendor_id'),
-                                                                              Constant('$var[vendor_id]')])
-                                                                      ]),
-                                                                      order_by=[OrderBy(Identifier('ta.pickup_hour'),
-                                                                                        direction='DESC')],
-                                                                      ),
-                                                         ),
+                                      FetchDataframeStep(
+                                          integration='mysql',
+                                          query=parse_sql(f"SELECT * FROM data.ny_output AS ta\
+                                           WHERE ta.pickup_hour < 10 AND ta.vendor_id = 1 AND ta.pickup_hour is not null and\
+                                           ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC LIMIT {predictor_window}"),
+                                      ),
+                                      FetchDataframeStep(
+                                          integration='mysql',
+                                          query=parse_sql("SELECT * FROM data.ny_output AS ta\
+                                           WHERE ta.pickup_hour >= 10 AND ta.vendor_id = 1 AND ta.pickup_hour is not null and\
+                                           ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC"),
+                                      ),
 
                                   ]
                               )),
@@ -657,30 +508,14 @@ class TestJoinTimeseriesPredictor:
                                    ),
                 MapReduceStep(values=Result(0),
                               reduce='union',
-                              step=FetchDataframeStep(integration='mysql',
-                                                         query=Select(targets=[Star()],
-                                                                      from_table=Identifier('data.ny_output',
-                                                                                            alias=Identifier('ta')),
-                                                                      where=BinaryOperation('and', args=[
-                                                                          BinaryOperation('and', args=[
-                                                                              BinaryOperation('<',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.pickup_hour'),
-                                                                                                  Constant(10)]),
-                                                                              BinaryOperation('=',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.vendor_id'),
-                                                                                                  Constant(1)]),
-                                                                          ]),
-                                                                          BinaryOperation('=', args=[
-                                                                              Identifier('ta.vendor_id'),
-                                                                              Constant('$var[vendor_id]')])
-                                                                      ]),
-                                                                      order_by=[OrderBy(Identifier('ta.pickup_hour'),
-                                                                                        direction='DESC')],
-                                                                      ),
-                                                         ),
+                              step=FetchDataframeStep(
+                                  integration='mysql',
+                                  query=parse_sql("SELECT * FROM data.ny_output AS ta \
+                                  WHERE ta.pickup_hour < 10 AND ta.vendor_id = 1 AND ta.pickup_hour is not null and\
+                                  ta.vendor_id = '$var[vendor_id]' \
+                                  ORDER BY ta.pickup_hour DESC"),
                               ),
+                ),
                 ApplyTimeseriesPredictorStep(
                     output_time_filter=BinaryOperation('<', args=[Identifier('ta.pickup_hour'), Constant(10)]),
                     namespace='mindsdb',
@@ -731,30 +566,14 @@ class TestJoinTimeseriesPredictor:
                                    ),
                 MapReduceStep(values=Result(0),
                               reduce='union',
-                              step=FetchDataframeStep(integration='mysql',
-                                                         query=Select(targets=[Star()],
-                                                                      from_table=Identifier('data.ny_output',
-                                                                                            alias=Identifier('ta')),
-                                                                      where=BinaryOperation('and', args=[
-                                                                          BinaryOperation('and', args=[
-                                                                              BinaryOperation('<=',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.pickup_hour'),
-                                                                                                  Constant(10)]),
-                                                                              BinaryOperation('=',
-                                                                                              args=[Identifier(
-                                                                                                  'ta.vendor_id'),
-                                                                                                  Constant(1)]),
-                                                                          ]),
-                                                                          BinaryOperation('=', args=[
-                                                                              Identifier('ta.vendor_id'),
-                                                                              Constant('$var[vendor_id]')])
-                                                                      ]),
-                                                                      order_by=[OrderBy(Identifier('ta.pickup_hour'),
-                                                                                        direction='DESC')],
-                                                                      ),
-                                                         ),
+                              step=FetchDataframeStep(
+                                  integration='mysql',
+                                  query=parse_sql("SELECT * FROM data.ny_output AS ta\
+                                  WHERE  ta.pickup_hour <= 10 AND ta.vendor_id = 1 AND ta.pickup_hour is not null and\
+                                   ta.vendor_id = '$var[vendor_id]'\
+                                   ORDER BY ta.pickup_hour DESC"),
                               ),
+                ),
                 ApplyTimeseriesPredictorStep(
                     output_time_filter=BinaryOperation('<=', args=[Identifier('ta.pickup_hour'), Constant(10)]),
                     namespace='mindsdb',
@@ -854,11 +673,8 @@ class TestJoinTimeseriesPredictor:
                 MapReduceStep(values=Result(0),
                               reduce='union',
                               step=FetchDataframeStep(integration='mysql',
-                                   query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[vendor_id]')]),
-                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
-                                                )
+                                   query=parse_sql("SELECT * FROM data.ny_output AS ta\
+                                    WHERE ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC")
                                    ),
                               ),
                 ApplyTimeseriesPredictorStep(
@@ -912,11 +728,8 @@ class TestJoinTimeseriesPredictor:
                 MapReduceStep(values=Result(0),
                               reduce='union',
                               step=FetchDataframeStep(integration='mysql',
-                                   query=Select(targets=[Star()],
-                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                                                where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant('$var[vendor_id]')]),
-                                                order_by=[OrderBy(Identifier('ta.pickup_hour'), direction='DESC')],
-                                                )
+                                   query=parse_sql("SELECT * FROM data.ny_output AS ta\
+                                    WHERE ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC")
                                    ),
                               ),
                 ApplyTimeseriesPredictorStep(
@@ -976,12 +789,9 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(
                     integration='ds',
-                    query=Select(
-                       targets=[Star()],
-                       from_table=Identifier('data.ny_output', alias=Identifier('ta')),
-                       order_by=[OrderBy(Identifier('ta.f1'), direction='DESC')],
-                       limit=Constant(predictor_window),
-                    )
+                    query=parse_sql(f"SELECT * FROM data.ny_output AS ta\
+                     WHERE ta.f1 is not null\
+                     ORDER BY ta.f1 DESC LIMIT {predictor_window}")
                 ),
                 ApplyTimeseriesPredictorStep(
                     namespace='mindsdb',
@@ -1032,6 +842,7 @@ class TestJoinTimeseriesPredictor:
                                   integration='ds',
                                   query=parse_sql(f"SELECT * FROM data.ny_output as ta \
                                                    WHERE ta.f2 BETWEEN '2020-11-01' AND '2020-12-01' \
+                                                   AND ta.f1 IS NOT NULL \
                                                    AND ta.f2 = '$var[f2]' \
                                                    ORDER BY ta.f1 DESC LIMIT {predictor_window}")
                               ),
@@ -1081,40 +892,9 @@ class TestJoinTimeseriesPredictor:
                               reduce='union',
                               step=FetchDataframeStep(
                                   integration='ds',
-                                  query=Select(
-                                     targets=[Star()],
-                                     from_table=Identifier(parts=['data', 'ny_output'], alias=Identifier(parts=['ta'])),
-                                     where=BinaryOperation(op='and',
-                                       args=(
-                                        BinaryOperation(op='>',
-                                          args=(
-                                            Identifier(parts=['ta', 'f2']),
-                                            Constant(value='2020-11-01')
-                                          )
-                                        ),
-                                        BinaryOperation(op='and',
-                                          args=(
-                                            BinaryOperation(op='=',
-                                              args=(
-                                                Identifier(parts=['ta', 'F2']),
-                                                Constant(value='$var[F2]')
-                                              )
-                                            ),
-                                            BinaryOperation(op='=',
-                                              args=(
-                                                Identifier(parts=['ta', 'f3']),
-                                                Constant(value='$var[f3]')
-                                              )
-                                            )
-                                          )
-                                        )
-                                      )
-                                     ),
-                                     order_by=[
-                                     OrderBy(field=Identifier(parts=['ta', 'F1']), direction='DESC', nulls='default')
-                                     ],
-                                     limit=Constant(value=3),
-                                  )
+                                  query=parse_sql("SELECT * FROM data.ny_output AS ta\
+                                   WHERE ta.f2 > '2020-11-01' AND ta.F1 IS NOT NULL AND ta.F2 = '$var[F2]' AND ta.f3 = '$var[f3]'\
+                                   ORDER BY ta.F1 DESC LIMIT 3")
                               ),
                 ),
                 ApplyTimeseriesPredictorStep(

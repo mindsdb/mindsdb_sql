@@ -205,8 +205,8 @@ class QueryPlanner():
             ])
             if condition is not None:
                 condition = BinaryOperation(op='and', args=[
-                    order_field_not_null,
-                    condition
+                    condition,
+                    order_field_not_null
                 ])
             else:
                 condition = order_field_not_null
@@ -282,7 +282,7 @@ class QueryPlanner():
         else:
             # inject $var to queries
             for integration_select in integration_selects:
-                condition = None
+                condition = integration_select.where
                 for num, column in enumerate(predictor_group_by_names):
                     cond = BinaryOperation('=', args=[Identifier(column), Constant(f'$var[{column}]')])
 
@@ -292,10 +292,7 @@ class QueryPlanner():
                     else:
                         condition = BinaryOperation('and', args=[condition, cond])
 
-                if not integration_select.where:
-                    integration_select.where = condition
-                else:
-                    integration_select.where = BinaryOperation('and', args=[integration_select.where, condition])
+                integration_select.where = condition
             # one or multistep
             if len(integration_selects) == 1:
                 select_partition_step = self.get_integration_select_step(integration_selects[0])

@@ -31,13 +31,21 @@ def find_and_remove_time_filter(op, time_filter):
         if op == time_filter:
             return None
         elif op.op == 'and':
-            left_arg = op.args[0] if op.args[0] != time_filter else None
-            right_arg = op.args[1] if op.args[1] != time_filter else None
-            if not left_arg:
-                return op.args[1]
-            elif not right_arg:
-                return op.args[0]
+            # TODO maybe OR operation too?
+
+            # next level
+            left_arg = find_and_remove_time_filter(op.args[0], time_filter)
+            right_arg = find_and_remove_time_filter(op.args[1], time_filter)
+
+            # if found in one arg return other
+            if left_arg is None:
+                return right_arg
+            if right_arg is None:
+                return left_arg
+
+            op.args = [left_arg, right_arg]
             return op
+
     return op
 
 
