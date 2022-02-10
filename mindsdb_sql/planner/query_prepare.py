@@ -100,8 +100,17 @@ class PreparedStatementPlanner():
                 ds=ds,
             ))
 
+        parameters = []
+        for param in stmt.params:
+            name = param.to_string(alias=False)
+            parameters.append(dict(
+                alias=name,
+                type='str',
+                name=name,
+            ))
+
         return {
-            'parameters_count': len(stmt.params),
+            'parameters': parameters,
             'columns': columns_result
         }
 
