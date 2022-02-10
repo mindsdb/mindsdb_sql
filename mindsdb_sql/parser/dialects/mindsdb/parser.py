@@ -68,10 +68,10 @@ class MindsDBParser(Parser):
         return Explain(target=p.identifier)
 
     # Alter table
-    @_('ALTER TABLE identifier ID ID')
+    @_('ALTER TABLE identifier id id')
     def alter_table(self, p):
         return AlterTable(target=p.identifier,
-                          arg=' '.join([p.ID0, p.ID1]))
+                          arg=' '.join([p.id0, p.id1]))
 
     # DROP VEW
     @_('DROP VIEW identifier')
@@ -126,11 +126,11 @@ class MindsDBParser(Parser):
 
         return Set(category=category, arg=arg)
 
-    @_('SET ID identifier')
+    @_('SET id identifier')
     def set(self, p):
-        if not p.ID.lower() == 'names':
-            raise ParsingException(f'Expected "SET names", got "SET {p.ID}"')
-        return Set(category=p.ID.lower(), arg=p.identifier)
+        if not p.id.lower() == 'names':
+            raise ParsingException(f'Expected "SET names", got "SET {p.id}"')
+        return Set(category=p.id.lower(), arg=p.identifier)
 
     @_('GLOBAL',
        'PERSIST',
@@ -140,6 +140,7 @@ class MindsDBParser(Parser):
     def set_modifier(self, p):
         return p[0]
 
+    # set charset
     @_('SET charset constant')
     @_('SET charset DEFAULT')
     def set(self, p):
@@ -213,34 +214,65 @@ class MindsDBParser(Parser):
         command.where = p.expr
         return command
 
-    @_('show FROM expr')
+    @_('show LIKE string')
     def show(self, p):
         command = p.show
-        from0 = command.from_table
-        if from0 is not None:
-            if not isinstance(p.expr, Identifier) or not isinstance(from0, Identifier):
-                raise ParsingException("Can't parse FROM identifier")
-            p.expr.parts = p.expr.parts + from0.parts
-
-        command.from_table = p.expr
+        command.like = p.string
         return command
 
-    @_('SHOW show_category')
+    @_('show FROM identifier')
     def show(self, p):
-        return Show(category=p.show_category)
+        command = p.show
+        value0 = command.from_table
+        value1 = p.identifier
+        if value0 is not None:
+            value1.parts = value1.parts + value0.parts
+
+        command.from_table = value1
+        return command
+
+    @_('show IN identifier')
+    def show(self, p):
+        command = p.show
+        value0 = command.in_table
+        value1 = p.identifier
+        if value0 is not None:
+            value1.parts = value1.parts + value0.parts
+
+        command.in_table = value1
+        return command
+
+    @_('SHOW show_category',
+       'SHOW show_modifier_list show_category')
+    def show(self, p):
+        modes = getattr(p, 'show_modifier_list', None)
+        return Show(
+            category=p.show_category,
+            modes=modes
+        )
 
     @_('SCHEMAS',
        'DATABASES',
        'TABLES',
-       'FULL TABLES',
-       'FULL COLUMNS',
-       'VARIABLES',
+       'OPEN TABLES',
+       'TRIGGERS',
+       'COLUMNS',
+       'FIELDS',
        'PLUGINS',
+       'VARIABLES',
+       'INDEXES',
+       'KEYS',
        'SESSION VARIABLES',
-       'SESSION STATUS',
        'GLOBAL VARIABLES',
+       'GLOBAL STATUS',
+       'SESSION STATUS',
        'PROCEDURE STATUS',
        'FUNCTION STATUS',
+       'TABLE STATUS',
+       'MASTER STATUS',
+       'STATUS',
+       'STORAGE ENGINES',
+       'PROCESSLIST',
        'INDEX',
        'CREATE TABLE',
        'WARNINGS',
@@ -248,8 +280,12 @@ class MindsDBParser(Parser):
        'CHARSET',
        'CHARACTER SET',
        'COLLATION',
-       'TABLE STATUS',
-       'STATUS',
+       'BINARY LOGS',
+       'MASTER LOGS',
+       'PRIVILEGES',
+       'PROFILES',
+       'REPLICAS',
+       'SLAVE HOSTS',
        # Mindsdb specific
        'VIEWS',
        'STREAMS',
@@ -261,6 +297,52 @@ class MindsDBParser(Parser):
        'ALL')
     def show_category(self, p):
         return ' '.join([x for x in p])
+
+    # custom show commands
+    @_('SHOW ENGINE identifier STATUS',
+       'SHOW ENGINE identifier MUTEX')
+    def show(self, p):
+        return Show(
+            category=p[1],
+            name=p.identifier.to_string(),
+            modes=[p[3]]
+        )
+
+    @_('SHOW FUNCTION CODE identifier',
+       'SHOW PROCEDURE CODE identifier')
+    def show(self, p):
+        category = p[1] + ' ' + p[2]
+        return Show(
+            category=category,
+            name=p.identifier.to_string()
+        )
+
+    @_('SHOW REPLICA STATUS FOR CHANNEL identifier',
+       'SHOW SLAVE STATUS FOR CHANNEL identifier',
+       'SHOW REPLICA STATUS',
+       'SHOW SLAVE STATUS',)
+    def show(self, p):
+        name = getattr(p, 'identifier', None)
+        if name is not None:
+            name = name.to_string()
+        return Show(
+            category='REPLICA STATUS', # slave = replica
+            name=name
+        )
+
+    @_('show_modifier',
+       'show_modifier_list show_modifier')
+    def show_modifier_list(self, p):
+        if hasattr(p, 'empty'):
+            return None
+        params = getattr(p, 'show_modifier_list', [])
+        params.append(p.show_modifier)
+        return params
+
+    @_('EXTENDED',
+       'FULL')
+    def show_modifier(self, p):
+        return p[0]
 
     # DELETE
     @_('DELETE FROM from_table WHERE expr')
@@ -308,14 +390,14 @@ class MindsDBParser(Parser):
         return Use(value=p.identifier)
 
     # CREATE VIEW
-    @_('CREATE VIEW ID create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
-    @_('CREATE DATASET ID create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
-    @_('CREATE VIEW ID create_view_from_table_or_nothing LPAREN raw_query RPAREN')
-    @_('CREATE DATASET ID create_view_from_table_or_nothing LPAREN raw_query RPAREN')
+    @_('CREATE VIEW id create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
+    @_('CREATE DATASET id create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
+    @_('CREATE VIEW id create_view_from_table_or_nothing LPAREN raw_query RPAREN')
+    @_('CREATE DATASET id create_view_from_table_or_nothing LPAREN raw_query RPAREN')
     def create_view(self, p):
         query_str = tokens_to_string(p.raw_query)
 
-        return CreateView(name=p.ID,
+        return CreateView(name=p.id,
                           from_table=p.create_view_from_table_or_nothing,
                           query_str=query_str)
 
@@ -420,12 +502,12 @@ class MindsDBParser(Parser):
                                  engine=p.datasource_engine['engine'],
                                  parameters=p.json)
 
-    @_('DATASOURCE ID WITH ENGINE EQUALS string',
-       'DATASOURCE ID WITH ENGINE string',
-       'DATABASE ID WITH ENGINE EQUALS string',
-       'DATABASE ID WITH ENGINE string',)
+    @_('DATASOURCE id WITH ENGINE EQUALS string',
+       'DATASOURCE id WITH ENGINE string',
+       'DATABASE id WITH ENGINE EQUALS string',
+       'DATABASE id WITH ENGINE string',)
     def datasource_engine(self, p):
-        return {'id': p.ID, 'engine': p.string}
+        return {'id': p.id, 'engine': p.string}
 
     # UNION / UNION ALL
     @_('select UNION select')
@@ -750,16 +832,16 @@ class MindsDBParser(Parser):
     def function(self, p):
         return Function(op=p.DATABASE, args=[])
 
-    @_('ID LPAREN DISTINCT expr_list RPAREN')
+    @_('id LPAREN DISTINCT expr_list RPAREN')
     def function(self, p):
-        return Function(op=p.ID, distinct=True, args=p.expr_list)
+        return Function(op=p.id, distinct=True, args=p.expr_list)
 
-    @_('ID LPAREN expr_list_or_nothing RPAREN')
+    @_('id LPAREN expr_list_or_nothing RPAREN')
     def function(self, p):
         args = p.expr_list_or_nothing
         if not args:
             args = []
-        return Function(op=p.ID, args=args)
+        return Function(op=p.id, args=args)
 
     # arguments are optional in functions, so that things like `select database()` are possible
     @_('expr BETWEEN expr AND expr')
@@ -774,14 +856,14 @@ class MindsDBParser(Parser):
     def expr_list_or_nothing(self, p):
         pass
 
-    @_('CAST LPAREN expr AS ID RPAREN')
+    @_('CAST LPAREN expr AS id RPAREN')
     def expr(self, p):
-        return TypeCast(arg=p.expr, type_name=str(p.ID))
+        return TypeCast(arg=p.expr, type_name=str(p.id))
 
-    @_('CONVERT LPAREN expr COMMA ID RPAREN')
-    @_('CONVERT LPAREN expr USING ID RPAREN')
+    @_('CONVERT LPAREN expr COMMA id RPAREN')
+    @_('CONVERT LPAREN expr USING id RPAREN')
     def expr(self, p):
-        return TypeCast(arg=p.expr, type_name=str(p.ID))
+        return TypeCast(arg=p.expr, type_name=str(p.id))
 
     @_('enumeration')
     def expr_list(self, p):
@@ -887,9 +969,11 @@ class MindsDBParser(Parser):
     def constant(self, p):
         return Constant(value=str(p[0]))
 
-    @_('ID LPAREN kw_parameter_list RPAREN')
+    # param list
+
+    @_('id LPAREN kw_parameter_list RPAREN')
     def object(self, p):
-        return Object(type=p.ID, params=p.kw_parameter_list)
+        return Object(type=p.id, params=p.kw_parameter_list)
 
     @_('kw_parameter',
        'kw_parameter_list COMMA kw_parameter')
@@ -906,7 +990,6 @@ class MindsDBParser(Parser):
     def kw_parameter(self, p):
         key = '.'.join(p.identifier.parts)
         return {key: p[2]}
-
 
     # json
 
@@ -966,16 +1049,7 @@ class MindsDBParser(Parser):
         p.identifier0.parts += p.identifier1.parts
         return p.identifier0
 
-    @_('ID',
-       'CHARSET',
-       'TABLES',
-       'VIEW',
-       'VIEWS',
-       # Mindsdb specific
-       'STATUS',
-       'PREDICT',
-       'PREDICTOR',
-       'PREDICTORS',
+    @_('id',
        'dquote_string')
     def identifier(self, p):
         value = p[0]
@@ -990,8 +1064,38 @@ class MindsDBParser(Parser):
     def parameter(self, p):
         return Parameter(value=p.PARAMETER)
 
-
-    # convert to types
+   # convert to types
+    @_('ID',
+       'FIELDS',
+       'EXTENDED',
+       'PROCESSLIST',
+       'MUTEX',
+       'CODE',
+       'SLAVE',
+       'REPLICA',
+       'REPLICAS',
+       'CHANNEL',
+       'TRIGGERS',
+       'STORAGE',
+       'LOGS',
+       'MASTER',
+       'KEYS',
+       'PRIVILEGES',
+       'PROFILES',
+       'HOSTS',
+       'OPEN',
+       'INDEXES',
+       'CHARSET',
+       'TABLES',
+       'VIEW',
+       'VIEWS',
+       # Mindsdb specific
+       'STATUS',
+       'PREDICT',
+       'PREDICTOR',
+       'PREDICTORS', )
+    def id(self, p):
+        return p[0]
 
     @_('FLOAT')
     def float(self, p):

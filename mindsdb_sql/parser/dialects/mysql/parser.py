@@ -46,10 +46,10 @@ class MySQLParser(SQLParser):
         return Explain(target=p.identifier)
 
     # Alter table
-    @_('ALTER TABLE identifier ID ID')
+    @_('ALTER TABLE identifier id id')
     def alter_table(self, p):
         return AlterTable(target=p.identifier,
-                          arg=' '.join([p.ID0, p.ID1]))
+                          arg=' '.join([p.id0, p.id1]))
 
     # DROP VEW
     @_('DROP VIEW identifier')
@@ -104,11 +104,11 @@ class MySQLParser(SQLParser):
 
         return Set(category=category, arg=arg)
 
-    @_('SET ID identifier')
+    @_('SET id identifier')
     def set(self, p):
-        if not p.ID.lower() == 'names':
-            raise ParsingException(f'Expected "SET names", got "SET {p.ID}"')
-        return Set(category=p.ID.lower(), arg=p.identifier)
+        if not p.id.lower() == 'names':
+            raise ParsingException(f'Expected "SET names", got "SET {p.id}"')
+        return Set(category=p.id.lower(), arg=p.identifier)
 
     @_('GLOBAL',
        'PERSIST',
@@ -193,34 +193,65 @@ class MySQLParser(SQLParser):
         command.where = p.expr
         return command
 
-    @_('show FROM expr')
+    @_('show LIKE string')
     def show(self, p):
         command = p.show
-        from0 = command.from_table
-        if from0 is not None:
-            if not isinstance(p.expr, Identifier) or not isinstance(from0, Identifier):
-                raise ParsingException("Can't parse FROM identifier")
-            p.expr.parts = p.expr.parts + from0.parts
-
-        command.from_table = p.expr
+        command.like = p.string
         return command
 
-    @_('SHOW show_category')
+    @_('show FROM identifier')
     def show(self, p):
-        return Show(category=p.show_category)
+        command = p.show
+        value0 = command.from_table
+        value1 = p.identifier
+        if value0 is not None:
+            value1.parts = value1.parts + value0.parts
+
+        command.from_table = value1
+        return command
+
+    @_('show IN identifier')
+    def show(self, p):
+        command = p.show
+        value0 = command.in_table
+        value1 = p.identifier
+        if value0 is not None:
+            value1.parts = value1.parts + value0.parts
+
+        command.in_table = value1
+        return command
+
+    @_('SHOW show_category',
+       'SHOW show_modifier_list show_category')
+    def show(self, p):
+        modes = getattr(p, 'show_modifier_list', None)
+        return Show(
+            category=p.show_category,
+            modes=modes
+        )
 
     @_('SCHEMAS',
        'DATABASES',
        'TABLES',
-       'FULL TABLES',
-       'FULL COLUMNS',
-       'VARIABLES',
+       'OPEN TABLES',
+       'TRIGGERS',
+       'COLUMNS',
+       'FIELDS',
        'PLUGINS',
+       'VARIABLES',
+       'INDEXES',
+       'KEYS',
        'SESSION VARIABLES',
-       'SESSION STATUS',
        'GLOBAL VARIABLES',
+       'GLOBAL STATUS',
+       'SESSION STATUS',
        'PROCEDURE STATUS',
        'FUNCTION STATUS',
+       'TABLE STATUS',
+       'MASTER STATUS',
+       'STATUS',
+       'STORAGE ENGINES',
+       'PROCESSLIST',
        'INDEX',
        'CREATE TABLE',
        'WARNINGS',
@@ -228,10 +259,61 @@ class MySQLParser(SQLParser):
        'CHARSET',
        'CHARACTER SET',
        'COLLATION',
-       'TABLE STATUS',
-       'STATUS')
+       'BINARY LOGS',
+       'MASTER LOGS',
+       'PRIVILEGES',
+       'PROFILES',
+       'REPLICAS',
+       'SLAVE HOSTS',
+       )
     def show_category(self, p):
         return ' '.join([x for x in p])
+
+    # custom show commands
+    @_('SHOW ENGINE identifier STATUS',
+       'SHOW ENGINE identifier MUTEX')
+    def show(self, p):
+        return Show(
+            category=p[1],
+            name=p.identifier.to_string(),
+            modes=[p[3]]
+        )
+
+    @_('SHOW FUNCTION CODE identifier',
+       'SHOW PROCEDURE CODE identifier')
+    def show(self, p):
+        category = p[1] + ' ' + p[2]
+        return Show(
+            category=category,
+            name=p.identifier.to_string()
+        )
+
+    @_('SHOW REPLICA STATUS FOR CHANNEL identifier',
+       'SHOW SLAVE STATUS FOR CHANNEL identifier',
+       'SHOW REPLICA STATUS',
+       'SHOW SLAVE STATUS',)
+    def show(self, p):
+        name = getattr(p, 'identifier', None)
+        if name is not None:
+            name = name.to_string()
+        return Show(
+            category='REPLICA STATUS', # slave = replica
+            name=name
+        )
+
+    @_('show_modifier',
+       'show_modifier_list show_modifier')
+    def show_modifier_list(self, p):
+        if hasattr(p, 'empty'):
+            return None
+        params = getattr(p, 'show_modifier_list', [])
+        params.append(p.show_modifier)
+        return params
+
+    @_('EXTENDED',
+       'FULL')
+    def show_modifier(self, p):
+        return p[0]
 
     # DELETE
     @_('DELETE FROM from_table WHERE expr')
@@ -342,15 +424,6 @@ class MySQLParser(SQLParser):
         select.offset = p.constant
         return select
 
-    @_('select LIMIT constant')
-    def select(self, p):
-        select = p.select
-        ensure_select_keyword_order(select, 'LIMIT')
-        if not isinstance(p.constant.value, int):
-            raise ParsingException(f'LIMIT must be an integer value, got: {p.constant.value}')
-        select.limit = p.constant
-        return select
-
     @_('select LIMIT constant COMMA constant')
     def select(self, p):
         select = p.select
@@ -359,6 +432,15 @@ class MySQLParser(SQLParser):
             raise ParsingException(f'LIMIT must have integer arguments, got: {p.constant0.value}, {p.constant1.value}')
         select.offset = p.constant0
         select.limit = p.constant1
+        return select
+
+    @_('select LIMIT constant')
+    def select(self, p):
+        select = p.select
+        ensure_select_keyword_order(select, 'LIMIT')
+        if not isinstance(p.constant.value, int):
+            raise ParsingException(f'LIMIT must be an integer value, got: {p.constant.value}')
+        select.limit = p.constant
         return select
 
     @_('select ORDER_BY ordering_terms')
@@ -600,16 +682,16 @@ class MySQLParser(SQLParser):
     def function(self, p):
         return Function(op=p.DATABASE, args=[])
 
-    @_('ID LPAREN DISTINCT expr_list RPAREN')
+    @_('id LPAREN DISTINCT expr_list RPAREN')
     def function(self, p):
-        return Function(op=p.ID, distinct=True, args=p.expr_list)
+        return Function(op=p.id, distinct=True, args=p.expr_list)
 
-    @_('ID LPAREN expr_list_or_nothing RPAREN')
+    @_('id LPAREN expr_list_or_nothing RPAREN')
     def function(self, p):
         args = p.expr_list_or_nothing
         if not args:
             args = []
-        return Function(op=p.ID, args=args)
+        return Function(op=p.id, args=args)
 
     # arguments are optional in functions, so that things like `select database()` are possible
     @_('expr BETWEEN expr AND expr')
@@ -624,14 +706,14 @@ class MySQLParser(SQLParser):
     def expr_list_or_nothing(self, p):
         pass
 
-    @_('CAST LPAREN expr AS ID RPAREN')
+    @_('CAST LPAREN expr AS id RPAREN')
     def expr(self, p):
-        return TypeCast(arg=p.expr, type_name=str(p.ID))
+        return TypeCast(arg=p.expr, type_name=str(p.id))
 
-    @_('CONVERT LPAREN expr COMMA ID RPAREN')
-    @_('CONVERT LPAREN expr USING ID RPAREN')
+    @_('CONVERT LPAREN expr COMMA id RPAREN')
+    @_('CONVERT LPAREN expr USING id RPAREN')
     def expr(self, p):
-        return TypeCast(arg=p.expr, type_name=str(p.ID))
+        return TypeCast(arg=p.expr, type_name=str(p.id))
 
     @_('enumeration')
     def expr_list(self, p):
@@ -717,37 +799,83 @@ class MySQLParser(SQLParser):
     def constant(self, p):
         return Constant(value=False)
 
-    @_('INTEGER')
+    @_('integer')
     def constant(self, p):
-        return Constant(value=int(p.INTEGER))
+        return Constant(value=int(p.integer))
 
-    @_('FLOAT')
+    @_('float')
     def constant(self, p):
-        return Constant(value=float(p.FLOAT))
+        return Constant(value=float(p.float))
+
+    @_('string')
+    def constant(self, p):
+        return Constant(value=str(p[0]))
 
     @_('identifier DOT identifier')
     def identifier(self, p):
         p.identifier0.parts += p.identifier1.parts
         return p.identifier0
 
+    @_('id',
+       'dquote_string')
+    def identifier(self, p):
+        value = p[0]
+        return Identifier.from_path_str(value)
+
+    @_('quote_string',
+       'dquote_string')
+    def string(self, p):
+        return p[0]
+
+    @_('PARAMETER')
+    def parameter(self, p):
+        return Parameter(value=p.PARAMETER)
+
+    # convert to types
+
     @_('ID',
        'CHARSET',
        'TABLES',
        'STATUS',
        'VIEW',
-       'DQUOTE_STRING')
-    def identifier(self, p):
-        value = p[0]
-        return Identifier.from_path_str(value)
+       'FIELDS',
+       'EXTENDED',
+       'PROCESSLIST',
+       'MUTEX',
+       'CODE',
+       'SLAVE',
+       'REPLICA',
+       'REPLICAS',
+       'CHANNEL',
+       'TRIGGERS',
+       'STORAGE',
+       'LOGS',
+       'MASTER',
+       'KEYS',
+       'PRIVILEGES',
+       'PROFILES',
+       'HOSTS',
+       'OPEN',
+       'INDEXES',)
+    def id(self, p):
+        return p[0]
+
+    @_('FLOAT')
+    def float(self, p):
+        return float(p[0])
+
+    @_('INTEGER')
+    def integer(self, p):
+        return int(p[0])
 
     @_('QUOTE_STRING')
-    @_('DQUOTE_STRING')
-    def constant(self, p):
-        return Constant(value=str(p[0]))
+    def quote_string(self, p):
+        return p[0].strip('\'')
 
-    @_('PARAMETER')
-    def parameter(self, p):
-        return Parameter(value=p.PARAMETER)
+    @_('DQUOTE_STRING')
+    def dquote_string(self, p):
+        return p[0].strip('\"')
+
 
     @_('')
     def empty(self, p):

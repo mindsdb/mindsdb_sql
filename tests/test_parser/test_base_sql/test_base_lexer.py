@@ -8,10 +8,10 @@ from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 class TestLexer:
     def test_select_basic(self, lexer):
         # different lexer behavior
-        if isinstance(lexer, MindsDBLexer):
-            fnc = str
-        else:
-            fnc = lambda x: x
+        # if isinstance(lexer, MindsDBLexer):
+        #     fnc = str
+        # else:
+        #     fnc = lambda x: x
 
         sql = f'SELECT 1'
         tokens = list(lexer.tokenize(sql))
@@ -20,13 +20,13 @@ class TestLexer:
         assert tokens[0].value == 'SELECT'
 
         assert tokens[1].type == 'INTEGER'
-        assert tokens[1].value == fnc(1)
+        assert tokens[1].value == "1"
 
         sql = f'select 1'
         tokens = list(lexer.tokenize(sql))
         assert tokens[0].type == 'SELECT'
         assert tokens[1].type == 'INTEGER'
-        assert tokens[1].value == fnc(1)
+        assert tokens[1].value == "1"
 
         sql = f'select a'
         tokens = list(lexer.tokenize(sql))
@@ -36,10 +36,10 @@ class TestLexer:
 
     def test_select_basic_ignored_symbols(self, lexer):
         # different lexer behavior
-        if isinstance(lexer, MindsDBLexer):
-            fnc = str
-        else:
-            fnc = lambda x: x
+        # if isinstance(lexer, MindsDBLexer):
+        #     fnc = str
+        # else:
+        #     fnc = lambda x: x
 
         sql = f'SELECT \t\r\n1'
         tokens = list(lexer.tokenize(sql))
@@ -48,13 +48,13 @@ class TestLexer:
         assert tokens[0].value == 'SELECT'
 
         assert tokens[1].type == 'INTEGER'
-        assert tokens[1].value == fnc(1)
+        assert tokens[1].value == "1"
 
         sql = f'select 1'
         tokens = list(lexer.tokenize(sql))
         assert tokens[0].type == 'SELECT'
         assert tokens[1].type == 'INTEGER'
-        assert tokens[1].value == fnc(1)
+        assert tokens[1].value == "1"
 
         sql = f'select a'
         tokens = list(lexer.tokenize(sql))
@@ -75,6 +75,7 @@ class TestLexer:
 
     def test_select_float(self, lexer):
         for val in [0.0, 1.000, 0.1, 1.0, 99999.9999, '3.']:
+            val = str(val)
             sql = f'SELECT {val}'
             tokens = list(SQLLexer().tokenize(sql))
 
@@ -82,8 +83,6 @@ class TestLexer:
             assert tokens[0].value == 'SELECT'
 
             assert tokens[1].type == 'FLOAT'
-            if not isinstance(val, float):
-                val = float(val)
             assert tokens[1].value == val
 
     def test_select_strings(self, lexer):
@@ -91,33 +90,33 @@ class TestLexer:
         tokens = list(SQLLexer().tokenize(sql))
         assert tokens[0].type == 'SELECT'
         assert tokens[1].type == 'DQUOTE_STRING'
-        assert tokens[1].value == 'a'
+        assert tokens[1].value == '"a"'
         assert tokens[2].type == 'COMMA'
         assert tokens[3].type == 'DQUOTE_STRING'
-        assert tokens[3].value == 'b'
+        assert tokens[3].value == '"b"'
         assert tokens[5].type == 'DQUOTE_STRING'
-        assert tokens[5].value == 'c'
+        assert tokens[5].value == '"c"'
 
         sql = "SELECT 'a', 'b', 'c'"
         tokens = list(SQLLexer().tokenize(sql))
         assert tokens[0].type == 'SELECT'
         assert tokens[1].type == 'QUOTE_STRING'
-        assert tokens[1].value == 'a'
+        assert tokens[1].value == "'a'"
         assert tokens[2].type == 'COMMA'
         assert tokens[3].type == 'QUOTE_STRING'
-        assert tokens[3].value == 'b'
+        assert tokens[3].value == "'b'"
         assert tokens[5].type == 'QUOTE_STRING'
-        assert tokens[5].value == 'c'
+        assert tokens[5].value == "'c'"
 
     def test_select_strings_nested(self, lexer):
         sql = "SELECT '\"a\"', \"'b'\" "
         tokens = list(SQLLexer().tokenize(sql))
         assert tokens[0].type == 'SELECT'
         assert tokens[1].type == 'QUOTE_STRING'
-        assert tokens[1].value == '"a"'
+        assert tokens[1].value == "'\"a\"'"
         assert tokens[2].type == 'COMMA'
         assert tokens[3].type == 'DQUOTE_STRING'
-        assert tokens[3].value == "'b'"
+        assert tokens[3].value == '\"\'b\'\"'
 
     def test_binary_ops(self, lexer):
         for op, expected_type in [
@@ -145,13 +144,13 @@ class TestLexer:
             assert tokens[0].value == 'SELECT'
 
             assert tokens[1].type == 'INTEGER'
-            assert tokens[1].value == 1
+            assert tokens[1].value == "1"
 
             assert tokens[2].type == expected_type
             assert tokens[2].value == op
 
             assert tokens[3].type == 'INTEGER'
-            assert tokens[3].value == 2
+            assert tokens[3].value == "2"
 
     def test_binary_ops_not(self, lexer):
 
@@ -161,12 +160,12 @@ class TestLexer:
         assert tokens[0].value == 'SELECT'
 
         assert tokens[1].type == 'INTEGER'
-        assert tokens[1].value == 1
+        assert tokens[1].value == "1"
 
         assert tokens[2].type == 'IS_NOT'
 
         assert tokens[3].type == 'INTEGER'
-        assert tokens[3].value == 2
+        assert tokens[3].value == "2"
 
         #
         sql = f'SELECT 1 NOT IN 2'
@@ -175,12 +174,12 @@ class TestLexer:
         assert tokens[0].value == 'SELECT'
 
         assert tokens[1].type == 'INTEGER'
-        assert tokens[1].value == 1
+        assert tokens[1].value == "1"
 
         assert tokens[2].type + ' ' + tokens[3].type == 'NOT IN'
 
         assert tokens[4].type == 'INTEGER'
-        assert tokens[4].value == 2
+        assert tokens[4].value == "2"
 
 
     def test_select_from(self, lexer):
@@ -236,7 +235,7 @@ class TestLexer:
         assert tokens[6].type == 'EQUALS'
         assert tokens[6].value == '='
         assert tokens[7].type == 'DQUOTE_STRING'
-        assert tokens[7].value == 'something'
+        assert tokens[7].value == '"something"'
 
     def test_select_group_by(self, lexer):
         sql = f'SELECT column, sum(column2) FROM tab GROUP BY column'
@@ -331,5 +330,5 @@ class TestLexer:
         assert tokens[4].value == 'charset'
         assert tokens[5].value == '='
         assert tokens[6].type == 'QUOTE_STRING'
-        assert tokens[6].value == 'utf8mb4'
+        assert tokens[6].value == "'utf8mb4'"
 

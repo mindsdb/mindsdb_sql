@@ -11,7 +11,7 @@ class TestShow:
         categories = ['SCHEMAS',
            'DATABASES',
            'TABLES',
-           'FULL TABLES',
+           'TABLES',
            'VARIABLES',
            'PLUGINS',
            'SESSION VARIABLES',
@@ -83,17 +83,16 @@ class TestShow:
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_from_where(self, dialect):
-        sql = "SHOW FULL TABLES FROM ttt WHERE xxx LIKE 'zzz'"
+        sql = "SHOW FULL TABLES FROM ttt LIKE 'zzz' WHERE xxx"
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Show(
-            category='FULL TABLES',
+            category='TABLES',
+            modes=['FULL'],
             from_table=Identifier('ttt'),
-            where=BinaryOperation('like', args=[
-                Identifier('xxx'),
-                Constant('zzz')]),
+            like='zzz',
+            where=Identifier('xxx'),
         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -101,12 +100,199 @@ class TestShow:
         sql = "SHOW FULL COLUMNS FROM `concrete` FROM `files`"
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Show(
-            category='FULL COLUMNS',
+            category='COLUMNS',
+            modes=['FULL'],
             from_table=Identifier('files.concrete')
         )
 
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+
+@pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
+class TestShowNoSqlite:
+    def test_category(self, dialect):
+        categories = [
+            'BINARY LOGS',
+            'MASTER LOGS',
+            'PROCESSLIST',
+            'STORAGE ENGINES',
+            'PRIVILEGES',
+            'MASTER STATUS',
+            'PROFILES',
+            'REPLICAS',
+        ]
+
+        for cat in categories:
+            sql = f"SHOW {cat}"
+            ast = parse_sql(sql, dialect=dialect)
+            expected_ast = Show(category=cat)
+
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
+
+    @pytest.mark.parametrize('cat', [
+            'CHARACTER SET',
+            'CHARSET',
+            'COLLATION',
+            'DATABASES',
+            'SCHEMAS',
+            'FUNCTION STATUS',
+            'PROCEDURE STATUS',
+            'GLOBAL STATUS',
+            'SESSION STATUS',
+            'STATUS',
+            'GLOBAL VARIABLES',
+            'SESSION VARIABLES',
+        ])
+    def test_common_like_where(self, dialect, cat):
+
+        sql = f"SHOW {cat} like 'pattern' where a=1"
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Show(
+            category=cat,
+            like='pattern',
+            where=BinaryOperation(op='=', args=[
+                Identifier('a'),
+                Constant(1)
+            ])
+        )
+
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_common_like_where_from_in(self, dialect):
+        categories = [
+            'TABLE STATUS',
+            'OPEN TABLES',
+            'TRIGGERS',
+        ]
+
+        for cat in categories:
+            sql = f"SHOW {cat} from tab1 in tab2 like 'pattern' where a=1"
+            ast = parse_sql(sql, dialect=dialect)
+            expected_ast = Show(
+                category=cat,
+                like='pattern',
+                from_table=Identifier('tab1'),
+                in_table=Identifier('tab2'),
+                where=BinaryOperation(op='=', args=[
+                    Identifier('a'),
+                    Constant(1)
+                ])
+            )
+
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_common_like_where_from_in_modes(self, dialect):
+        categories = [
+            'TABLES',
+        ]
+        modes = [
+            ['EXTENDED'],
+            ['FULL'],
+            ['EXTENDED', 'FULL'],
+        ]
+
+        for cat in categories:
+            for mode in modes:
+
+                sql = f"SHOW {' '.join(mode)} {cat} from tab1 in tab2 like 'pattern' where a=1"
+                ast = parse_sql(sql, dialect=dialect)
+                expected_ast = Show(
+                    category=cat,
+                    like='pattern',
+                    from_table=Identifier('tab1'),
+                    in_table=Identifier('tab2'),
+                    modes=mode,
+                    where=BinaryOperation(op='=', args=[
+                        Identifier('a'),
+                        Constant(1)
+                    ])
+                )
+
+                assert str(ast) == str(expected_ast)
+                assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_common_like_double_where_from_in_modes(self, dialect):
+        categories = [
+            'COLUMNS',
+            'FIELDS',
+            'INDEX',
+            'INDEXES',
+            'KEYS',
+        ]
+        modes = [
+            ['EXTENDED'],
+            ['FULL'],
+            ['EXTENDED', 'FULL'],
+        ]
+        for cat in categories:
+            for mode in modes:
+
+                sql = f"SHOW {' '.join(mode)} {cat} from tab1 from db1 in tab2 in db2 like 'pattern' where a=1"
+                ast = parse_sql(sql, dialect=dialect)
+                expected_ast = Show(
+                    category=cat,
+                    like='pattern',
+                    from_table=Identifier('db1.tab1'),
+                    in_table=Identifier('db2.tab2'),
+                    modes=mode,
+                    where=BinaryOperation(op='=', args=[
+                        Identifier('a'),
+                        Constant(1)
+                    ])
+                )
+
+                assert str(ast) == str(expected_ast)
+                assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_custom(self, dialect):
+
+        for arg in ['STATUS', 'MUTEX']:
+            sql = f"SHOW ENGINE engine_name {arg}"
+            ast = parse_sql(sql, dialect=dialect)
+            expected_ast = Show(
+                category='ENGINE',
+                name='engine_name',
+                modes=[arg],
+            )
+
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
+
+        for arg in ['FUNCTION', 'PROCEDURE']:
+            sql = f"SHOW {arg} CODE obj_name"
+            ast = parse_sql(sql, dialect=dialect)
+            expected_ast = Show(
+                category=f"{arg} CODE",
+                name='obj_name',
+            )
+
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
+
+        for arg in ['SLAVE', 'REPLICA']:
+            sql = f"SHOW {arg} STATUS FOR CHANNEL channel"
+            ast = parse_sql(sql, dialect=dialect)
+            expected_ast = Show(
+                category=f"REPLICA STATUS",
+                name='channel',
+            )
+
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
+
+            # without channel
+            sql = f"SHOW {arg} STATUS"
+            ast = parse_sql(sql, dialect=dialect)
+            expected_ast = Show(
+                category=f"REPLICA STATUS",
+            )
+
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
 
 
 class TestShowAdapted:
