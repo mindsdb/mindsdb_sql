@@ -321,7 +321,7 @@ def query_traversal(node, callback, is_table=False):
                 for item in row:
                     item2 = query_traversal(item, callback) or item
                     items.append(item2)
-                rows.append(row)
+                rows.append(items)
             node.values = rows
 
         if not node.from_select is None:

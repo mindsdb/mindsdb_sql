@@ -501,13 +501,14 @@ class PreparedStatementPlanner():
         query = self.planner.query
 
         if params is not None:
+            params = copy.deepcopy(params)
 
             if len(params) != len(stmt.params):
                 raise PlanningException("Count of execution parameters don't match prepared statement")
 
             def params_replace(node, **kwargs):
                 if isinstance(node, ast.Parameter):
-                    value = params.pop()
+                    value = params.pop(0)
                     return ast.Constant(value)
 
             # put parameters into query
