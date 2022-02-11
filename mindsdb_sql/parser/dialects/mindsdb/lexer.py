@@ -19,7 +19,7 @@ class MindsDBLexer(Lexer):
         # Misc
         SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
         ISOLATION, LEVEL, REPEATABLE, READ, WRITE, UNCOMMITTED, COMMITTED,
-        SERIALIZABLE, ONLY, CONVERT,
+        SERIALIZABLE, ONLY, CONVERT, BEGIN,
 
         # Mindsdb special
 
@@ -114,8 +114,8 @@ class MindsDBLexer(Lexer):
     SERIALIZABLE = r'\bSERIALIZABLE\b'
     ONLY = r'\bONLY\b'
     CONVERT = r'\bCONVERT\b'
-
     DESCRIBE = r'\bDESCRIBE\b'
+    BEGIN = r'\bBEGIN\b'
 
     # SHOW
     SHOW = r'\bSHOW\b'

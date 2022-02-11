@@ -171,4 +171,11 @@ class TestMiscQueriesNoSqlite:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_begin(self, dialect):
+        sql = "begin"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = StartTransaction()
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
 

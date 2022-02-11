@@ -97,8 +97,10 @@ class MindsDBParser(Parser):
 
     # Transactions
 
-    @_('START TRANSACTION')
+    @_('START TRANSACTION',
+       'BEGIN')
     def start_transaction(self, p):
+        # https://dev.mysql.com/doc/refman/8.0/en/commit.html
         return StartTransaction()
 
     @_('COMMIT')
