@@ -49,7 +49,10 @@ class SqlalchemyRender():
             if t.alias:
                 alias = self.get_alias(t.alias)
             else:
-                alias = str(t.value)
+                if t.value is None:
+                    alias = 'NULL'
+                else:
+                    alias = str(t.value)
             col = col.label(alias)
         elif isinstance(t, ast.Identifier):
             col = self.to_column(t.parts)
