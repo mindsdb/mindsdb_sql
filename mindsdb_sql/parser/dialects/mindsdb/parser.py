@@ -31,7 +31,7 @@ class MindsDBParser(Parser):
         ('left', PLUS, MINUS, OR),
         ('left', STAR, DIVIDE, AND),
         ('right', UMINUS, UNOT),  # Unary minus operator, unary not
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS, IN, BETWEEN, IS, LIKE),
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS, IN, BETWEEN, IS, IS_NOT, LIKE),
     )
 
     # Top-level statements
@@ -797,8 +797,7 @@ class MindsDBParser(Parser):
     def star(self, p):
         return Star()
 
-    @_('expr IS NOT expr',
-       'expr NOT IN expr')
+    @_('expr NOT IN expr')
     def expr(self, p):
         op = p[1] + ' ' + p[2]
         return BinaryOperation(op=op, args=(p.expr0, p.expr1))
@@ -816,6 +815,7 @@ class MindsDBParser(Parser):
        'expr LESS expr',
        'expr AND expr',
        'expr OR expr',
+       'expr IS_NOT expr',
        'expr NOT expr',
        'expr IS expr',
        'expr LIKE expr',

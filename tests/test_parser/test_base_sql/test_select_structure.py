@@ -805,6 +805,26 @@ class TestSelectStructure:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+    def test_where_precedence(self, dialect):
+        query = "select * from t1 where a is not null and b = c"
+        expected_ast = Select(
+            targets=[Star()],
+            from_table=Identifier('t1'),
+            where=BinaryOperation(op='and', args=[
+                BinaryOperation(op='is not', args=[
+                    Identifier('a'),
+                    NullConstant()
+                ]),
+                BinaryOperation(op='=', args=[
+                    Identifier('b'),
+                    Identifier('c')
+                ]),
+            ])
+        )
+        ast = parse_sql(query, dialect=dialect)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
 
 @pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
 class TestSelectStructureNoSqlite:

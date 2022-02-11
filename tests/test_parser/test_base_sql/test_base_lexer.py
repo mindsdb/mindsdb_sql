@@ -74,15 +74,17 @@ class TestLexer:
                 assert t.type == 'ID'
 
     def test_select_float(self, lexer):
-        for float in [0.0, 1.000, 0.1, 1.0, 99999.9999]:
-            sql = f'SELECT {float}'
+        for val in [0.0, 1.000, 0.1, 1.0, 99999.9999, '3.']:
+            sql = f'SELECT {val}'
             tokens = list(SQLLexer().tokenize(sql))
 
             assert tokens[0].type == 'SELECT'
             assert tokens[0].value == 'SELECT'
 
             assert tokens[1].type == 'FLOAT'
-            assert tokens[1].value == float
+            if not isinstance(val, float):
+                val = float(val)
+            assert tokens[1].value == val
 
     def test_select_strings(self, lexer):
         sql = 'SELECT "a", "b", "c"'
@@ -152,22 +154,34 @@ class TestLexer:
             assert tokens[3].value == 2
 
     def test_binary_ops_not(self, lexer):
-        for op, expected_type in [
-            ('IS NOT', 'IS NOT'),
-            ('NOT IN', 'NOT IN'),
-        ]:
-            sql = f'SELECT 1 {op} 2'
-            tokens = list(SQLLexer().tokenize(sql))
-            assert tokens[0].type == 'SELECT'
-            assert tokens[0].value == 'SELECT'
 
-            assert tokens[1].type == 'INTEGER'
-            assert tokens[1].value == 1
+        sql = f'SELECT 1 IS NOT 2'
+        tokens = list(SQLLexer().tokenize(sql))
+        assert tokens[0].type == 'SELECT'
+        assert tokens[0].value == 'SELECT'
 
-            assert tokens[2].type + ' ' + tokens[3].type == expected_type
+        assert tokens[1].type == 'INTEGER'
+        assert tokens[1].value == 1
 
-            assert tokens[4].type == 'INTEGER'
-            assert tokens[4].value == 2
+        assert tokens[2].type == 'IS_NOT'
+
+        assert tokens[3].type == 'INTEGER'
+        assert tokens[3].value == 2
+
+        #
+        sql = f'SELECT 1 NOT IN 2'
+        tokens = list(SQLLexer().tokenize(sql))
+        assert tokens[0].type == 'SELECT'
+        assert tokens[0].value == 'SELECT'
+
+        assert tokens[1].type == 'INTEGER'
+        assert tokens[1].value == 1
+
+        assert tokens[2].type + ' ' + tokens[3].type == 'NOT IN'
+
+        assert tokens[4].type == 'INTEGER'
+        assert tokens[4].value == 2
+
 
     def test_select_from(self, lexer):
         sql = f'SELECT column AS other_column FROM db.schema.tab'

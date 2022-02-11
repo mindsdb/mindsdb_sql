@@ -44,7 +44,7 @@ class SQLLexer(Lexer):
         # Operators
         PLUS, MINUS, DIVIDE, MODULO,
         EQUALS, NEQUALS, GREATER, GEQ, LESS, LEQ,
-        AND, OR, NOT, IS,
+        AND, OR, NOT, IS, IS_NOT,
         IN, LIKE, CONCAT, BETWEEN, WINDOW, OVER, PARTITION_BY,
 
         # Data types
@@ -163,6 +163,7 @@ class SQLLexer(Lexer):
     LESS = r'<'
     AND = r'\bAND\b'
     OR = r'\bOR\b'
+    IS_NOT = r'\bIS[\s]+NOT\b'
     NOT = r'\bNOT\b'
     IS = r'\bIS\b'
     LIKE = r'\bLIKE\b'
@@ -183,7 +184,7 @@ class SQLLexer(Lexer):
     def ID(self, t):
         return t
 
-    @_(r'\d+\.\d+')
+    @_(r'\d+\.\d*')
     def FLOAT(self, t):
         t.value = float(t.value)
         return t
