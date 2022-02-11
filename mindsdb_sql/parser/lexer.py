@@ -13,7 +13,7 @@ class SQLLexer(Lexer):
         # Misc
         SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
         ISOLATION, LEVEL, REPEATABLE, READ, WRITE, UNCOMMITTED, COMMITTED,
-        SERIALIZABLE, ONLY, CONVERT, USING,
+        SERIALIZABLE, ONLY, CONVERT, USING, BEGIN,
 
         ENGINE,
 
@@ -77,6 +77,7 @@ class SQLLexer(Lexer):
 
     USE = r'\bUSE\b'
     DESCRIBE = r'\bDESCRIBE\b'
+    BEGIN = r'\bBEGIN\b'
 
     # SHOW
     SHOW = r'\bSHOW\b'
