@@ -15,7 +15,7 @@ class SQLParser(Parser):
         ('left', PLUS, MINUS, OR),
         ('left', STAR, DIVIDE, AND),
         ('right', UMINUS, UNOT),  # Unary minus operator, unary not
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS, IN, BETWEEN, IS, LIKE),
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS, IN, BETWEEN, IS, IS_NOT, LIKE),
     )
 
     # Top-level statements
@@ -43,10 +43,10 @@ class SQLParser(Parser):
         return Explain(target=p.identifier)
 
     # Alter table
-    @_('ALTER TABLE identifier ID ID')
+    @_('ALTER TABLE identifier id id')
     def alter_table(self, p):
         return AlterTable(target=p.identifier,
-                          arg=' '.join([p.ID0, p.ID1]))
+                          arg=' '.join([p.id0, p.id1]))
 
     # DROP VEW
     @_('DROP VIEW identifier')
@@ -81,45 +81,78 @@ class SQLParser(Parser):
     def set(self, p):
         return Set(arg=p.expr)
 
-    @_('SET ID identifier')
+    @_('SET id identifier')
     def set(self, p):
-        if not p.ID.lower() == 'names':
-            raise ParsingException(f'Expected "SET names", got "SET {p.ID}"')
-        return Set(category=p.ID.lower(), arg=p.identifier)
+        if not p.id.lower() == 'names':
+            raise ParsingException(f'Expected "SET names", got "SET {p.id}"')
+        return Set(category=p.id.lower(), arg=p.identifier)
 
     # Show
-    @_('SHOW show_category show_condition_or_nothing')
+    @_('show WHERE expr')
     def show(self, p):
-        condition = p.show_condition_or_nothing['condition'] if p.show_condition_or_nothing else None
-        expression = p.show_condition_or_nothing['expression'] if p.show_condition_or_nothing else None
-        return Show(category=p.show_category,
-                    condition=condition,
-                    expression=expression)
+        command = p.show
+        command.where = p.expr
+        return command
 
-    @_('show_condition_token expr',
-       'empty')
-    def show_condition_or_nothing(self, p):
-        if not p[0]:
-            return None
-        return dict(condition=p[0], expression=p[1])
+    @_('show LIKE string')
+    def show(self, p):
+        command = p.show
+        command.like = p.string
+        return command
 
-    @_('WHERE',
-       'FROM',
-       'LIKE')
-    def show_condition_token(self, p):
-        return p[0]
+    @_('show FROM identifier')
+    def show(self, p):
+        command = p.show
+        value0 = command.from_table
+        value1 = p.identifier
+        if value0 is not None:
+            value1.parts = value1.parts + value0.parts
+
+        command.from_table = value1
+        return command
+
+    @_('show IN identifier')
+    def show(self, p):
+        command = p.show
+        value0 = command.in_table
+        value1 = p.identifier
+        if value0 is not None:
+            value1.parts = value1.parts + value0.parts
+
+        command.in_table = value1
+        return command
+
+    @_('SHOW show_category',
+       'SHOW show_modifier_list show_category')
+    def show(self, p):
+        modes = getattr(p, 'show_modifier_list', None)
+        return Show(
+            category=p.show_category,
+            modes=modes
+        )
 
     @_('SCHEMAS',
        'DATABASES',
        'TABLES',
-       'FULL TABLES',
-       'VARIABLES',
+       'OPEN TABLES',
+       'TRIGGERS',
+       'COLUMNS',
+       'FIELDS',
        'PLUGINS',
+       'VARIABLES',
+       'INDEXES',
+       'KEYS',
        'SESSION VARIABLES',
-       'SESSION STATUS',
        'GLOBAL VARIABLES',
+       'GLOBAL STATUS',
+       'SESSION STATUS',
        'PROCEDURE STATUS',
        'FUNCTION STATUS',
+       'TABLE STATUS',
+       'MASTER STATUS',
+       'STATUS',
+       'STORAGE ENGINES',
+       'PROCESSLIST',
        'INDEX',
        'CREATE TABLE',
        'WARNINGS',
@@ -127,10 +160,29 @@ class SQLParser(Parser):
        'CHARSET',
        'CHARACTER SET',
        'COLLATION',
-       'TABLE STATUS',
-       'STATUS')
+       'BINARY LOGS',
+       'MASTER LOGS',
+       'PRIVILEGES',
+       'PROFILES',
+       'REPLICAS',
+       'SLAVE HOSTS',
+       )
     def show_category(self, p):
         return ' '.join([x for x in p])
+
+    @_('show_modifier',
+       'show_modifier_list show_modifier')
+    def show_modifier_list(self, p):
+        if hasattr(p, 'empty'):
+            return None
+        params = getattr(p, 'show_modifier_list', [])
+        params.append(p.show_modifier)
+        return params
+
+    @_('EXTENDED',
+       'FULL')
+    def show_modifier(self, p):
+        return p[0]
 
     # DELETE
     @_('DELETE FROM from_table WHERE expr')
@@ -480,16 +532,16 @@ class SQLParser(Parser):
             p.expr.parentheses = True
         return p.expr
 
-    @_('ID LPAREN DISTINCT expr_list RPAREN')
+    @_('id LPAREN DISTINCT expr_list RPAREN')
     def function(self, p):
-        return Function(op=p.ID, distinct=True, args=p.expr_list)
+        return Function(op=p.id, distinct=True, args=p.expr_list)
 
-    @_('ID LPAREN expr_list_or_nothing RPAREN')
+    @_('id LPAREN expr_list_or_nothing RPAREN')
     def function(self, p):
         args = p.expr_list_or_nothing
         if not args:
             args = []
-        return Function(op=p.ID, args=args)
+        return Function(op=p.id, args=args)
 
     # arguments are optional in functions, so that things like `select database()` are possible
     @_('expr BETWEEN expr AND expr')
@@ -504,9 +556,9 @@ class SQLParser(Parser):
     def expr_list_or_nothing(self, p):
         pass
 
-    @_('CAST LPAREN expr AS ID RPAREN')
+    @_('CAST LPAREN expr AS id RPAREN')
     def expr(self, p):
-        return TypeCast(arg=p.expr, type_name=str(p.ID))
+        return TypeCast(arg=p.expr, type_name=str(p.id))
 
     @_('enumeration')
     def expr_list(self, p):
@@ -525,8 +577,7 @@ class SQLParser(Parser):
     def star(self, p):
         return Star()
 
-    @_('expr IS NOT expr',
-       'expr NOT IN expr')
+    @_('expr NOT IN expr')
     def expr(self, p):
         op = p[1] + ' ' + p[2]
         return BinaryOperation(op=op, args=(p.expr0, p.expr1))
@@ -544,6 +595,7 @@ class SQLParser(Parser):
        'expr LESS expr',
        'expr AND expr',
        'expr OR expr',
+       'expr IS_NOT expr',
        'expr NOT expr',
        'expr IS expr',
        'expr LIKE expr',
@@ -592,16 +644,15 @@ class SQLParser(Parser):
     def constant(self, p):
         return Constant(value=False)
 
-    @_('INTEGER')
+    @_('integer')
     def constant(self, p):
-        return Constant(value=int(p.INTEGER))
+        return Constant(value=int(p.integer))
 
-    @_('FLOAT')
+    @_('float')
     def constant(self, p):
-        return Constant(value=float(p.FLOAT))
+        return Constant(value=float(p.float))
 
-    @_('QUOTE_STRING')
-    @_('DQUOTE_STRING')
+    @_('string')
     def constant(self, p):
         return Constant(value=str(p[0]))
 
@@ -610,19 +661,64 @@ class SQLParser(Parser):
         p.identifier0.parts += p.identifier1.parts
         return p.identifier0
 
+    @_('id',
+       'dquote_string')
+    def identifier(self, p):
+        value = p[0]
+        return Identifier.from_path_str(value)
+
+    @_('quote_string',
+       'dquote_string')
+    def string(self, p):
+        return p[0]
+
+    @_('PARAMETER')
+    def parameter(self, p):
+        return Parameter(value=p.PARAMETER)
+
+    # convert to types
     @_('ID',
        'CHARSET',
        'TABLES',
        'STATUS',
        'VIEW',
-       'DQUOTE_STRING')
-    def identifier(self, p):
-        value = p[0]
-        return Identifier.from_path_str(value)
+       'FIELDS',
+       'EXTENDED',
+       'PROCESSLIST',
+       'MUTEX',
+       'CODE',
+       'SLAVE',
+       'REPLICA',
+       'REPLICAS',
+       'CHANNEL',
+       'TRIGGERS',
+       'STORAGE',
+       'LOGS',
+       'MASTER',
+       'KEYS',
+       'PRIVILEGES',
+       'PROFILES',
+       'HOSTS',
+       'OPEN',
+       'INDEXES',)
+    def id(self, p):
+        return p[0]
 
-    @_('PARAMETER')
-    def parameter(self, p):
-        return Parameter(value=p.PARAMETER)
+    @_('FLOAT')
+    def float(self, p):
+        return float(p[0])
+
+    @_('INTEGER')
+    def integer(self, p):
+        return int(p[0])
+
+    @_('QUOTE_STRING')
+    def quote_string(self, p):
+        return p[0].strip('\'')
+
+    @_('DQUOTE_STRING')
+    def dquote_string(self, p):
+        return p[0].strip('\"')
 
     @_('')
     def empty(self, p):

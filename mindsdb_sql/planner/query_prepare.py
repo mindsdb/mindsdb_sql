@@ -12,12 +12,14 @@ class Table:
         self.ds = ds
         self.name = node.to_string(alias=False)
         self.columns = None
+        # None is unknown
         self.columns_map = None
         self.keys = None
         if node.alias:
             self.alias = node.alias.to_string()
         else:
-            self.alias = self.name
+            self.alias = None
+            # self.alias = self.name
 
 
 class Column:
@@ -98,8 +100,17 @@ class PreparedStatementPlanner():
                 ds=ds,
             ))
 
+        parameters = []
+        for param in stmt.params:
+            name = param.to_string(alias=False)
+            parameters.append(dict(
+                alias=name,
+                type='str',
+                name=name,
+            ))
+
         return {
-            'parameters_count': len(stmt.params),
+            'parameters': parameters,
             'columns': columns_result
         }
 
@@ -285,13 +296,29 @@ class PreparedStatementPlanner():
                     step = steps.GetTableColumns(namespace=table.ds, table=table.name)
                 yield step
 
-                # save results
                 if step.result_data is not None:
-                    table.columns = [Column(name=i['name'], type=i['type']) for i in step.result_data]
+                    # save results
 
-                    # for unnamed columns
+                    if len(step.result_data['tables']) > 0:
+                        table_info = step.result_data['tables'][0]
+                        columns_info = step.result_data['columns'][table_info]
+
+                        table.columns = []
+                        table.ds = table_info[0]
+                        for col in columns_info:
+                            if isinstance(col, tuple):
+                                # is predictor
+                                col = dict(name=col[0], type='str')
+                            table.columns.append(
+                                Column(
+                                    name=col['name'],
+                                    type=col['type'],
+                                )
+                            )
+
+                    # map by names
                     table.columns_map = {
-                        i.name: i
+                        i.name.upper(): i
                         for i in table.columns
                     }
 
@@ -317,7 +344,7 @@ class PreparedStatementPlanner():
 
             elif column.name is not None:
                 # is Identifier
-                col_name = column.name
+                col_name = column.name.upper()
                 if column.table is not None:
                     table = column.table
                     if table.columns_map is not None:
@@ -360,31 +387,36 @@ class PreparedStatementPlanner():
         # get table columns
         table = self.table_from_identifier(query.table)
         if table.is_predictor:
-            step = steps.GetPredictorColumns(namespace=table.ds, predictor=table.name)
+            step = steps.GetPredictorColumns(namespace=table.ds, predictor=table.node)
         else:
             step = steps.GetTableColumns(namespace=table.ds, table=table.name)
         yield step
 
-        # save results
-        column_info = step.result_data.columns
-        if not isinstance(column_info, list):
-            # is predictor columns
-            column_info = column_info.values()[0]
-        table.columns = []
-        for col in column_info:
-            if isinstance(col, tuple):
-                # is predictor
-                col = dict(name=col[0], type='str')
-            table.columns.append(
-                Column(name=col['name'],
-                       type=col['type'])
-            )
+        if step.result_data is not None:
+            # save results
 
-        # map by names
-        table.columns_map = {
-            i.name: i
-            for i in table.columns
-        }
+            if len(step.result_data['tables']) > 0:
+                table_info = step.result_data['tables'][0]
+                columns_info = step.result_data['columns'][table_info]
+
+                table.columns = []
+                table.ds = table_info[0]
+                for col in columns_info:
+                    if isinstance(col, tuple):
+                        # is predictor
+                        col = dict(name=col[0], type='str')
+                    table.columns.append(
+                        Column(
+                            name=col['name'],
+                            type=col['type'],
+                        )
+                    )
+
+                # map by names
+                table.columns_map = {
+                    i.name.upper(): i
+                    for i in table.columns
+                }
 
         # save results
         columns_result = []
@@ -393,10 +425,12 @@ class PreparedStatementPlanner():
 
             column = Column(table=table, name=col_name)
 
-            col = table.columns_map.get(col_name)
-            if col is not None:
-                column.type = col.type
-            else:
+            if table.columns_map is not None:
+                col = table.columns_map.get(col_name)
+                if col is not None:
+                    column.type = col.type
+
+            if column.type is None:
                 # forcing type
                 column.type = 'str'
 
@@ -458,27 +492,23 @@ class PreparedStatementPlanner():
 
         # is already executed
         if stmt is None:
-            raise PlanningException("Can't execute statement")
+            if params is not None:
+                raise PlanningException("Can't execute statement")
+            stmt = Statement()
 
         # === form query with new target ===
-        columns_result = stmt.columns
-
-        targets = []
-        for col in columns_result:
-            if col.node is None:
-                raise Exception('something wrong')
-            targets.append(col.node)
 
         query = self.planner.query
 
         if params is not None:
+            params = copy.deepcopy(params)
 
             if len(params) != len(stmt.params):
                 raise PlanningException("Count of execution parameters don't match prepared statement")
 
             def params_replace(node, **kwargs):
                 if isinstance(node, ast.Parameter):
-                    value = params.pop()
+                    value = params.pop(0)
                     return ast.Constant(value)
 
             # put parameters into query
@@ -523,6 +553,14 @@ class PreparedStatementPlanner():
 
 
     # def plan_query_v2(self, query):
+    #     columns_result = stmt.columns
+    #
+    #     targets = []
+    #     for col in columns_result:
+    #         if col.node is None:
+    #             raise Exception('something wrong')
+    #         targets.append(col.node)
+
     #     # Not used yet
     #     raise NotImplementedError()
     #

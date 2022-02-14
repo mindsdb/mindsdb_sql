@@ -2,7 +2,7 @@ import copy
 
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryOperation, Constant,
-                                    OrderBy, BetweenOperation)
+                                    OrderBy, BetweenOperation, NullConstant)
 from mindsdb_sql.parser import ast
 
 def get_integration_path_from_identifier(identifier):
@@ -101,7 +101,7 @@ def disambiguate_select_targets(targets, integration_name, table):
                                                            table,
                                                            initial_name_as_alias=True)
             )
-        elif type(target) in (Star, Constant):
+        elif type(target) in (Star, Constant, NullConstant):
             new_query_targets.append(target)
         elif isinstance(target, Operation) or isinstance(target, Select):
             new_op = copy.deepcopy(target)
@@ -321,7 +321,7 @@ def query_traversal(node, callback, is_table=False):
                 for item in row:
                     item2 = query_traversal(item, callback) or item
                     items.append(item2)
-                rows.append(row)
+                rows.append(items)
             node.values = rows
 
         if not node.from_select is None:

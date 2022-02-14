@@ -33,12 +33,11 @@ class TestCreateView:
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_create_view_nofrom(self):
-        sql = "CREATE VIEW my_view AS ( SELECT * FROM pred )"
+        sql = "CREATE VIEW my_view ( SELECT * FROM pred )"
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateView(name='my_view',
                                   query_str="SELECT * FROM pred")
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -53,7 +52,7 @@ class TestCreateView:
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_create_dataset_nofrom(self):
-        sql = "CREATE DATASET my_view AS ( SELECT * FROM pred )"
+        sql = "CREATE DATASET my_view ( SELECT * FROM pred )"
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateView(name='my_view',
                                   query_str="SELECT * FROM pred")

@@ -805,6 +805,26 @@ class TestSelectStructure:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+    def test_where_precedence(self, dialect):
+        query = "select * from t1 where a is not null and b = c"
+        expected_ast = Select(
+            targets=[Star()],
+            from_table=Identifier('t1'),
+            where=BinaryOperation(op='and', args=[
+                BinaryOperation(op='is not', args=[
+                    Identifier('a'),
+                    NullConstant()
+                ]),
+                BinaryOperation(op='=', args=[
+                    Identifier('b'),
+                    Identifier('c')
+                ]),
+            ])
+        )
+        ast = parse_sql(query, dialect=dialect)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
 
 @pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
 class TestSelectStructureNoSqlite:
@@ -850,6 +870,29 @@ class TestSelectStructureNoSqlite:
             targets=[Star()],
             from_table=Identifier(parts=['tab']),
             mode='FOR UPDATE'
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+    def test_keywords(self, dialect):
+        sql = f'SELECT COLLATION_NAME AS Collation, CHARACTER_SET_NAME AS Charset,\
+                       ID AS Id, IS_COMPILED AS Compiled, PLUGINS,  MASTER, STATUS, ONLY\
+                FROM INFORMATION_SCHEMA.COLLATIONS'
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[
+                Identifier('COLLATION_NAME', alias=Identifier('Collation')),
+                Identifier('CHARACTER_SET_NAME', alias=Identifier('Charset')),
+                Identifier('ID', alias=Identifier('Id')),
+                Identifier('IS_COMPILED', alias=Identifier('Compiled')),
+                Identifier('PLUGINS'),
+                Identifier('MASTER'),
+                Identifier('STATUS'),
+                Identifier('ONLY'),
+            ],
+            from_table=Identifier('INFORMATION_SCHEMA.COLLATIONS')
         )
 
         assert ast.to_tree() == expected_ast.to_tree()

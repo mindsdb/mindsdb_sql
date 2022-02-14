@@ -2,7 +2,7 @@ import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
-                                    BetweenOperation, Union)
+                                    BetweenOperation, Union, NullConstant)
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
@@ -38,7 +38,6 @@ class QueryPlanner():
         self.integrations = [int.lower() for int in integrations] if integrations else []
         self.predictor_namespace = predictor_namespace.lower() if predictor_namespace else 'mindsdb'
         self.predictor_metadata = predictor_metadata or defaultdict(dict)
-        self.steps = []
         self.default_namespace = default_namespace
 
         self.statement = None
@@ -195,28 +194,47 @@ class QueryPlanner():
 
         order_by = [OrderBy(Identifier(parts=[predictor_time_column_name]), direction='DESC')]
 
+        preparation_where = copy.deepcopy(query.where)
+
+        # add {order_by_field} is not null
+        def add_order_not_null(condition):
+            order_field_not_null = BinaryOperation(op='is not', args=[
+                Identifier(parts=[predictor_time_column_name]),
+                NullConstant()
+            ])
+            if condition is not None:
+                condition = BinaryOperation(op='and', args=[
+                    condition,
+                    order_field_not_null
+                ])
+            else:
+                condition = order_field_not_null
+            return condition
+
+        preparation_where2 = copy.deepcopy(preparation_where)
+        preparation_where = add_order_not_null(preparation_where)
+
         # Obtain integration selects
         if isinstance(time_filter, BetweenOperation):
             between_from = time_filter.args[1]
             preparation_time_filter = BinaryOperation('<', args=[Identifier(predictor_time_column_name), between_from])
-            preparation_where = copy.deepcopy(query.where)
-            replace_time_filter(preparation_where, time_filter, preparation_time_filter)
+            replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
             integration_select_1 = Select(targets=[Star()],
                                         from_table=table,
-                                        where=preparation_where,
+                                        where=add_order_not_null(preparation_where2),
                                         order_by=order_by,
                                         limit=Constant(predictor_window))
 
             integration_select_2 = Select(targets=[Star()],
                                           from_table=table,
-                                          where=query.where,
+                                          where=preparation_where,
                                           order_by=order_by)
 
             integration_selects = [integration_select_1, integration_select_2]
         elif isinstance(time_filter, BinaryOperation) and time_filter.op == '>' and time_filter.args[1] == Latest():
             integration_select = Select(targets=[Star()],
                                         from_table=table,
-                                        where=query.where,
+                                        where=preparation_where,
                                         order_by=order_by,
                                         limit=Constant(predictor_window),
                                         )
@@ -228,24 +246,23 @@ class QueryPlanner():
             preparation_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
 
             preparation_time_filter = BinaryOperation(preparation_time_filter_op, args=[Identifier(predictor_time_column_name), time_filter_date])
-            preparation_where = copy.deepcopy(query.where)
-            replace_time_filter(preparation_where, time_filter, preparation_time_filter)
+            replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
             integration_select_1 = Select(targets=[Star()],
                                           from_table=table,
-                                          where=preparation_where,
+                                          where=add_order_not_null(preparation_where2),
                                           order_by=order_by,
                                           limit=Constant(predictor_window))
 
             integration_select_2 = Select(targets=[Star()],
                                           from_table=table,
-                                          where=query.where,
+                                          where=preparation_where,
                                           order_by=order_by)
 
             integration_selects = [integration_select_1, integration_select_2]
         else:
             integration_select = Select(targets=[Star()],
                                         from_table=table,
-                                        where=query.where,
+                                        where=preparation_where,
                                         order_by=order_by,
                                         )
             integration_selects = [integration_select]
@@ -264,7 +281,7 @@ class QueryPlanner():
         else:
             # inject $var to queries
             for integration_select in integration_selects:
-                condition = None
+                condition = integration_select.where
                 for num, column in enumerate(predictor_group_by_names):
                     cond = BinaryOperation('=', args=[Identifier(column), Constant(f'$var[{column}]')])
 
@@ -274,10 +291,7 @@ class QueryPlanner():
                     else:
                         condition = BinaryOperation('and', args=[condition, cond])
 
-                if not integration_select.where:
-                    integration_select.where = condition
-                else:
-                    integration_select.where = BinaryOperation('and', args=[integration_select.where, condition])
+                integration_select.where = condition
             # one or multistep
             if len(integration_selects) == 1:
                 select_partition_step = self.get_integration_select_step(integration_selects[0])

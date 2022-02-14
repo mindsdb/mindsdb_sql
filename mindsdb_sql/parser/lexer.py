@@ -6,6 +6,8 @@ RESERVED_KEYWORDS = ['DATABASE']
 class SQLLexer(Lexer):
     reflags = re.IGNORECASE
     ignore = ' \t\n\r'
+    ignore_multi_comment = r'/\*.*?\*/'
+    ignore_line_comment = r'--[^\n]*'
 
     tokens = {
         USE, DROP, CREATE, DESCRIBE,
@@ -13,17 +15,20 @@ class SQLLexer(Lexer):
         # Misc
         SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
         ISOLATION, LEVEL, REPEATABLE, READ, WRITE, UNCOMMITTED, COMMITTED,
-        SERIALIZABLE, ONLY, CONVERT, USING,
+        SERIALIZABLE, ONLY, CONVERT, USING, BEGIN,
+
+        ENGINE,
 
         # SHOW Keywords/DDL Keywords
 
-        SHOW, SCHEMAS, SCHEMA, DATABASES, DATABASE, TABLES, TABLE, FULL,
+        SHOW, SCHEMAS, SCHEMA, DATABASES, DATABASE, TABLES, TABLE, FULL, EXTENDED, PROCESSLIST,
+        MUTEX, CODE, SLAVE, REPLICA, REPLICAS, CHANNEL, TRIGGERS, KEYS, STORAGE, LOGS, BINARY,
+        MASTER, PRIVILEGES, PROFILES, HOSTS, OPEN, INDEXES,
         VIEW, VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
         PERSIST, PERSIST_ONLY, DEFAULT,
-
-        IF_EXISTS,
+        IF_EXISTS, COLUMNS, FIELDS,
 
         # SELECT Keywords
         WITH, SELECT, DISTINCT, FROM, WHERE, AS,
@@ -44,7 +49,7 @@ class SQLLexer(Lexer):
         # Operators
         PLUS, MINUS, DIVIDE, MODULO,
         EQUALS, NEQUALS, GREATER, GEQ, LESS, LEQ,
-        AND, OR, NOT, IS,
+        AND, OR, NOT, IS, IS_NOT,
         IN, LIKE, CONCAT, BETWEEN, WINDOW, OVER, PARTITION_BY,
 
         # Data types
@@ -70,8 +75,11 @@ class SQLLexer(Lexer):
     CONVERT = r'\bCONVERT\b'
     USING = r'\bUSING\b'
 
+    ENGINE = r'\bENGINE\b'
+
     USE = r'\bUSE\b'
     DESCRIBE = r'\bDESCRIBE\b'
+    BEGIN = r'\bBEGIN\b'
 
     # SHOW
     SHOW = r'\bSHOW\b'
@@ -102,6 +110,27 @@ class SQLLexer(Lexer):
     PERSIST_ONLY = r'\bPERSIST_ONLY\b'
     DEFAULT = r'\bDEFAULT\b'
     IF_EXISTS = r'\bIF[\s]+EXISTS\b'
+    COLUMNS = r'\bCOLUMNS\b'
+    FIELDS = r'\bFIELDS\b'
+    EXTENDED = r'\bEXTENDED\b'
+    PROCESSLIST = r'\bPROCESSLIST\b'
+    MUTEX = r'\bMUTEX\b'
+    CODE = r'\bCODE\b'
+    SLAVE = r'\bSLAVE\b'
+    REPLICA = r'\bREPLICA\b'
+    REPLICAS = r'\bREPLICAS\b'
+    CHANNEL = r'\bCHANNEL\b'
+    TRIGGERS = r'\bTRIGGERS\b'
+    KEYS = r'\bKEYS\b'
+    STORAGE = r'\bSTORAGE\b'
+    LOGS = r'\bLOGS\b'
+    BINARY = r'\bBINARY\b'
+    MASTER = r'\bMASTER\b'
+    PRIVILEGES = r'\bPRIVILEGES\b'
+    PROFILES = r'\bPROFILES\b'
+    HOSTS = r'\bHOSTS\b'
+    OPEN = r'\bOPEN\b'
+    INDEXES = r'\bINDEXES\b'
 
     # SELECT
 
@@ -163,6 +192,7 @@ class SQLLexer(Lexer):
     LESS = r'<'
     AND = r'\bAND\b'
     OR = r'\bOR\b'
+    IS_NOT = r'\bIS[\s]+NOT\b'
     NOT = r'\bNOT\b'
     IS = r'\bIS\b'
     LIKE = r'\bLIKE\b'
@@ -183,23 +213,23 @@ class SQLLexer(Lexer):
     def ID(self, t):
         return t
 
-    @_(r'\d+\.\d+')
+    @_(r'\d+\.\d*')
     def FLOAT(self, t):
-        t.value = float(t.value)
         return t
 
     @_(r'\d+')
     def INTEGER(self, t):
-        t.value = int(t.value)
         return t
 
     @_(r"'[^']*'")
     def QUOTE_STRING(self, t):
-        t.value = t.value.strip('\'')
         return t
 
     @_(r'"[^"]*"')
     def DQUOTE_STRING(self, t):
-        t.value = t.value.strip('\"')
         return t
+
+    @_(r'\n+')
+    def ignore_newline(self, t):
+        self.lineno += len(t.value)
 

@@ -13,6 +13,18 @@ from tests.test_planner import test_ts_predictor
 
 class FakeExecutor:
 
+    def list_cols_return(self, table_name, columns):
+
+        table_alias = ('int', table_name, table_name)
+        data = {
+            'values': [],
+            'columns': {
+                table_alias: columns
+            },
+            'tables': [table_alias]
+        }
+        return data
+
     def execute(self, step):
 
         if isinstance(step, steps.ProjectStep)\
@@ -24,7 +36,7 @@ class FakeExecutor:
             ]
         if isinstance(step, steps.GetTableColumns):
             if step.table in ('tab', 'tab1', 'data.ny_output', 'data'):
-                return [
+                cols = [
                     {'name': 'id', 'type': 'int'},
                     {'name': 'name', 'type': 'str'},
                     {'name': 'a column with spaces', 'type': 'str'},
@@ -33,11 +45,13 @@ class FakeExecutor:
                     {'name': 'time', 'type': 'datetime'},
                     {'name': 'predicted', 'type': 'float'},
                     {'name': 'target', 'type': 'float'},
+                    {'name': 'sqft', 'type': 'float'},
                 ]
+                return self.list_cols_return(step.table, cols)
             return None
         if isinstance(step, steps.GetPredictorColumns):
             if step.predictor.parts[-1] in ('pred', 'tp3', 'pr'):
-                return [
+                cols = [
                     {'name': 'id', 'type': 'int'},
                     {'name': 'value', 'type': 'str'},
                     {'name': 'predicted', 'type': 'int'},
@@ -48,6 +62,8 @@ class FakeExecutor:
                     {'name': 'price', 'type': 'float'},
                     {'name': 'target', 'type': 'float'},
                 ]
+                name = step.predictor.parts[-1]
+                return self.list_cols_return(name, cols)
         else:
             return None
 
