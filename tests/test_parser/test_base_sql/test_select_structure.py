@@ -874,3 +874,26 @@ class TestSelectStructureNoSqlite:
 
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_keywords(self, dialect):
+        sql = f'SELECT COLLATION_NAME AS Collation, CHARACTER_SET_NAME AS Charset,\
+                       ID AS Id, IS_COMPILED AS Compiled, PLUGINS,  MASTER, STATUS, ONLY\
+                FROM INFORMATION_SCHEMA.COLLATIONS'
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[
+                Identifier('COLLATION_NAME', alias=Identifier('Collation')),
+                Identifier('CHARACTER_SET_NAME', alias=Identifier('Charset')),
+                Identifier('ID', alias=Identifier('Id')),
+                Identifier('IS_COMPILED', alias=Identifier('Compiled')),
+                Identifier('PLUGINS'),
+                Identifier('MASTER'),
+                Identifier('STATUS'),
+                Identifier('ONLY'),
+            ],
+            from_table=Identifier('INFORMATION_SCHEMA.COLLATIONS')
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)

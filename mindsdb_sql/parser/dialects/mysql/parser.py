@@ -91,34 +91,11 @@ class MySQLParser(SQLParser):
 
     # Set
 
-    @_('SET expr_list')
-    @_('SET set_modifier expr_list')
-    def set(self, p):
-        if len(p.expr_list) == 1:
-            arg = p.expr_list[0]
-        else:
-            arg = Tuple(items=p.expr_list)
-
-        if hasattr(p, 'set_modifier'):
-            category = p.set_modifier
-        else:
-            category = None
-
-        return Set(category=category, arg=arg)
-
     @_('SET id identifier')
     def set(self, p):
         if not p.id.lower() == 'names':
             raise ParsingException(f'Expected "SET names", got "SET {p.id}"')
         return Set(category=p.id.lower(), arg=p.identifier)
-
-    @_('GLOBAL',
-       'PERSIST',
-       'PERSIST_ONLY',
-       'SESSION',
-       )
-    def set_modifier(self, p):
-        return p[0]
 
     # set charset
     @_('SET charset constant')
@@ -138,9 +115,11 @@ class MySQLParser(SQLParser):
 
     # set transaction
     @_('SET transact_scope TRANSACTION transact_property_list')
+    @_('SET TRANSACTION transact_property_list')
     def set(self, p):
         isolation_level = None
         access_mode = None
+        transact_scope = getattr(p, 'transact_scope', None)
         for prop in p.transact_property_list:
             if prop['type'] == 'iso_level':
                 isolation_level = prop['value']
@@ -150,12 +129,11 @@ class MySQLParser(SQLParser):
         return SetTransaction(
             isolation_level=isolation_level,
             access_mode=access_mode,
-            scope=p.transact_scope,
+            scope=transact_scope,
         )
 
     @_('GLOBAL',
-       'SESSION',
-       'empty')
+       'SESSION')
     def transact_scope(self, p):
         return p[0]
 
@@ -187,6 +165,28 @@ class MySQLParser(SQLParser):
     def transact_access_mode(self, p):
         return ' '.join([x for x in p])
 
+    @_('SET expr_list')
+    @_('SET set_modifier expr_list')
+    def set(self, p):
+        if len(p.expr_list) == 1:
+            arg = p.expr_list[0]
+        else:
+            arg = Tuple(items=p.expr_list)
+
+        if hasattr(p, 'set_modifier'):
+            category = p.set_modifier
+        else:
+            category = None
+
+        return Set(category=category, arg=arg)
+
+    @_('GLOBAL',
+       'PERSIST',
+       'PERSIST_ONLY',
+       'SESSION',
+       )
+    def set_modifier(self, p):
+        return p[0]
 
     # Show
     @_('show WHERE expr')
@@ -836,29 +836,57 @@ class MySQLParser(SQLParser):
     # convert to types
 
     @_('ID',
-       'CHARSET',
-       'TABLES',
-       'STATUS',
-       'VIEW',
-       'FIELDS',
-       'EXTENDED',
-       'PROCESSLIST',
-       'MUTEX',
-       'CODE',
-       'SLAVE',
-       'REPLICA',
-       'REPLICAS',
+       'BEGIN',
+       'CAST',
        'CHANNEL',
-       'TRIGGERS',
-       'STORAGE',
+       'CHARSET',
+       'CODE',
+       'COLLATION',
+       'COLUMNS',
+       'COMMIT',
+       'COMMITTED',
+       'CONCAT',
+       'ENGINE',
+       'ENGINES',
+       'EXTENDED',
+       'FIELDS',
+       # 'FULL', # fixme: is parsed as alias
+       'GLOBAL',
+       'HOSTS',
+       'INDEXES',
+       'ISOLATION',
+       'KEYS',
+       'LEVEL',
        'LOGS',
        'MASTER',
-       'KEYS',
-       'PRIVILEGES',
-       'PROFILES',
-       'HOSTS',
+       'MUTEX',
+       'OFFSET',
+       'ONLY',
        'OPEN',
-       'INDEXES',)
+       'PARAMETER',
+       'PERSIST',
+       'PLUGINS',
+       'PRIVILEGES',
+       'PROCESSLIST',
+       'PROFILES',
+       'REPEATABLE',
+       'REPLICA',
+       'REPLICAS',
+       'ROLLBACK',
+       'SERIALIZABLE',
+       'SESSION',
+       'SLAVE',
+       'START',
+       'STATUS',
+       'STORAGE',
+       'TABLES',
+       'TRANSACTION',
+       'TRIGGERS',
+       'UNCOMMITTED',
+       'VARIABLES',
+       'VIEW',
+       'WARNINGS',
+    )
     def id(self, p):
         return p[0]
 

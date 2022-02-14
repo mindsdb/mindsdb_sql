@@ -6,6 +6,8 @@ RESERVED_KEYWORDS = ['DATABASE']
 class SQLLexer(Lexer):
     reflags = re.IGNORECASE
     ignore = ' \t\n\r'
+    ignore_multi_comment = r'/\*.*?\*/'
+    ignore_line_comment = r'--[^\n]*'
 
     tokens = {
         USE, DROP, CREATE, DESCRIBE,
