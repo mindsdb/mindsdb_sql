@@ -1,4 +1,3 @@
-from mindsdb_sql.parser.lexer import RESERVED_KEYWORDS
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
 
@@ -14,6 +13,12 @@ def path_str_to_parts(path_str):
     return parts
 
 
+RESERVED_KEYWORDS = {
+    'PERSIST', 'IF', 'EXISTS', 'NULLS', 'FIRST', 'LAST',
+    'ORDER', 'BY', 'GROUP', 'PARTITION'
+}
+
+
 class Identifier(ASTNode):
     def __init__(self, path_str=None, parts=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -23,6 +28,15 @@ class Identifier(ASTNode):
             parts = path_str_to_parts(path_str)
         assert isinstance(parts, list)
         self.parts = parts
+
+        from mindsdb_sql.parser.lexer import SQLLexer
+        from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
+
+        self.reserved = RESERVED_KEYWORDS
+        for word in SQLLexer.tokens | MindsDBLexer.tokens:
+            if '_' not in word:
+                # exclude combinations
+                self.reserved.add(word)
 
     @classmethod
     def from_path_str(self, value, *args, **kwargs):
@@ -35,7 +49,7 @@ class Identifier(ASTNode):
             if (
                 not no_wrap_identifier_regex.fullmatch(part)
               or
-                part.upper() in RESERVED_KEYWORDS
+                part.upper() in self.reserved
             ):
                 out_parts.append(f'`{part}`')
 
