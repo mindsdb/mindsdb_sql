@@ -391,3 +391,27 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['int'], default_namespace='int')
 
         assert plan.steps == expected_plan.steps
+
+    def test_integration_select_3_level(self):
+        sql = "select * from xxx.yyy.zzz where x > 1"
+        query = parse_sql(sql, dialect='mindsdb')
+
+        expected_plan = QueryPlan(integrations=['int'],
+                                  default_namespace='xxx',
+                                  steps=[
+                                      FetchDataframeStep(
+                                          integration='xxx',
+                                          query=Select(
+                                             targets=[Star()],
+                                             from_table=Identifier('yyy.zzz'),
+                                             where=BinaryOperation(op='>', args=[
+                                                 Identifier('yyy.zzz.x'),
+                                                 Constant(1)
+                                             ])
+                                          )
+                                      )
+                                  ])
+
+        plan = plan_query(query, integrations=['xxx'])
+
+        assert plan.steps == expected_plan.steps

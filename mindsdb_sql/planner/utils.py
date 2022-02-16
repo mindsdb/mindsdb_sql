@@ -42,7 +42,7 @@ def get_predictor_namespace_and_name_from_identifier(identifier, default_namespa
 def disambiguate_integration_column_identifier(identifier, integration_name, table,
                                                initial_name_as_alias=False):
     """Removes integration name from column if it's present, adds table path if it's absent"""
-    column_table_ref = table.alias.to_string(alias=False) if table.alias else table.to_string(alias=False)
+    column_table_ref = [table.alias.to_string(alias=False)] if table.alias else table.parts
     parts = list(identifier.parts)
 
     if len(parts) > 1:
@@ -50,12 +50,15 @@ def disambiguate_integration_column_identifier(identifier, integration_name, tab
             parts = parts[1:]
 
     if len(parts) > 1:
-        if parts[0] != column_table_ref:
+        if (len(parts) <= len(column_table_ref)
+            or
+            parts[:len(column_table_ref)] != column_table_ref
+        ):
             raise PlanningException(
                 f'Tried to query column {identifier.to_tree()} from integration {integration_name} table {column_table_ref}, but a different table name has been specified.')
     elif len(parts) == 1:
-        if parts[0] != column_table_ref:
-            parts.insert(0, column_table_ref)
+        # if parts[0] != column_table_ref:
+        parts = column_table_ref + parts
 
     new_identifier = Identifier(parts=parts)
     if identifier.alias:
