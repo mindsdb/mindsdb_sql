@@ -290,14 +290,12 @@ class MySQLParser(SQLParser):
             name=p.identifier.to_string()
         )
 
-    @_('SHOW REPLICA STATUS FOR CHANNEL identifier',
-       'SHOW SLAVE STATUS FOR CHANNEL identifier',
+    @_('SHOW REPLICA STATUS FOR CHANNEL id',
+       'SHOW SLAVE STATUS FOR CHANNEL id',
        'SHOW REPLICA STATUS',
        'SHOW SLAVE STATUS',)
     def show(self, p):
-        name = getattr(p, 'identifier', None)
-        if name is not None:
-            name = name.to_string()
+        name = getattr(p, 'id', None)
         return Show(
             category='REPLICA STATUS', # slave = replica
             name=name
