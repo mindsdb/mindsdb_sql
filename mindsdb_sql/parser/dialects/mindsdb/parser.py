@@ -10,6 +10,7 @@ from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_datasource import CreateDatasource
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
+from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.parser.dialects.mindsdb.retrain_predictor import RetrainPredictor
@@ -58,6 +59,7 @@ class MindsDBParser(Parser):
        'delete',
        'drop_database',
        'drop_view',
+       'create_table',
        )
     def query(self, p):
         return p[0]
@@ -430,6 +432,12 @@ class MindsDBParser(Parser):
     @_('DROP DATASET identifier')
     def drop_dataset(self, p):
         return DropDataset(p.identifier)
+
+    # create table
+    @_('CREATE TABLE identifier USING kw_parameter_list')
+    def create_table(self, p):
+        params = p.kw_parameter_list
+        return CreateFile(name=p.identifier, **params)
 
     @_('create_predictor USING kw_parameter_list')
     def create_predictor(self, p):
