@@ -5,18 +5,22 @@ from mindsdb_sql.planner import steps
 from mindsdb_sql.planner import utils
 
 
+def to_string(identifier):
+    # alternative to AST.to_string() but without quoting
+    return '.'.join(identifier.parts)
+
 class Table:
     def __init__(self,  node=None, ds=None, is_predictor=None):
         self.node = node
         self.is_predictor = is_predictor
         self.ds = ds
-        self.name = node.to_string(alias=False)
+        self.name = to_string(node)
         self.columns = None
         # None is unknown
         self.columns_map = None
         self.keys = None
         if node.alias:
-            self.alias = node.alias.to_string()
+            self.alias = to_string(node.alias)
         else:
             self.alias = None
             # self.alias = self.name
@@ -102,7 +106,7 @@ class PreparedStatementPlanner():
 
         parameters = []
         for param in stmt.params:
-            name = param.to_string(alias=False)
+            name = to_string(param)
             parameters.append(dict(
                 alias=name,
                 type='str',
@@ -145,7 +149,7 @@ class PreparedStatementPlanner():
 
         if table.alias is not None:
             # access by alias if table is having alias
-            keys = [table.alias.to_string()]
+            keys = [to_string(table.alias)]
 
         else:
             # access by table name, in all variants
@@ -237,7 +241,7 @@ class PreparedStatementPlanner():
             # column alias
             alias = None
             if t.alias is not None:
-                alias = t.alias.to_string()
+                alias = to_string(t.alias)
 
             if isinstance(t, ast.Star):
                 if len(stmt.tables_lvl1) == 0:
