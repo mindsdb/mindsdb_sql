@@ -187,19 +187,22 @@ def recursively_extract_column_values(op, row_dict, predictor):
         raise PlanningException(f'Only \'and\' and \'=\' operations allowed in WHERE clause, found: {op.to_tree()}')
 
 
-def recursively_check_join_identifiers_for_ambiguity(item):
+def recursively_check_join_identifiers_for_ambiguity(item, aliased_fields=None):
     if item is None:
         return
     elif isinstance(item, Identifier):
         if len(item.parts) == 1:
+            if aliased_fields is not None and item.parts[0] in aliased_fields:
+                # is alias
+                return
             raise PlanningException(f'Ambigous identifier {str(item)}, provide table name for operations on a join.')
     elif isinstance(item, Operation):
-        recursively_check_join_identifiers_for_ambiguity(item.args)
+        recursively_check_join_identifiers_for_ambiguity(item.args, aliased_fields=aliased_fields)
     elif isinstance(item, OrderBy):
-        recursively_check_join_identifiers_for_ambiguity(item.field)
+        recursively_check_join_identifiers_for_ambiguity(item.field, aliased_fields=aliased_fields)
     elif isinstance(item, list):
         for arg in item:
-            recursively_check_join_identifiers_for_ambiguity(arg)
+            recursively_check_join_identifiers_for_ambiguity(arg, aliased_fields=aliased_fields)
 
 
 def get_deepest_select(select):

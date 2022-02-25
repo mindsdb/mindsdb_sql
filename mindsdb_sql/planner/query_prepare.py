@@ -449,6 +449,7 @@ class PreparedStatementPlanner():
             Column(name='Variable_name', type='str'),
             Column(name='Value', type='str'),
         ]
+        return []
 
     def prepare_steps(self, query):
 
@@ -484,6 +485,7 @@ class PreparedStatementPlanner():
         if isinstance(query, ast.Delete):
             ...
             # TODO do we need columns?
+            return []
         if isinstance(query, ast.Show):
             return self.prepare_show(query)
         else:
