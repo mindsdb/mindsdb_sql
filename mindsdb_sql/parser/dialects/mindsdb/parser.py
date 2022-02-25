@@ -789,9 +789,26 @@ class MindsDBParser(Parser):
 
     @_('expr',
        'function',
-       'window_function')
+       'window_function',
+       'case')
     def result_column(self, p):
         return p[0]
+
+    # case
+    @_('CASE case_conditions ELSE expr END')
+    def case(self, p):
+        return Case(rules=p.case_conditions, default=p.expr)
+
+    @_('case_condition',
+       'case_conditions case_condition')
+    def case_conditions(self, p):
+        arr = getattr(p, 'case_conditions', [])
+        arr.append(p.case_condition)
+        return arr
+
+    @_('WHEN expr THEN expr')
+    def case_condition(self, p):
+        return [p.expr0, p.expr1]
 
     # Window function
     @_('function OVER LPAREN window RPAREN')
@@ -935,20 +952,12 @@ class MindsDBParser(Parser):
         return [p.expr0, p.expr1]
 
     @_('identifier')
-    def expr(self, p):
-        return p.identifier
-
     @_('parameter')
-    def expr(self, p):
-        return p.parameter
-
     @_('constant')
-    def expr(self, p):
-        return p.constant
-
     @_('latest')
+    @_('function')
     def expr(self, p):
-        return p.latest
+        return p[0]
 
     @_('LATEST')
     def latest(self, p):

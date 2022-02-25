@@ -10,3 +10,4 @@ from .tuple import Tuple
 from .operation import Operation, BinaryOperation, UnaryOperation, BetweenOperation, Function, WindowFunction, Object
 from .order_by import OrderBy
 from .parameter import Parameter
+from .case import Case
