@@ -793,16 +793,11 @@ class MySQLParser(SQLParser):
         return [p.expr0, p.expr1]
 
     @_('identifier')
-    def expr(self, p):
-        return p.identifier
-
     @_('parameter')
-    def expr(self, p):
-        return p.parameter
-
     @_('constant')
+    @_('function')
     def expr(self, p):
-        return p.constant
+        return p[0]
 
     @_('NULL')
     def constant(self, p):

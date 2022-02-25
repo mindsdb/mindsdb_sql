@@ -944,20 +944,12 @@ class MindsDBParser(Parser):
         return [p.expr0, p.expr1]
 
     @_('identifier')
-    def expr(self, p):
-        return p.identifier
-
     @_('parameter')
-    def expr(self, p):
-        return p.parameter
-
     @_('constant')
-    def expr(self, p):
-        return p.constant
-
     @_('latest')
+    @_('function')
     def expr(self, p):
-        return p.latest
+        return p[0]
 
     @_('LATEST')
     def latest(self, p):
