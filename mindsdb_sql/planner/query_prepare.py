@@ -106,7 +106,7 @@ class PreparedStatementPlanner():
 
         parameters = []
         for param in stmt.params:
-            name = to_string(param)
+            name = '?'
             parameters.append(dict(
                 alias=name,
                 type='str',
