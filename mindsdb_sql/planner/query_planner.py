@@ -218,7 +218,7 @@ class QueryPlanner():
         if isinstance(time_filter, BetweenOperation):
             between_from = time_filter.args[1]
             preparation_time_filter = BinaryOperation('<', args=[Identifier(predictor_time_column_name), between_from])
-            replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
+            preparation_where2 = replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
             integration_select_1 = Select(targets=[Star()],
                                         from_table=table,
                                         where=add_order_not_null(preparation_where2),
@@ -246,7 +246,7 @@ class QueryPlanner():
             preparation_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
 
             preparation_time_filter = BinaryOperation(preparation_time_filter_op, args=[Identifier(predictor_time_column_name), time_filter_date])
-            replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
+            preparation_where2 = replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
             integration_select_1 = Select(targets=[Star()],
                                           from_table=table,
                                           where=add_order_not_null(preparation_where2),

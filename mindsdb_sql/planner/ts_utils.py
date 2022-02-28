@@ -24,6 +24,7 @@ def replace_time_filter(op, time_filter, new_filter):
         op.args[0] = new_filter
     elif op.args[1] == time_filter:
         op.args[1] = new_filter
+    return op
 
 
 def find_and_remove_time_filter(op, time_filter):
