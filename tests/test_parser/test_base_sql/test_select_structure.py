@@ -897,3 +897,42 @@ class TestSelectStructureNoSqlite:
 
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_case(self, dialect):
+        sql = f'''SELECT
+                    CASE
+                        WHEN R.DELETE_RULE = 'CASCADE' THEN 0
+                        WHEN R.DELETE_RULE = 'SET NULL' THEN 2
+                        ELSE 3
+                    END AS DELETE_RULE
+                   FROM INFORMATION_SCHEMA.COLLATIONS'''
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[
+                Case(
+                    rules=[
+                        [
+                            BinaryOperation(op='=', args=[
+                                Identifier('R.DELETE_RULE'),
+                                Constant('CASCADE')
+                            ]),
+                            Constant(0)
+                        ],
+                        [
+                            BinaryOperation(op='=', args=[
+                                Identifier('R.DELETE_RULE'),
+                                Constant('SET NULL')
+                            ]),
+                            Constant(2)
+                        ]
+                    ],
+                    default=Constant(3),
+                    alias=Identifier('DELETE_RULE')
+                )
+            ],
+            from_table=Identifier('INFORMATION_SCHEMA.COLLATIONS')
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)

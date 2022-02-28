@@ -10,6 +10,7 @@ from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_datasource import CreateDatasource
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
+from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.parser.dialects.mindsdb.retrain_predictor import RetrainPredictor
@@ -58,6 +59,7 @@ class MindsDBParser(Parser):
        'delete',
        'drop_database',
        'drop_view',
+       'create_table',
        )
     def query(self, p):
         return p[0]
@@ -431,6 +433,12 @@ class MindsDBParser(Parser):
     def drop_dataset(self, p):
         return DropDataset(p.identifier)
 
+    # create table
+    @_('CREATE TABLE identifier USING kw_parameter_list')
+    def create_table(self, p):
+        params = p.kw_parameter_list
+        return CreateFile(name=p.identifier, **params)
+
     @_('create_predictor USING kw_parameter_list')
     def create_predictor(self, p):
         p.create_predictor.using = p.kw_parameter_list
@@ -781,9 +789,26 @@ class MindsDBParser(Parser):
 
     @_('expr',
        'function',
-       'window_function')
+       'window_function',
+       'case')
     def result_column(self, p):
         return p[0]
+
+    # case
+    @_('CASE case_conditions ELSE expr END')
+    def case(self, p):
+        return Case(rules=p.case_conditions, default=p.expr)
+
+    @_('case_condition',
+       'case_conditions case_condition')
+    def case_conditions(self, p):
+        arr = getattr(p, 'case_conditions', [])
+        arr.append(p.case_condition)
+        return arr
+
+    @_('WHEN expr THEN expr')
+    def case_condition(self, p):
+        return [p.expr0, p.expr1]
 
     # Window function
     @_('function OVER LPAREN window RPAREN')
@@ -927,20 +952,12 @@ class MindsDBParser(Parser):
         return [p.expr0, p.expr1]
 
     @_('identifier')
-    def expr(self, p):
-        return p.identifier
-
     @_('parameter')
-    def expr(self, p):
-        return p.parameter
-
     @_('constant')
-    def expr(self, p):
-        return p.constant
-
     @_('latest')
+    @_('function')
     def expr(self, p):
-        return p.latest
+        return p[0]
 
     @_('LATEST')
     def latest(self, p):

@@ -927,3 +927,67 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_timeseries_no_group(self):
+        sql = '''select * from files.sweat as ta
+                  join mindsdb.tp3 as tb 
+                 where ta.date > '2015-12-31'
+            '''
+        query = parse_sql(sql,  dialect='mindsdb')
+
+        predictor_window = 3
+        plan = plan_query(
+            query,
+            integrations=['files'],
+            predictor_namespace='mindsdb',
+            predictor_metadata={
+                'tp3': {
+                    'timeseries': True,
+                    'window': predictor_window,
+                    'order_by_column': 'date',
+                    'group_by_columns': []
+                }
+            },
+            default_namespace='mindsdb'
+        )
+
+        expected_plan = QueryPlan(
+            default_namespace='ds',
+            steps=[
+                MultipleSteps(
+                    reduce='union',
+                    steps=[
+                        FetchDataframeStep(
+                            integration='files',
+                            query=parse_sql(f"select * from sweat as ta \
+                                             WHERE ta.date <= '2015-12-31' AND ta.date IS NOT NULL \
+                                             ORDER BY ta.date DESC LIMIT {predictor_window}"),
+                        ),
+                        FetchDataframeStep(
+                            integration='files',
+                            query=parse_sql(f"select * from sweat as ta \
+                                             WHERE ta.date > '2015-12-31' AND ta.date IS NOT NULL \
+                                             ORDER BY ta.date DESC"),
+                        ),
+                    ]
+                ),
+                ApplyTimeseriesPredictorStep(
+                    output_time_filter=BinaryOperation('>', args=[Identifier('ta.date'), Constant('2015-12-31')]),
+                    namespace='mindsdb',
+                    predictor=Identifier('tp3', alias=Identifier('tb')),
+                    dataframe=Result(0)),
+                JoinStep(left=Result(0),
+                         right=Result(1),
+                         query=Join(
+                             right=Identifier('result_1', alias=Identifier('tb')),
+                             left=Identifier('result_0', alias=Identifier('ta')),
+                             join_type=JoinType.JOIN)
+                         ),
+                ProjectStep(dataframe=Result(2), columns=[Star()]),
+            ],
+        )
+
+        for i in range(len(plan.steps)):
+            print(plan.steps[i])
+            print(expected_plan.steps[i])
+            assert plan.steps[i] == expected_plan.steps[i]

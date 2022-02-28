@@ -38,6 +38,9 @@ class SQLLexer(Lexer):
 
         UNION, ALL,
 
+        # CASE
+        CASE, ELSE, END, THEN, WHEN,
+
         # DML
         INSERT, DELETE, INTO, VALUES,
 
@@ -163,6 +166,13 @@ class SQLLexer(Lexer):
 
     UNION = r'\bUNION\b'
     ALL = r'\bALL\b'
+
+    # CASE
+    CASE = r'\bCASE\b'
+    ELSE = r'\bELSE\b'
+    END = r'\bEND\b'
+    THEN = r'\bTHEN\b'
+    WHEN = r'\bWHEN\b'
 
     # DML
     INSERT = r'\bINSERT\b'

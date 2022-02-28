@@ -218,7 +218,7 @@ class QueryPlanner():
         if isinstance(time_filter, BetweenOperation):
             between_from = time_filter.args[1]
             preparation_time_filter = BinaryOperation('<', args=[Identifier(predictor_time_column_name), between_from])
-            replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
+            preparation_where2 = replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
             integration_select_1 = Select(targets=[Star()],
                                         from_table=table,
                                         where=add_order_not_null(preparation_where2),
@@ -246,7 +246,7 @@ class QueryPlanner():
             preparation_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
 
             preparation_time_filter = BinaryOperation(preparation_time_filter_op, args=[Identifier(predictor_time_column_name), time_filter_date])
-            replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
+            preparation_where2 = replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
             integration_select_1 = Select(targets=[Star()],
                                           from_table=table,
                                           where=add_order_not_null(preparation_where2),
@@ -352,6 +352,12 @@ class QueryPlanner():
         new_join.condition.args = new_condition_args
         new_join.left = Identifier(left_table_path, alias=left_table.alias)
         new_join.right = Identifier(right_table_path, alias=right_table.alias)
+
+        # FIXME: INFORMATION_SCHEMA with condition
+        # clear join condition for INFORMATION_SCHEMA
+        if right_integration_name == 'INFORMATION_SCHEMA':
+            new_join.condition = None
+
         return self.plan.add_step(JoinStep(left=select_left_step.result, right=select_right_step.result, query=new_join))
 
     def plan_project(self, query, dataframe):
@@ -364,13 +370,22 @@ class QueryPlanner():
                 out_identifiers.append(new_identifier)
         return self.plan.add_step(ProjectStep(dataframe=dataframe, columns=out_identifiers))
 
+    def get_aliased_fields(self, targets):
+        aliased_fields = {}
+        for target in targets:
+            if target.alias is not None:
+                aliased_fields[target.alias.to_string()] = target
+        return aliased_fields
+
     def plan_join(self, query):
         join = query.from_table
 
+        aliased_fields = self.get_aliased_fields(query.targets)
+
         recursively_check_join_identifiers_for_ambiguity(query.where)
-        recursively_check_join_identifiers_for_ambiguity(query.group_by)
+        recursively_check_join_identifiers_for_ambiguity(query.group_by, aliased_fields=aliased_fields)
         recursively_check_join_identifiers_for_ambiguity(query.having)
-        recursively_check_join_identifiers_for_ambiguity(query.order_by)
+        recursively_check_join_identifiers_for_ambiguity(query.order_by, aliased_fields=aliased_fields)
 
         if isinstance(join.left, Identifier) and isinstance(join.right, Identifier):
             if self.is_predictor(join.left) and self.is_predictor(join.right):
@@ -435,7 +450,12 @@ class QueryPlanner():
                 join_step = self.plan_join_two_tables(join)
                 last_step = join_step
                 if query.where:
-                    last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.where))
+                    # FIXME: INFORMATION_SCHEMA with Where
+                    right_integration_name, _ = self.get_integration_path_from_identifier_or_error(join.right)
+                    if right_integration_name == 'INFORMATION_SCHEMA':
+                        ...
+                    else:
+                        last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.where))
 
                 if query.group_by:
                     group_by_targets = []
