@@ -51,7 +51,7 @@ class Column:
 
 class Statement:
     def __init__(self):
-        self.columns = None
+        self.columns = []
         # self.query = None
         self.params = None
         self.result = None

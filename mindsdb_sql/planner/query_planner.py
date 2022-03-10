@@ -40,11 +40,14 @@ class QueryPlanner():
         self.predictor_metadata = predictor_metadata or defaultdict(dict)
         self.default_namespace = default_namespace
 
+        # allow to select from mindsdb namespace
+        self.integrations.append(self.predictor_namespace)
+
         self.statement = None
 
     def is_predictor(self, identifier):
         parts = identifier.parts
-        if parts[0].lower() == self.predictor_namespace:
+        if parts[0].lower() == self.predictor_namespace and parts[-1].lower() in self.predictor_metadata:
             return True
         elif len(parts) == 1 and self.default_namespace == self.predictor_namespace:
             return True
