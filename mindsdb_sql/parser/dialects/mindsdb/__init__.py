@@ -4,6 +4,7 @@ from .parser import MindsDBParser
 from .create_view import CreateView
 from .create_datasource import CreateDatasource
 from .create_predictor import CreatePredictor
+from .apply_predictor import ApplyPredictor
 from .drop_predictor import DropPredictor
 from .retrain_predictor import RetrainPredictor
 from .drop_integration import DropIntegration
