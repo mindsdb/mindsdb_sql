@@ -7,7 +7,6 @@ from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
-from mindsdb_sql.parser.dialects.mindsdb.apply_predictor import ApplyPredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_datasource import CreateDatasource
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
@@ -433,21 +432,6 @@ class MindsDBParser(Parser):
     @_('DROP DATASET identifier')
     def drop_dataset(self, p):
         return DropDataset(p.identifier)
-
-    # apply predictor
-    @_('APPLY PREDICTOR id USING LPAREN raw_query RPAREN INTO TABLE EQUALS identifier')
-    def create_predictor(self, p):
-
-        query_str = tokens_to_string(p.raw_query)
-
-        result_table = p.identifier
-        name = p.id
-
-        return ApplyPredictor(
-            name=name,
-            query_str=query_str,
-            result_table=result_table
-        )
 
     # create table
     @_('CREATE TABLE identifier USING kw_parameter_list')
