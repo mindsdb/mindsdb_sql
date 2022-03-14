@@ -14,11 +14,11 @@ class CreateTable(ASTNode):
                  name,
                  from_select=None,
                  columns: List[TableColumn] = None,
-                 replace=False,
+                 is_replace=False,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
-        self.replace = replace
+        self.is_replace = is_replace
         self.from_select = from_select
         self.columns = columns
 
@@ -28,8 +28,8 @@ class CreateTable(ASTNode):
         ind2 = indent(level + 2)
 
         replace_str = ''
-        if self.replace:
-            replace_str = f'{ind1}replace=True\n'
+        if self.is_replace:
+            replace_str = f'{ind1}is_replace=True\n'
 
         from_select_str = ''
         if self.from_select is not None:
@@ -55,7 +55,7 @@ class CreateTable(ASTNode):
     def get_string(self, *args, **kwargs):
 
         replace_str = ''
-        if self.replace:
+        if self.is_replace:
             replace_str = f' OR REPLACE'
 
         columns_str = ''

@@ -4,11 +4,11 @@ from mindsdb_sql import parse_sql
 from mindsdb_sql.parser.ast import *
 
 
-class TestDelete:
-    def test_delete(self):
+class TestCreate:
+    def test_create(self):
         expected_ast = CreateTable(
             name=Identifier('int1.model_name'),
-            replace=True,
+            is_replace=True,
             from_select=Select(
                 targets=[Identifier('a')],
                 from_table=Identifier('ddd'),
@@ -36,7 +36,7 @@ class TestDelete:
         assert str(ast).lower() == str(expected_ast).lower()
         assert ast.to_tree() == expected_ast.to_tree()
 
-        expected_ast.replace = False
+        expected_ast.is_replace = False
 
         # no replace
         sql = '''

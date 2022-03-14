@@ -434,18 +434,18 @@ class MindsDBParser(Parser):
         return DropDataset(p.identifier)
 
     # create table
-    @_('CREATE TABLE id select')
-    @_('CREATE TABLE id LPAREN select RPAREN')
-    @_('CREATE OR REPLACE TABLE id select')
-    @_('CREATE OR REPLACE TABLE id LPAREN select RPAREN')
+    @_('CREATE TABLE identifier select')
+    @_('CREATE TABLE identifier LPAREN select RPAREN')
+    @_('CREATE OR REPLACE TABLE identifier select')
+    @_('CREATE OR REPLACE TABLE identifier LPAREN select RPAREN')
     def create_table(self, p):
         # TODO create table with columns
-        replace = False
+        is_replace = False
         if hasattr(p, 'REPLACE'):
-            replace = True
+            is_replace = True
         return CreateTable(
-            name=p.id,
-            replace=replace,
+            name=p.identifier,
+            is_replace=is_replace,
             from_select=p.select
         )
 
