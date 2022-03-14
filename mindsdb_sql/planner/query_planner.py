@@ -17,8 +17,8 @@ from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        disambiguate_predictor_column_identifier, recursively_disambiguate_identifiers,
                                        get_deepest_select,
                                        recursively_extract_column_values,
-                                       recursively_check_join_identifiers_for_ambiguity
-                                       )
+                                       recursively_check_join_identifiers_for_ambiguity,
+                                       query_traversal)
 from mindsdb_sql.planner.query_plan import QueryPlan
 from .query_prepare import PreparedStatementPlanner
 
@@ -391,6 +391,18 @@ class QueryPlanner():
 
             # move properties to upper query
             query = join_left
+
+            if query.from_table.alias is not None:
+                table_alias = query.from_table.alias.parts[0]
+            else:
+                table_alias = query.from_table.parts[-1]
+
+            def add_aliases(node, is_table, **kwargs):
+                if not is_table and isinstance(node, Identifier):
+                    if len(node.parts) == 1:
+                        node.parts.insert(0, table_alias)
+
+            query_traversal(query.where, add_aliases)
 
             join_left = join_left.from_table
 
