@@ -378,7 +378,7 @@ class QueryPlanner():
                 aliased_fields[target.alias.to_string()] = target
         return aliased_fields
 
-    def plan_join(self, query):
+    def plan_join(self, query, integration=None):
         join = query.from_table
         join_left = join.left
         join_right = join.right
@@ -400,9 +400,15 @@ class QueryPlanner():
             def add_aliases(node, is_table, **kwargs):
                 if not is_table and isinstance(node, Identifier):
                     if len(node.parts) == 1:
+                        # add table alias to field
                         node.parts.insert(0, table_alias)
 
             query_traversal(query.where, add_aliases)
+
+            if isinstance(query.from_table, Identifier):
+                if integration is not None and len(query.from_table.parts) == 1:
+                    # add integration name to table
+                    query.from_table.parts.insert(0, integration)
 
             join_left = join_left.from_table
 
@@ -510,7 +516,9 @@ class QueryPlanner():
         if query.from_select is None:
             raise PlanningException(f'Not implemented "create table": {query.to_string()}')
 
-        last_step = self.plan_select(query.from_select)
+        integration_name = query.name.parts[0]
+
+        last_step = self.plan_select(query.from_select, integration=integration_name)
 
         # create table step
         self.plan.add_step(SaveToTable(
@@ -519,7 +527,7 @@ class QueryPlanner():
             is_replace=query.is_replace,
         ))
 
-    def plan_select(self, query):
+    def plan_select(self, query, integration=None):
         from_table = query.from_table
 
         if isinstance(from_table, Identifier):
@@ -530,7 +538,7 @@ class QueryPlanner():
         elif isinstance(from_table, Select):
             return self.plan_integration_nested_select(query)
         elif isinstance(from_table, Join):
-            return self.plan_join(query)
+            return self.plan_join(query, integration=integration)
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 
