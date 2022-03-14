@@ -2,13 +2,13 @@ import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
-                                    BetweenOperation, Union, NullConstant)
+                                    BetweenOperation, Union, NullConstant, CreateTable)
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep,
-                                       GetPredictorColumns)
+                                       GetPredictorColumns, SaveToTable)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
@@ -371,6 +371,7 @@ class QueryPlanner():
         return self.plan.add_step(ProjectStep(dataframe=dataframe, columns=out_identifiers))
 
     def get_aliased_fields(self, targets):
+        # get aliases from select target
         aliased_fields = {}
         for target in targets:
             if target.alias is not None:
@@ -379,6 +380,19 @@ class QueryPlanner():
 
     def plan_join(self, query):
         join = query.from_table
+        join_left = join.left
+        join_right = join.right
+
+        if isinstance(join_left, Select):
+            # dbt query.
+            # TODO support complex query. Only one table is supported at the moment.
+            if not isinstance(join_left.from_table, Identifier):
+                raise PlanningException(f'Statement not supported: {query.to_string()}')
+
+            # move properties to upper query
+            query = join_left
+
+            join_left = join_left.from_table
 
         aliased_fields = self.get_aliased_fields(query.targets)
 
@@ -387,24 +401,24 @@ class QueryPlanner():
         recursively_check_join_identifiers_for_ambiguity(query.having)
         recursively_check_join_identifiers_for_ambiguity(query.order_by, aliased_fields=aliased_fields)
 
-        if isinstance(join.left, Identifier) and isinstance(join.right, Identifier):
-            if self.is_predictor(join.left) and self.is_predictor(join.right):
-                raise PlanningException(f'Can\'t join two predictors {str(join.left.parts[0])} and {str(join.left.parts[1])}')
+        if isinstance(join_left, Identifier) and isinstance(join_right, Identifier):
+            if self.is_predictor(join_left) and self.is_predictor(join_right):
+                raise PlanningException(f'Can\'t join two predictors {str(join_left.parts[0])} and {str(join_left.parts[1])}')
 
             predictor_namespace = None
             predictor = None
             table = None
             predictor_is_left = False
-            if self.is_predictor(join.left):
-                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join.left, self.default_namespace)
+            if self.is_predictor(join_left):
+                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join_left, self.default_namespace)
                 predictor_is_left = True
             else:
-                table = join.left
+                table = join_left
 
-            if self.is_predictor(join.right):
-                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join.right, self.default_namespace)
+            if self.is_predictor(join_right):
+                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join_right, self.default_namespace)
             else:
-                table = join.right
+                table = join_right
 
             last_step = None
             if predictor:
@@ -480,6 +494,19 @@ class QueryPlanner():
             raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')
         return self.plan_project(query, last_step.result)
 
+    def plan_create_table(self, query):
+        if query.from_select is None:
+            raise PlanningException(f'Not implemented "create table": {query.to_string()}')
+
+        last_step = self.plan_select(query.from_select)
+
+        # create table step
+        self.plan.add_step(SaveToTable(
+            table=query.name,
+            dataframe=last_step,
+            is_replace=query.is_replace,
+        ))
+
     def plan_select(self, query):
         from_table = query.from_table
 
@@ -510,6 +537,8 @@ class QueryPlanner():
             self.plan_select(query)
         elif isinstance(query, Union):
             self.plan_union(query)
+        elif isinstance(query, CreateTable):
+            self.plan_create_table(query)
         else:
             raise PlanningException(f'Unsupported query type {type(query)}')
 
