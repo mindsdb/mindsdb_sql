@@ -2,7 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.query import aliased
 from sqlalchemy.dialects import mysql, postgresql, sqlite, mssql, firebird, oracle, sybase
-
+from sqlalchemy.schema import CreateTable
 
 from mindsdb_sql.parser import ast
 
@@ -23,6 +23,9 @@ class SqlalchemyRender():
         }
 
         self.dialect = dialects[dialect_name].dialect()
+        self.types_map = {}
+        for type_name in sa.types.__all__:
+            self.types_map[type_name.upper()] = getattr(sa.types, type_name)
 
     def to_column(self, parts):
         # because sqlalchemy doesn't allow columns consist from parts therefore we do it manually
@@ -170,11 +173,7 @@ class SqlalchemyRender():
                 col = col.label(self.get_alias(t.alias))
         elif isinstance(t, ast.TypeCast):
             arg = self.to_expression(t.arg)
-            # TODO how to get type
-            typename =  t.type_name.upper()
-            if typename == 'INT64':
-                typename = 'BIGINT'
-            type = getattr(sa.types, typename)
+            type = self.get_type(t.type_name)
             col = sa.cast(arg, type)
 
             if t.alias:
@@ -197,6 +196,14 @@ class SqlalchemyRender():
             raise NotImplementedError(f'Column {t}')
 
         return col
+
+    def get_type(self, typename):
+        # TODO how to get type
+        typename = typename.upper()
+        if typename == 'INT64':
+            typename = 'BIGINT'
+        type = self.types_map[typename]
+        return type
 
     def prepare_join(self, join):
         # join tree to table list
@@ -375,10 +382,29 @@ class SqlalchemyRender():
 
         return query
 
+    def prepare_create_table(self, ast_query):
+        columns = [
+            sa.Column(
+                col.name,
+                self.get_type(col.type)
+            )
+            for col in ast_query.columns
+        ]
+        metadata = sa.MetaData()
+        table = sa.Table(
+            ast_query.name,
+            metadata,
+            *columns
+        )
+
+        return CreateTable(table)
+
     def get_string(self, ast_query, with_failback=True):
         try:
             if isinstance(ast_query, ast.Select):
                 stmt = self.prepare_select(ast_query)
+            elif isinstance(ast_query, ast.CreateTable):
+                stmt = self.prepare_create_table(ast_query)
             else:
                 raise NotImplementedError(f'Unknown statement: {ast_query.__name__}')
 
