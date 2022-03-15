@@ -406,7 +406,7 @@ class QueryPlanner():
             query_traversal(query.where, add_aliases)
 
             if isinstance(query.from_table, Identifier):
-                if integration is not None and len(query.from_table.parts) == 1:
+                if integration is not None and query.from_table.parts[0] != integration:
                     # add integration name to table
                     query.from_table.parts.insert(0, integration)
 
