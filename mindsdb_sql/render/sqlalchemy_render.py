@@ -199,6 +199,10 @@ class SqlalchemyRender():
 
     def get_type(self, typename):
         # TODO how to get type
+        if not isinstance(typename, str):
+            # sqlalchemy type
+            return typename
+
         typename = typename.upper()
         if typename == 'INT64':
             typename = 'BIGINT'
@@ -232,19 +236,25 @@ class SqlalchemyRender():
 
         return items
 
-    def to_table(self, node):
-        if isinstance(node, ast.Identifier):
-            parts = node.parts
+    def get_table_name(self, table_name):
+        schema = None
+        if isinstance(table_name, ast.Identifier):
+            parts = table_name.parts
 
             if len(parts) > 2:
                 # TODO tests is failing
-                raise NotImplementedError(f'Path to long: {node.parts}')
+                raise NotImplementedError(f'Path to long: {table_name.parts}')
 
-            schema = None
             if len(parts) == 2:
                 schema = parts[-2]
 
             table_name = parts[-1]
+
+        return schema, table_name
+
+    def to_table(self, node):
+        if isinstance(node, ast.Identifier):
+            schema, table_name = self.get_table_name(node)
 
             table = sa.table(table_name, schema=schema)
 
@@ -390,10 +400,13 @@ class SqlalchemyRender():
             )
             for col in ast_query.columns
         ]
+        schema, table_name = self.get_table_name(ast_query.name)
+
         metadata = sa.MetaData()
         table = sa.Table(
-            ast_query.name,
+            table_name,
             metadata,
+            schema=schema,
             *columns
         )
 

@@ -4,7 +4,7 @@ from typing import List
 
 
 class TableColumn():
-    def __init__(self, name, type='VARCHAR'):
+    def __init__(self, name, type='integer'):
         self.name = name
         self.type = type
 
@@ -71,4 +71,5 @@ class CreateTable(ASTNode):
         if self.from_select is not None:
             from_select_str = self.from_select.to_string()
 
-        return f'CREATE{replace_str} TABLE {str(self.name)} {columns_str} {from_select_str}'
+        name_str = str(self.name)
+        return f'CREATE{replace_str} TABLE {name_str} {columns_str} {from_select_str}'
