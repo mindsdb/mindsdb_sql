@@ -2,7 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.query import aliased
 from sqlalchemy.dialects import mysql, postgresql, sqlite, mssql, firebird, oracle, sybase
-from sqlalchemy.schema import CreateTable
+from sqlalchemy.schema import CreateTable, DropTable
 
 from mindsdb_sql.parser import ast
 
@@ -412,12 +412,28 @@ class SqlalchemyRender():
 
         return CreateTable(table)
 
+    def prepare_drop_table(self, ast_query):
+        if len(ast_query.tables) != 1:
+            raise NotImplementedError('Only one table is supported')
+
+        schema, table_name = self.get_table_name(ast_query.tables[0])
+
+        metadata = sa.MetaData()
+        table = sa.Table(
+            table_name,
+            metadata,
+            schema=schema
+        )
+        return DropTable(table)
+
     def get_string(self, ast_query, with_failback=True):
         try:
             if isinstance(ast_query, ast.Select):
                 stmt = self.prepare_select(ast_query)
             elif isinstance(ast_query, ast.CreateTable):
                 stmt = self.prepare_create_table(ast_query)
+            elif isinstance(ast_query, ast.DropTables):
+                stmt = self.prepare_drop_table(ast_query)
             else:
                 raise NotImplementedError(f'Unknown statement: {ast_query.__name__}')
 
