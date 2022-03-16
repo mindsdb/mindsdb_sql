@@ -996,16 +996,16 @@ class TestJoinTimeseriesPredictor:
         self._test_timeseries_no_group(sql, expected_plan)
 
         sql = '''
-            create or replace table int1.model_name (
+            create or replace table files.model_name (
                 select * from (
-                           select * from files.sweat as ta                  
+                           select * from sweat as ta                  
                            where ta.date > '2015-12-31'
                 )
                 join mindsdb.tp3 as tb 
             )       
             '''
         expected_plan.add_step(SaveToTable(
-            table=Identifier('int1.model_name'),
+            table=Identifier('files.model_name'),
             dataframe=expected_plan.steps[-1],
             is_replace=True,
         ))

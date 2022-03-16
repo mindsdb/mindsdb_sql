@@ -5,9 +5,11 @@ from mindsdb_sql.parser.utils import indent
 class DropPredictor(Drop):
     def __init__(self,
                  name,
+                 if_exists=False,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
+        self.if_exists = if_exists
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -16,10 +18,12 @@ class DropPredictor(Drop):
 
         out_str = f'{ind}DropPredictor(' \
                   f'{name_str}' \
+                  f'if_exists={self.if_exists}' \
                   f'\n{ind})'
         return out_str
 
     def get_string(self, *args, **kwargs):
-        out_str = f'DROP PREDICTOR {str(self.name)}'
+        exists_str = f'IF EXISTS ' if self.if_exists else ''
+        out_str = f'DROP PREDICTOR {exists_str}{str(self.name)}'
         return out_str
 
