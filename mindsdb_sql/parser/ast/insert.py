@@ -1,8 +1,11 @@
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
+from mindsdb_sql.parser.ast.create import TableColumn
+from mindsdb_sql.parser.ast.select.identifier import Identifier
 
 
 class Insert(ASTNode):
+
     def __init__(self,
                  table,
                  columns=None,
@@ -11,28 +14,47 @@ class Insert(ASTNode):
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.table = table
-        self.columns = columns
+
+        if columns is not None:
+            self.columns = [
+                self.to_column(col)
+                for col in columns
+            ]
+        else:
+            self.columns = None
 
         # TODO require one of [values, from_select] is set
         self.values = values
         self.from_select = from_select
+
+    def to_column(self, col):
+        if isinstance(col, str):
+            return TableColumn(col)
+        elif isinstance(col, Identifier):
+            return TableColumn(col.parts[0])
+        return col
+
+    def to_value(self, val):
+        if isinstance(val, ASTNode) :
+            return val.to_string()
+        return repr(val)
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
         ind1 = indent(level + 1)
         ind2 = indent(level + 2)
         if self.columns is not None:
-            columns_str = ', '.join([i.to_tree() for i in self.columns])
+            columns_str = ', '.join([i.name for i in self.columns])
         else:
             columns_str = ''
 
         if self.values is not None:
             values = []
             for row in self.values:
-                row_str = f'\n'.join([i.to_tree(level=level+3) for i in row])
-                values.append(f'{ind2}[\n{row_str}\n{ind2}],\n')
-            values_str = ''.join(values)
-            values_str = f'{ind1}values=[\n{values_str}{ind1}]\n'
+                row_str = f', '.join([self.to_value(i) for i in row])
+                values.append(f'{ind2}[{row_str}]')
+            values_str = f'\n'.join(values)
+            values_str = f'{ind1}values=[\n{values_str}]\n'
         else:
             values_str = ''
 
@@ -50,7 +72,7 @@ class Insert(ASTNode):
 
     def get_string(self, *args, **kwargs):
         if self.columns is not None:
-            cols = ', '.join(map(str, self.columns))
+            cols = ', '.join([i.name for i in self.columns])
             columns_str = f'({cols})'
         else:
             columns_str = ''
@@ -58,7 +80,7 @@ class Insert(ASTNode):
         if self.values is not None:
             values = []
             for row in self.values:
-                row_str = ', '.join(map(str, row))
+                row_str = ', '.join([self.to_value(i) for i in row])
                 values.append(f'({row_str})')
             values_str = 'VALUES ' + ', '.join(values)
         else:

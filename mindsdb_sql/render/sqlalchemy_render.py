@@ -45,6 +45,15 @@ class SqlalchemyRender():
 
     def to_expression(self, t):
 
+        # simple type
+        if (
+                isinstance(t, str)
+                or isinstance(t, int)
+                or isinstance(t, float)
+                or t is None
+        ):
+            t = ast.Constant(t)
+
         if isinstance(t, ast.Star):
             col = '*'
         elif isinstance(t, ast.Constant):
@@ -424,7 +433,32 @@ class SqlalchemyRender():
             metadata,
             schema=schema
         )
-        return DropTable(table)
+        return DropTable(table, if_exists=ast_query.if_exists)
+
+    def prepare_insert(self, ast_query):
+        schema, table_name = self.get_table_name(ast_query.table)
+
+        columns = [
+            sa.Column(
+                col.name,
+                #self.get_type(col.type)
+            )
+            for col in ast_query.columns
+        ]
+
+        table = sa.table(table_name, schema=schema, *columns)
+
+        values = []
+        for row in ast_query.values:
+            row = [
+                self.to_expression(val)
+                for val in row
+            ]
+            values.append(row)
+
+        stmt = table.insert().values(values)
+        return stmt
+
 
     def get_string(self, ast_query, with_failback=True):
         try:
@@ -434,6 +468,8 @@ class SqlalchemyRender():
                 stmt = self.prepare_create_table(ast_query)
             elif isinstance(ast_query, ast.DropTables):
                 stmt = self.prepare_drop_table(ast_query)
+            elif isinstance(ast_query, ast.Insert):
+                stmt = self.prepare_insert(ast_query)
             else:
                 raise NotImplementedError(f'Unknown statement: {ast_query.__name__}')
 
