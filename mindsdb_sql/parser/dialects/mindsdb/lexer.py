@@ -14,7 +14,7 @@ class MindsDBLexer(Lexer):
     ignore_line_comment = r'--[^\n]*'
 
     tokens = {
-        USE, DROP, CREATE, DESCRIBE, RETRAIN,
+        USE, DROP, CREATE, DESCRIBE, RETRAIN, REPLACE,
 
         # Misc
         SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
@@ -28,7 +28,6 @@ class MindsDBLexer(Lexer):
 
         LATEST, HORIZON, USING,
         ENGINE, TRAIN, PREDICT, PARAMETERS,
-
 
         # SHOW/DDL Keywords
 
@@ -169,6 +168,7 @@ class MindsDBLexer(Lexer):
     HOSTS = r'\bHOSTS\b'
     OPEN = r'\bOPEN\b'
     INDEXES = r'\bINDEXES\b'
+    REPLACE = r'\bREPLACE\b'
 
     # SELECT
 

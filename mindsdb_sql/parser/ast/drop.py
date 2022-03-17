@@ -40,7 +40,7 @@ class DropTables(Drop):
     def get_string(self, *args, **kwargs):
         temporary_str = f'TEMPORARY' if self.only_temporary else ''
         exists_str = f'IF EXISTS' if self.if_exists else ''
-        tables_str = ', '.join(self.tables)
+        tables_str = ', '.join([i.to_string() for i in self.tables])
 
         return f'DROP {temporary_str} TABLE {exists_str} {tables_str}'
 

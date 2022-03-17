@@ -2,7 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.query import aliased
 from sqlalchemy.dialects import mysql, postgresql, sqlite, mssql, firebird, oracle, sybase
-
+from sqlalchemy.schema import CreateTable, DropTable
 
 from mindsdb_sql.parser import ast
 
@@ -23,6 +23,9 @@ class SqlalchemyRender():
         }
 
         self.dialect = dialects[dialect_name].dialect()
+        self.types_map = {}
+        for type_name in sa.types.__all__:
+            self.types_map[type_name.upper()] = getattr(sa.types, type_name)
 
     def to_column(self, parts):
         # because sqlalchemy doesn't allow columns consist from parts therefore we do it manually
@@ -41,6 +44,15 @@ class SqlalchemyRender():
         return alias.parts[0]
 
     def to_expression(self, t):
+
+        # simple type
+        if (
+                isinstance(t, str)
+                or isinstance(t, int)
+                or isinstance(t, float)
+                or t is None
+        ):
+            t = ast.Constant(t)
 
         if isinstance(t, ast.Star):
             col = '*'
@@ -170,11 +182,7 @@ class SqlalchemyRender():
                 col = col.label(self.get_alias(t.alias))
         elif isinstance(t, ast.TypeCast):
             arg = self.to_expression(t.arg)
-            # TODO how to get type
-            typename =  t.type_name.upper()
-            if typename == 'INT64':
-                typename = 'BIGINT'
-            type = getattr(sa.types, typename)
+            type = self.get_type(t.type_name)
             col = sa.cast(arg, type)
 
             if t.alias:
@@ -197,6 +205,18 @@ class SqlalchemyRender():
             raise NotImplementedError(f'Column {t}')
 
         return col
+
+    def get_type(self, typename):
+        # TODO how to get type
+        if not isinstance(typename, str):
+            # sqlalchemy type
+            return typename
+
+        typename = typename.upper()
+        if typename == 'INT64':
+            typename = 'BIGINT'
+        type = self.types_map[typename]
+        return type
 
     def prepare_join(self, join):
         # join tree to table list
@@ -225,19 +245,25 @@ class SqlalchemyRender():
 
         return items
 
-    def to_table(self, node):
-        if isinstance(node, ast.Identifier):
-            parts = node.parts
+    def get_table_name(self, table_name):
+        schema = None
+        if isinstance(table_name, ast.Identifier):
+            parts = table_name.parts
 
             if len(parts) > 2:
                 # TODO tests is failing
-                raise NotImplementedError(f'Path to long: {node.parts}')
+                raise NotImplementedError(f'Path to long: {table_name.parts}')
 
-            schema = None
             if len(parts) == 2:
                 schema = parts[-2]
 
             table_name = parts[-1]
+
+        return schema, table_name
+
+    def to_table(self, node):
+        if isinstance(node, ast.Identifier):
+            schema, table_name = self.get_table_name(node)
 
             table = sa.table(table_name, schema=schema)
 
@@ -375,10 +401,75 @@ class SqlalchemyRender():
 
         return query
 
+    def prepare_create_table(self, ast_query):
+        columns = [
+            sa.Column(
+                col.name,
+                self.get_type(col.type)
+            )
+            for col in ast_query.columns
+        ]
+        schema, table_name = self.get_table_name(ast_query.name)
+
+        metadata = sa.MetaData()
+        table = sa.Table(
+            table_name,
+            metadata,
+            schema=schema,
+            *columns
+        )
+
+        return CreateTable(table)
+
+    def prepare_drop_table(self, ast_query):
+        if len(ast_query.tables) != 1:
+            raise NotImplementedError('Only one table is supported')
+
+        schema, table_name = self.get_table_name(ast_query.tables[0])
+
+        metadata = sa.MetaData()
+        table = sa.Table(
+            table_name,
+            metadata,
+            schema=schema
+        )
+        return DropTable(table, if_exists=ast_query.if_exists)
+
+    def prepare_insert(self, ast_query):
+        schema, table_name = self.get_table_name(ast_query.table)
+
+        columns = [
+            sa.Column(
+                col.name,
+                #self.get_type(col.type)
+            )
+            for col in ast_query.columns
+        ]
+
+        table = sa.table(table_name, schema=schema, *columns)
+
+        values = []
+        for row in ast_query.values:
+            row = [
+                self.to_expression(val)
+                for val in row
+            ]
+            values.append(row)
+
+        stmt = table.insert().values(values)
+        return stmt
+
+
     def get_string(self, ast_query, with_failback=True):
         try:
             if isinstance(ast_query, ast.Select):
                 stmt = self.prepare_select(ast_query)
+            elif isinstance(ast_query, ast.CreateTable):
+                stmt = self.prepare_create_table(ast_query)
+            elif isinstance(ast_query, ast.DropTables):
+                stmt = self.prepare_drop_table(ast_query)
+            elif isinstance(ast_query, ast.Insert):
+                stmt = self.prepare_insert(ast_query)
             else:
                 raise NotImplementedError(f'Unknown statement: {ast_query.__name__}')
 

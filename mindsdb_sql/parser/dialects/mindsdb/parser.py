@@ -419,9 +419,11 @@ class MindsDBParser(Parser):
 
     # DROP PREDICTOR
     @_('DROP PREDICTOR identifier',
+       'DROP PREDICTOR IF_EXISTS identifier',
        'DROP TABLE identifier')
     def drop_predictor(self, p):
-        return DropPredictor(p.identifier)
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropPredictor(p.identifier, if_exists=if_exists)
 
     # DROP DATASOURCE
     @_('DROP DATASOURCE identifier')
@@ -434,6 +436,21 @@ class MindsDBParser(Parser):
         return DropDataset(p.identifier)
 
     # create table
+    @_('CREATE TABLE identifier select')
+    @_('CREATE TABLE identifier LPAREN select RPAREN')
+    @_('CREATE OR REPLACE TABLE identifier select')
+    @_('CREATE OR REPLACE TABLE identifier LPAREN select RPAREN')
+    def create_table(self, p):
+        # TODO create table with columns
+        is_replace = False
+        if hasattr(p, 'REPLACE'):
+            is_replace = True
+        return CreateTable(
+            name=p.identifier,
+            is_replace=is_replace,
+            from_select=p.select
+        )
+
     @_('CREATE TABLE identifier USING kw_parameter_list')
     def create_table(self, p):
         params = p.kw_parameter_list
@@ -1132,6 +1149,7 @@ class MindsDBParser(Parser):
        'PUBLICATION',
        'PUBLICATIONS',
        'REPEATABLE',
+       'REPLACE',
        'REPLICA',
        'REPLICAS',
        'RETRAIN',

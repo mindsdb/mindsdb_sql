@@ -35,7 +35,7 @@ class TestInsert:
             ]
         )
 
-        assert str(ast).lower() == sql.lower()
+        assert str(ast).lower() == str(expected_ast).lower()
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_insert_from_select(self, dialect):
