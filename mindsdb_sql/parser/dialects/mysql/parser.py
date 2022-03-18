@@ -36,6 +36,7 @@ class MySQLParser(SQLParser):
        'delete',
        'drop_database',
        'drop_view',
+       'create_table',
        )
     def query(self, p):
         return p[0]
@@ -92,10 +93,29 @@ class MySQLParser(SQLParser):
     # Set
 
     @_('SET id identifier')
+    @_('SET id identifier COLLATE constant')
+    @_('SET id identifier COLLATE DEFAULT')
+    @_('SET id constant')
+    @_('SET id constant COLLATE constant')
+    @_('SET id constant COLLATE DEFAULT')
     def set(self, p):
         if not p.id.lower() == 'names':
             raise ParsingException(f'Expected "SET names", got "SET {p.id}"')
-        return Set(category=p.id.lower(), arg=p.identifier)
+        if isinstance(p[2], Constant):
+            arg = Identifier(p[2].value)
+        else:
+            # is identifier
+            arg = p[2]
+
+        params = {}
+        if hasattr(p, 'COLLATE'):
+            if isinstance(p[4], Constant):
+                val = p[4]
+            else:
+                val = SpecialConstant('DEFAULT')
+            params['COLLATE'] = val
+
+        return Set(category=p.id.lower(), arg=arg, params=params)
 
     # set charset
     @_('SET charset constant')
@@ -368,6 +388,24 @@ class MySQLParser(SQLParser):
     @_('select UNION ALL select')
     def union(self, p):
         return Union(left=p.select0, right=p.select1, unique=False)
+
+
+    # create table
+    @_('CREATE TABLE identifier select')
+    @_('CREATE TABLE identifier LPAREN select RPAREN')
+    @_('CREATE OR REPLACE TABLE identifier select')
+    @_('CREATE OR REPLACE TABLE identifier LPAREN select RPAREN')
+    def create_table(self, p):
+        # TODO create table with columns
+        is_replace = False
+        if hasattr(p, 'REPLACE'):
+            is_replace = True
+        return CreateTable(
+            name=p.identifier,
+            is_replace=is_replace,
+            from_select=p.select
+        )
+
 
     # WITH
     @_('ctes select')
