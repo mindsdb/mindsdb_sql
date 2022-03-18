@@ -936,3 +936,18 @@ class TestSelectStructureNoSqlite:
 
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_table_star(self, dialect):
+        sql = f'select *, t.* From table1 '
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[
+                Star(),
+                Identifier(parts=['t', Star()]),
+            ],
+            from_table=Identifier('table1')
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)

@@ -1099,9 +1099,14 @@ class MindsDBParser(Parser):
 
 
     @_('identifier DOT identifier')
+    @_('identifier DOT star')
     def identifier(self, p):
-        p.identifier0.parts += p.identifier1.parts
-        return p.identifier0
+        node = p[0]
+        if isinstance(p[2], Star):
+            node.parts.append(p[2])
+        else:
+            node.parts += p[2].parts
+        return node
 
     @_('id',
        'dquote_string')
