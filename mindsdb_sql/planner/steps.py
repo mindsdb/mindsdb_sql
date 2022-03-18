@@ -206,5 +206,5 @@ class SaveToTable(PlanStep):
         super().__init__(*args, **kwargs)
         self.table = table
         self.dataframe = dataframe
-        self.is_replace = True
+        self.is_replace = is_replace
 

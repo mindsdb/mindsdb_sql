@@ -504,12 +504,16 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR identifier FROM identifier WITH LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
     @_('CREATE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
-    @_('CREATE TABLE identifier FROM identifier WITH LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
     @_('CREATE TABLE identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
     @_('CREATE PREDICTOR identifier PREDICT result_columns')
+    @_('CREATE OR REPLACE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE OR REPLACE TABLE identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
+    @_('CREATE OR REPLACE PREDICTOR identifier PREDICT result_columns')
     def create_predictor(self, p):
+        is_replace = False
+        if hasattr(p, 'REPLACE'):
+            is_replace = True
 
         query_str = None
         if hasattr(p, 'raw_query'):
@@ -527,6 +531,7 @@ class MindsDBParser(Parser):
             query_str=query_str,
             datasource_name=getattr(p, 'optional_data_source_name', None),
             targets=p.result_columns,
+            is_replace=is_replace
         )
 
     @_('AS identifier')
