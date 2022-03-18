@@ -179,3 +179,25 @@ class TestMiscQueriesNoSqlite:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+
+@pytest.mark.parametrize('dialect', ['mindsdb'])
+class TestMiscQueriesMindsdb:
+
+    def test_set(self, dialect):
+        sql = "SET NAMES some_name collate default"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(category="names",
+                           arg=Identifier('some_name'),
+                           params={'COLLATE': 'DEFAULT'})
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = "SET NAMES some_name collate 'utf8mb4_general_ci'"
+
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Set(category="names",
+                           arg=Identifier('some_name'),
+                           params={'COLLATE': Constant('utf8mb4_general_ci')})
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)

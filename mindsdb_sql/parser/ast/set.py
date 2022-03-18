@@ -7,29 +7,40 @@ class Set(ASTNode):
     def __init__(self,
                  category=None,
                  arg=None,
+                 params=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.category = category
-        self.category = category
         self.arg = arg
+        self.params = params or {}
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
+        ind1 = indent(level+1)
         category_str = f'category={self.category}, '
-        arg_str = f'arg={self.arg.to_tree(level=level+2)},' if self.arg else ''
-
+        arg_str = f'arg={self.arg.to_tree()},' if self.arg else ''
+        if self.params:
+            param_str = 'param=' + ', '.join([f'{k}:{v}' for k,v in self.params.items()])
+        else:
+            param_str = ''
         out_str = f'{ind}Set(' \
                   f'{category_str}' \
-                  f'{arg_str}' \
-                  f'\n{ind})'
+                  f'{arg_str} ' \
+                  f'{param_str}' \
+                  f')'
         return out_str
 
     def get_string(self, *args, **kwargs):
+        if self.params:
+            param_str = ' ' + ' '.join([f'{k} {v}' for k, v in self.params.items()])
+        else:
+            param_str = ''
+
         if isinstance(self.arg, Tuple):
             arg_str = ', '.join([str(i) for i in self.arg.items])
         else:
             arg_str = f' {str(self.arg)}' if self.arg else ''
-        return f'SET {self.category if self.category else ""}{arg_str}'
+        return f'SET {self.category if self.category else ""}{arg_str}{param_str}'
 
 
 class SetTransaction(ASTNode):

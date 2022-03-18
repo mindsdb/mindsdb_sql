@@ -116,10 +116,29 @@ class MindsDBParser(Parser):
     # Set
 
     @_('SET id identifier')
+    @_('SET id identifier COLLATE constant')
+    @_('SET id identifier COLLATE DEFAULT')
+    @_('SET id constant')
+    @_('SET id constant COLLATE constant')
+    @_('SET id constant COLLATE DEFAULT')
     def set(self, p):
         if not p.id.lower() == 'names':
             raise ParsingException(f'Expected "SET names", got "SET {p.id}"')
-        return Set(category=p.id.lower(), arg=p.identifier)
+        if isinstance(p[2], Constant):
+            arg = Identifier(p[2].value)
+        else:
+            # is identifier
+            arg = p[2]
+
+        params = {}
+        if hasattr(p, 'COLLATE'):
+            if isinstance(p[4], Constant):
+                val = p[4]
+            else:
+                val = SpecialConstant('DEFAULT')
+            params['COLLATE'] = val
+
+        return Set(category=p.id.lower(), arg=arg, params=params)
 
     # set charset
     @_('SET charset constant')
