@@ -39,6 +39,24 @@ class TestCreateDatasource:
                     assert str(ast) == str(expected_ast)
                     assert ast.to_tree() == expected_ast.to_tree()
 
+        sql = """
+                      CREATE or REPLACE DATABASE db
+                                /*
+                                    multiline comment
+                                */
+                                WITH ENGINE='mysql'
+                                PARAMETERS = {"user": "admin", "password": "admin123_.,';:!@#$%^&*(){}[]", "host": "127.0.0.1"}
+                            """
+
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreateDatasource(name='db',
+                                        engine='mysql',
+                                        is_replace=True,
+                                        parameters=dict(user='admin', password="admin123_.,';:!@#$%^&*(){}[]",
+                                                        host='127.0.0.1'))
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_create_datasource_invalid_json(self):
         sql = "CREATE DATASOURCE db WITH ENGINE = 'mysql', PARAMETERS = 'wow'"
         with pytest.raises(ParsingException):

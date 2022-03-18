@@ -547,10 +547,19 @@ class MindsDBParser(Parser):
        'CREATE datasource_engine COMMA PARAMETERS json',
        'CREATE datasource_engine PARAMETERS EQUALS json',
        'CREATE datasource_engine PARAMETERS json')
+    @_('CREATE OR REPLACE datasource_engine COMMA PARAMETERS EQUALS json',
+       'CREATE OR REPLACE datasource_engine COMMA PARAMETERS json',
+       'CREATE OR REPLACE datasource_engine PARAMETERS EQUALS json',
+       'CREATE OR REPLACE datasource_engine PARAMETERS json')
     def create_integration(self, p):
+        is_replace = False
+        if hasattr(p, 'REPLACE'):
+            is_replace = True
+
         return CreateDatasource(name=p.datasource_engine['id'],
-                                 engine=p.datasource_engine['engine'],
-                                 parameters=p.json)
+                                engine=p.datasource_engine['engine'],
+                                is_replace=is_replace,
+                                parameters=p.json)
 
     @_('DATASOURCE id WITH ENGINE EQUALS string',
        'DATASOURCE id WITH ENGINE string',

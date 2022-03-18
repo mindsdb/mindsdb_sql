@@ -10,7 +10,7 @@ as a string.
 class MindsDBLexer(Lexer):
     reflags = re.IGNORECASE
     ignore = ' \t\r'
-    ignore_multi_comment = r'/\*.*?\*/'
+    ignore_multi_comment = r'/\*[\s\S]*?\*/'
     ignore_line_comment = r'--[^\n]*'
 
     tokens = {

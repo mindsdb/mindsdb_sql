@@ -4,7 +4,7 @@ from sly import Lexer
 class SQLLexer(Lexer):
     reflags = re.IGNORECASE
     ignore = ' \t\n\r'
-    ignore_multi_comment = r'/\*.*?\*/'
+    ignore_multi_comment = r'/\*[\s\S]*?\*/'
     ignore_line_comment = r'--[^\n]*'
 
     tokens = {
