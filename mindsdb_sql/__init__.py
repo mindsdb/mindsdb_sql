@@ -1,5 +1,5 @@
 from mindsdb_sql.exceptions import ParsingException
-
+from mindsdb_sql.parser.ast import *
 
 def get_lexer_parser(dialect):
     if dialect == 'sqlite':
