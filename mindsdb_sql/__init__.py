@@ -1,3 +1,5 @@
+import re
+
 from mindsdb_sql.exceptions import ParsingException
 
 
@@ -20,6 +22,9 @@ def get_lexer_parser(dialect):
 
 
 def parse_sql(sql, dialect='sqlite'):
+    # remove ending semicolon and spaces
+    sql = re.sub(r'[\s;]+$', '', sql)
+
     lexer, parser = get_lexer_parser(dialect)
     tokens = lexer.tokenize(sql)
     ast = parser.parse(tokens)
