@@ -6,6 +6,8 @@ from sqlalchemy.schema import CreateTable, DropTable
 
 from mindsdb_sql.parser import ast
 
+class RenderError(Exception):
+    ...
 
 class SqlalchemyRender():
 
@@ -438,13 +440,19 @@ class SqlalchemyRender():
     def prepare_insert(self, ast_query):
         schema, table_name = self.get_table_name(ast_query.table)
 
-        columns = [
-            sa.Column(
-                col.name,
-                #self.get_type(col.type)
+        names = []
+        columns = []
+        for col in ast_query.columns:
+            columns.append(
+                sa.Column(
+                    col.name,
+                    # self.get_type(col.type)
+                )
             )
-            for col in ast_query.columns
-        ]
+            # check doubles
+            if col.name in names:
+                raise RenderError(f'Columns name double: {col.name}')
+            names.append(col.name)
 
         table = sa.table(table_name, schema=schema, *columns)
 
