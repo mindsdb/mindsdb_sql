@@ -302,7 +302,7 @@ class TestOperations:
         expected_where = BinaryOperation(op='IN',
                                          args=[
                                              Identifier.from_path_str('col1'),
-                                             Tuple(items=[Identifier('a'), Identifier("b")]),
+                                             Tuple(items=[Constant('a'), Constant("b")]),
                                          ])
         print(ast.where.to_tree())
         print(expected_where.to_tree())
@@ -431,15 +431,6 @@ class TestOperations:
                              )
         assert ast.to_tree() == expected_ast.to_tree()
         # assert str(ast).lower() == sql.lower()
-        assert str(ast) == str(expected_ast)
-
-    def test_select_double_quote(self, dialect):
-        sql = 'select status from "mindsdb.predictors"'
-        ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Select(targets=[Identifier.from_path_str("status")],
-                              from_table=Identifier.from_path_str('mindsdb.predictors')
-                             )
-        assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
     def test_select_from_engines(self, dialect):

@@ -19,7 +19,7 @@ class TestCreatePredictor:
                 WINDOW 100
                 HORIZON 7
                 USING 
-                    x."part 2".part3=1, 
+                    x.`part 2`.part3=1, 
                     y= "a", 
                     z=0.7,
                     j={'t': [1,2.1,[], {}, False, true, null]},

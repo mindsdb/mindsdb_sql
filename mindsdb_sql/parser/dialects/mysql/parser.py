@@ -871,8 +871,7 @@ class MySQLParser(SQLParser):
             node.parts += p[2].parts
         return node
 
-    @_('id',
-       'dquote_string')
+    @_('id')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)
