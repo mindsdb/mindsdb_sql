@@ -487,13 +487,13 @@ class TestOperationsNoSqlite:
         sql = """
             select
               a as "database"      
-            from information_schema.tables
+            from information_schema.tables "database"
         """
         ast = parse_sql(sql, dialect=dialect)
 
         expected_ast = Select(
             targets=[Identifier('a', alias=Identifier('database'))],
-            from_table=Identifier.from_path_str('information_schema.tables'),
+            from_table=Identifier(parts=['information_schema', 'tables'], alias=Identifier('database')),
         )
 
         assert str(ast) == str(expected_ast)

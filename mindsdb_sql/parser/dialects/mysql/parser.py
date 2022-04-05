@@ -590,11 +590,15 @@ class MySQLParser(SQLParser):
 
     @_('from_table AS identifier',
        'from_table identifier',
+       'from_table AS dquote_string',
+       'from_table dquote_string',
        'from_table')
     def from_table_aliased(self, p):
         entity = p.from_table
         if hasattr(p, 'identifier'):
             entity.alias = p.identifier
+        if hasattr(p, 'dquote_string'):
+            entity.alias = Identifier(p.dquote_string)
         return entity
 
     @_('LPAREN query RPAREN')
