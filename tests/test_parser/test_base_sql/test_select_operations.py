@@ -482,3 +482,19 @@ class TestOperationsNoSqlite:
             assert isinstance(ast, Select)
             assert len(ast.targets) == 1
             assert isinstance(ast.targets[0], Function)
+
+    def test_select_dquote_alias(self, dialect):
+        sql = """
+            select
+              a as "database"      
+            from information_schema.tables
+        """
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[Identifier('a', alias=Identifier('database'))],
+            from_table=Identifier.from_path_str('information_schema.tables'),
+        )
+
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()

@@ -818,12 +818,18 @@ class MindsDBParser(Parser):
         return [p.result_column]
 
     @_('result_column AS identifier',
-       'result_column identifier')
+       'result_column identifier',
+       'result_column AS dquote_string',
+       'result_column dquote_string')
     def result_column(self, p):
         col = p.result_column
         if col.alias:
             raise ParsingException(f'Attempt to provide two aliases for {str(col)}')
-        col.alias = p.identifier
+        if hasattr(p, 'dquote_string'):
+            alias = Identifier(p.dquote_string)
+        else:
+            alias = p.identifier
+        col.alias = alias
         return col
 
     @_('LPAREN select RPAREN')
