@@ -1,5 +1,6 @@
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
+from mindsdb_sql.parser.ast.select import Star
 
 import re
 
@@ -46,20 +47,22 @@ class Identifier(ASTNode):
     def parts_to_str(self):
         out_parts = []
         for part in self.parts:
-            if (
-                not no_wrap_identifier_regex.fullmatch(part)
-              or
-                part.upper() in self.reserved
-            ):
-                out_parts.append(f'`{part}`')
-
+            if isinstance(part, Star):
+                part = str(part)
             else:
-                out_parts.append(part)
+                if (
+                    not no_wrap_identifier_regex.fullmatch(part)
+                  or
+                    part.upper() in self.reserved
+                ):
+                    part = f'`{part}`'
+
+            out_parts.append(part)
         return '.'.join(out_parts)
 
     def to_tree(self, *args, level=0, **kwargs):
         alias_str = f', alias={self.alias.to_tree()}' if self.alias else ''
-        return indent(level) + f'Identifier(parts={repr(self.parts)}{alias_str})'
+        return indent(level) + f'Identifier(parts={[str(i) for i in self.parts]}{alias_str})'
 
     def get_string(self, *args, **kwargs):
         return self.parts_to_str()

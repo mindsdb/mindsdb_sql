@@ -10,11 +10,11 @@ as a string.
 class MindsDBLexer(Lexer):
     reflags = re.IGNORECASE
     ignore = ' \t\r'
-    ignore_multi_comment = r'/\*.*?\*/'
+    ignore_multi_comment = r'/\*[\s\S]*?\*/'
     ignore_line_comment = r'--[^\n]*'
 
     tokens = {
-        USE, DROP, CREATE, DESCRIBE, RETRAIN,
+        USE, DROP, CREATE, DESCRIBE, RETRAIN, REPLACE,
 
         # Misc
         SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
@@ -29,7 +29,6 @@ class MindsDBLexer(Lexer):
         LATEST, HORIZON, USING,
         ENGINE, TRAIN, PREDICT, PARAMETERS,
 
-
         # SHOW/DDL Keywords
 
         SHOW, SCHEMAS, SCHEMA, DATABASES, DATABASE, TABLES, TABLE, FULL, EXTENDED, PROCESSLIST,
@@ -39,8 +38,7 @@ class MindsDBLexer(Lexer):
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
         PERSIST, PERSIST_ONLY, DEFAULT,
-        IF_EXISTS, COLUMNS, FIELDS,
-
+        IF_EXISTS, COLUMNS, FIELDS, COLLATE,
         # SELECT Keywords
         WITH, SELECT, DISTINCT, FROM, WHERE, AS,
         LIMIT, OFFSET, ASC, DESC, NULLS_FIRST, NULLS_LAST,
@@ -169,6 +167,8 @@ class MindsDBLexer(Lexer):
     HOSTS = r'\bHOSTS\b'
     OPEN = r'\bOPEN\b'
     INDEXES = r'\bINDEXES\b'
+    REPLACE = r'\bREPLACE\b'
+    COLLATE = r'\bCOLLATE\b'
 
     # SELECT
 

@@ -11,7 +11,7 @@ class TestCreatePredictor:
     def test_create_predictor_full(self, keyword):
         sql = """CREATE %s pred
                 FROM integration_name 
-                WITH (selct * FROM not some actually ( {'t': [1,2.1,[], {}, False, true, null]} ) not sql (name))
+                (selct * FROM not some actually ( {'t': [1,2.1,[], {}, False, true, null]} ) not sql (name))
                 AS ds_name
                 PREDICT f1 as f1_alias, f2
                 ORDER BY f_order_1 ASC, f_order_2, f_order_3 DESC
@@ -19,7 +19,7 @@ class TestCreatePredictor:
                 WINDOW 100
                 HORIZON 7
                 USING 
-                    x."part 2".part3=1, 
+                    x.`part 2`.part3=1, 
                     y= "a", 
                     z=0.7,
                     j={'t': [1,2.1,[], {}, False, true, null]},
@@ -58,7 +58,7 @@ class TestCreatePredictor:
     def test_create_predictor_minimal(self):
         sql = """CREATE PREDICTOR pred
                 FROM integration_name 
-                WITH (select * FROM table_name)
+                (select * FROM table_name)
                 AS ds_name
                 PREDICT f1 as f1_alias, f2
                 """
@@ -96,7 +96,7 @@ class TestCreatePredictor:
     def test_create_predictor_quotes(self):
         sql = """CREATE PREDICTOR xxx 
                  FROM `yyy` 
-                  WITH (SELECT * FROM zzz)
+                  (SELECT * FROM zzz)
                   AS x 
                   PREDICT sss
                 """
@@ -111,10 +111,22 @@ class TestCreatePredictor:
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()
 
+        # or replace
+        sql = """CREATE or REPLACE PREDICTOR xxx 
+                         FROM `yyy` 
+                          (SELECT * FROM zzz)
+                          AS x 
+                          PREDICT sss
+                        """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast.is_replace = True
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_create_predictor_invalid_json(self):
         sql = """CREATE PREDICTOR pred
                 FROM integration_name 
-                WITH (select * FROM table)
+                (select * FROM table)
                 AS ds_name
                 PREDICT f1 as f1_alias, f2
                 ORDER BY f_order_1 ASC, f_order_2, f_order_3 DESC

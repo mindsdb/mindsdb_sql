@@ -28,3 +28,12 @@ class TestDropPredictor:
         expected_ast = DropPredictor(name=Identifier('mindsdb.pred'))
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_drop_predictor_if_exists(self):
+        sql = "DROP PREDICTOR IF EXISTS mindsdb.pred"
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = DropPredictor(
+            name=Identifier('mindsdb.pred'),
+            if_exists=True)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()

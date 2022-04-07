@@ -8,7 +8,7 @@ from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, ApplyTimeseriesPredictorStep,
-                                       LimitOffsetStep, MapReduceStep, MultipleSteps, JoinStep)
+                                       LimitOffsetStep, MapReduceStep, MultipleSteps, JoinStep, SaveToTable)
 from mindsdb_sql.parser.utils import JoinType
 
 
@@ -827,6 +827,20 @@ class TestJoinTimeseriesPredictor:
         sql = "select * from ds.data.ny_output as ta \
                left join mindsdb.pr as tb \
                where ta.f2 between '2020-11-01' and '2020-12-01' and ta.f1 > LATEST"
+
+        self._test_timeseries_with_between_operator(sql)
+
+        sql = """select * from (
+                    select * from  ds.data.ny_output as ta 
+                    where ta.f2 between '2020-11-01' and '2020-12-01' and ta.f1 > LATEST
+                )
+               left join mindsdb.pr as tb 
+               """
+
+        self._test_timeseries_with_between_operator(sql)
+
+    def _test_timeseries_with_between_operator(self, sql):
+
         query = parse_sql(sql,  dialect='mindsdb')
 
         predictor_window = 3
@@ -928,29 +942,9 @@ class TestJoinTimeseriesPredictor:
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
 
+
     def test_timeseries_no_group(self):
-        sql = '''select * from files.sweat as ta
-                  join mindsdb.tp3 as tb 
-                 where ta.date > '2015-12-31'
-            '''
-        query = parse_sql(sql,  dialect='mindsdb')
-
         predictor_window = 3
-        plan = plan_query(
-            query,
-            integrations=['files'],
-            predictor_namespace='mindsdb',
-            predictor_metadata={
-                'tp3': {
-                    'timeseries': True,
-                    'window': predictor_window,
-                    'order_by_column': 'date',
-                    'group_by_columns': []
-                }
-            },
-            default_namespace='mindsdb'
-        )
-
         expected_plan = QueryPlan(
             default_namespace='ds',
             steps=[
@@ -985,6 +979,56 @@ class TestJoinTimeseriesPredictor:
                          ),
                 ProjectStep(dataframe=Result(2), columns=[Star()]),
             ],
+        )
+
+        sql = '''select * from files.sweat as ta
+                  join mindsdb.tp3 as tb 
+                 where ta.date > '2015-12-31'
+            '''
+        self._test_timeseries_no_group(sql, expected_plan)
+
+        sql = '''select * from (
+                    select * from files.sweat as ta                  
+                    where ta.date > '2015-12-31'
+                 )
+                 join mindsdb.tp3 as tb 
+            '''
+        self._test_timeseries_no_group(sql, expected_plan)
+
+        sql = '''
+            create or replace table files.model_name (
+                select * from (
+                           select * from sweat as ta                  
+                           where ta.date > '2015-12-31'
+                )
+                join mindsdb.tp3 as tb 
+            )       
+            '''
+        expected_plan.add_step(SaveToTable(
+            table=Identifier('files.model_name'),
+            dataframe=expected_plan.steps[-1],
+            is_replace=True,
+        ))
+        self._test_timeseries_no_group(sql, expected_plan)
+
+
+    def _test_timeseries_no_group(self, sql, expected_plan):
+        predictor_window = 3
+        query = parse_sql(sql,  dialect='mindsdb')
+
+        plan = plan_query(
+            query,
+            integrations=['files'],
+            predictor_namespace='mindsdb',
+            predictor_metadata={
+                'tp3': {
+                    'timeseries': True,
+                    'window': predictor_window,
+                    'order_by_column': 'date',
+                    'group_by_columns': []
+                }
+            },
+            default_namespace='mindsdb'
         )
 
         for i in range(len(plan.steps)):

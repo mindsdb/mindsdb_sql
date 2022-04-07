@@ -489,8 +489,10 @@ class PreparedStatementPlanner():
         if isinstance(query, ast.Show):
             return self.prepare_show(query)
         else:
-            raise NotImplementedError(query.__name__)
 
+            # do nothing
+            return []
+            # raise NotImplementedError(query.__name__)
 
     def execute_steps(self, params=None):
         # find all parameters
@@ -524,7 +526,11 @@ class PreparedStatementPlanner():
         # prevent from second execution
         stmt.params = None
 
-        if isinstance(query, ast.Select) or isinstance(query, ast.Union):
+        if (
+                isinstance(query, ast.Select)
+                or isinstance(query, ast.Union)
+                or isinstance(query, ast.CreateTable)
+        ):
             return self.plan_query(query)
         else:
             return []

@@ -117,7 +117,9 @@ class TestPreparedStatement:
                     continue
 
                 tests = klass()
-                for _, test_method in inspect.getmembers(tests, predicate=inspect.ismethod):
+                for test_name, test_method in inspect.getmembers(tests, predicate=inspect.ismethod):
+                    if not test_name.startswith('test_'):
+                        continue
                     try:
                         test_method()
                     except query_planner.PlanningException as e:

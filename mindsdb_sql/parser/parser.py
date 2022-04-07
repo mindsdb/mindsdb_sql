@@ -661,8 +661,7 @@ class SQLParser(Parser):
         p.identifier0.parts += p.identifier1.parts
         return p.identifier0
 
-    @_('id',
-       'dquote_string')
+    @_('id')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)
