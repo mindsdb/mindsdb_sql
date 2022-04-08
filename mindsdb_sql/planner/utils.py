@@ -368,3 +368,30 @@ def convert_join_to_list(join):
     ))
 
     return items
+
+
+def get_query_params(query):
+    # find all parameters
+    params = []
+
+    def params_find(node, **kwargs):
+        if isinstance(node, ast.Parameter):
+            params.append(node)
+            return node
+
+    query_traversal(query, params_find)
+    return params
+
+def fill_query_params(query, params):
+
+    params = copy.deepcopy(params)
+
+    def params_replace(node, **kwargs):
+        if isinstance(node, ast.Parameter):
+            value = params.pop(0)
+            return ast.Constant(value)
+
+    # put parameters into query
+    query_traversal(query, params_replace)
+
+    return query

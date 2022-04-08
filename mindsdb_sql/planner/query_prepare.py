@@ -460,16 +460,7 @@ class PreparedStatementPlanner():
 
         query = copy.deepcopy(query)
 
-        # find all parameters
-        params = []
-
-        def params_find(node, **kwargs):
-            if isinstance(node, ast.Parameter):
-                params.append(node)
-                return node
-                # return ast.Constant('0')
-
-        utils.query_traversal(query, params_find)
+        params = utils.get_query_params(query)
 
         stmt.params = params
 
@@ -509,18 +500,12 @@ class PreparedStatementPlanner():
         query = self.planner.query
 
         if params is not None:
-            params = copy.deepcopy(params)
 
             if len(params) != len(stmt.params):
                 raise PlanningException("Count of execution parameters don't match prepared statement")
 
-            def params_replace(node, **kwargs):
-                if isinstance(node, ast.Parameter):
-                    value = params.pop(0)
-                    return ast.Constant(value)
+            query = utils.fill_query_params(query, params)
 
-            # put parameters into query
-            utils.query_traversal(query, params_replace)
             self.planner.query = query
 
         # prevent from second execution

@@ -1,6 +1,7 @@
 import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
+from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
                                     BetweenOperation, Union, NullConstant, CreateTable)
 
@@ -20,6 +21,7 @@ from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        recursively_check_join_identifiers_for_ambiguity,
                                        query_traversal)
 from mindsdb_sql.planner.query_plan import QueryPlan
+from mindsdb_sql.planner import utils
 from .query_prepare import PreparedStatementPlanner
 
 
@@ -566,6 +568,7 @@ class QueryPlanner():
             raise PlanningException(f'Unsupported query type {type(query)}')
 
         return self.plan
+
 
     def prepare_steps(self, query):
         statement_planner = PreparedStatementPlanner(self)
