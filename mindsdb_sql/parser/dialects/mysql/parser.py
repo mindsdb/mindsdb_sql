@@ -36,6 +36,7 @@ class MySQLParser(SQLParser):
        'delete',
        'drop_database',
        'drop_view',
+       'drop_table',
        'create_table',
        )
     def query(self, p):
@@ -73,6 +74,13 @@ class MySQLParser(SQLParser):
     def drop_database(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropDatabase(name=p.identifier, if_exists=if_exists)
+
+    # DROP TABLE
+    @_('DROP TABLE IF_EXISTS identifier')
+    @_('DROP TABLE identifier')
+    def drop_table(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropTables(tables=[p.identifier], if_exists=if_exists)
 
     # Transactions
 

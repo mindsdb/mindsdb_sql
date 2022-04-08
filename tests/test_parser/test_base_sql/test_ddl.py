@@ -52,3 +52,18 @@ class TestDDL:
         assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
 
+    @pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
+    def test_drop_predictor_table_syntax_ok(self, dialect):
+        sql = "DROP TABLE mindsdb.tbl"
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = DropTables(tables=[Identifier('mindsdb.tbl')])
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        sql = "DROP TABLE if exists mindsdb.tbl"
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = DropTables(tables=[Identifier('mindsdb.tbl')], if_exists=True)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+
