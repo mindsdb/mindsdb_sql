@@ -15,6 +15,7 @@ class CreatePredictor(ASTNode):
                  window=None,
                  horizon=None,
                  using=None,
+                 is_replace=False,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
@@ -27,6 +28,7 @@ class CreatePredictor(ASTNode):
         self.window = window
         self.horizon = horizon
         self.using = using
+        self.is_replace = is_replace
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -87,7 +89,7 @@ class CreatePredictor(ASTNode):
 
         query_str = ''
         if self.query_str is not None:
-            query_str = f'WITH ({self.query_str}) '
+            query_str = f'({self.query_str}) '
 
         integration_name_str = ''
         if self.integration_name is not None:

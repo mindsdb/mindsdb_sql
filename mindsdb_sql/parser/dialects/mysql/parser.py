@@ -36,6 +36,8 @@ class MySQLParser(SQLParser):
        'delete',
        'drop_database',
        'drop_view',
+       'drop_table',
+       'create_table',
        )
     def query(self, p):
         return p[0]
@@ -73,6 +75,13 @@ class MySQLParser(SQLParser):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropDatabase(name=p.identifier, if_exists=if_exists)
 
+    # DROP TABLE
+    @_('DROP TABLE IF_EXISTS identifier')
+    @_('DROP TABLE identifier')
+    def drop_table(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropTables(tables=[p.identifier], if_exists=if_exists)
+
     # Transactions
 
     @_('START TRANSACTION',
@@ -92,10 +101,29 @@ class MySQLParser(SQLParser):
     # Set
 
     @_('SET id identifier')
+    @_('SET id identifier COLLATE constant')
+    @_('SET id identifier COLLATE DEFAULT')
+    @_('SET id constant')
+    @_('SET id constant COLLATE constant')
+    @_('SET id constant COLLATE DEFAULT')
     def set(self, p):
         if not p.id.lower() == 'names':
             raise ParsingException(f'Expected "SET names", got "SET {p.id}"')
-        return Set(category=p.id.lower(), arg=p.identifier)
+        if isinstance(p[2], Constant):
+            arg = Identifier(p[2].value)
+        else:
+            # is identifier
+            arg = p[2]
+
+        params = {}
+        if hasattr(p, 'COLLATE'):
+            if isinstance(p[4], Constant):
+                val = p[4]
+            else:
+                val = SpecialConstant('DEFAULT')
+            params['COLLATE'] = val
+
+        return Set(category=p.id.lower(), arg=arg, params=params)
 
     # set charset
     @_('SET charset constant')
@@ -369,6 +397,24 @@ class MySQLParser(SQLParser):
     def union(self, p):
         return Union(left=p.select0, right=p.select1, unique=False)
 
+
+    # create table
+    @_('CREATE TABLE identifier select')
+    @_('CREATE TABLE identifier LPAREN select RPAREN')
+    @_('CREATE OR REPLACE TABLE identifier select')
+    @_('CREATE OR REPLACE TABLE identifier LPAREN select RPAREN')
+    def create_table(self, p):
+        # TODO create table with columns
+        is_replace = False
+        if hasattr(p, 'REPLACE'):
+            is_replace = True
+        return CreateTable(
+            name=p.identifier,
+            is_replace=is_replace,
+            from_select=p.select
+        )
+
+
     # WITH
     @_('ctes select')
     def select(self, p):
@@ -552,11 +598,15 @@ class MySQLParser(SQLParser):
 
     @_('from_table AS identifier',
        'from_table identifier',
+       'from_table AS dquote_string',
+       'from_table dquote_string',
        'from_table')
     def from_table_aliased(self, p):
         entity = p.from_table
         if hasattr(p, 'identifier'):
             entity.alias = p.identifier
+        if hasattr(p, 'dquote_string'):
+            entity.alias = Identifier(p.dquote_string)
         return entity
 
     @_('LPAREN query RPAREN')
@@ -610,12 +660,18 @@ class MySQLParser(SQLParser):
         return [p.result_column]
 
     @_('result_column AS identifier',
-       'result_column identifier')
+       'result_column identifier',
+       'result_column AS dquote_string',
+       'result_column dquote_string')
     def result_column(self, p):
         col = p.result_column
         if col.alias:
             raise ParsingException(f'Attempt to provide two aliases for {str(col)}')
-        col.alias = p.identifier
+        if hasattr(p, 'dquote_string'):
+            alias = Identifier(p.dquote_string)
+        else:
+            alias = p.identifier
+        col.alias = alias
         return col
 
     @_('LPAREN select RPAREN')
@@ -824,12 +880,16 @@ class MySQLParser(SQLParser):
         return Constant(value=str(p[0]))
 
     @_('identifier DOT identifier')
+    @_('identifier DOT star')
     def identifier(self, p):
-        p.identifier0.parts += p.identifier1.parts
-        return p.identifier0
+        node = p[0]
+        if isinstance(p[2], Star):
+            node.parts.append(p[2])
+        else:
+            node.parts += p[2].parts
+        return node
 
-    @_('id',
-       'dquote_string')
+    @_('id')
     def identifier(self, p):
         value = p[0]
         return Identifier.from_path_str(value)
