@@ -472,7 +472,9 @@ class PreparedStatementPlanner():
             # get column definition only from select
             return self.prepare_select(query.left)
         if isinstance(query, ast.Insert):
-            return self.prepare_insert(query)
+            # return self.prepare_insert(query)
+            # TODO do we need columns?
+            return []
         if isinstance(query, ast.Delete):
             ...
             # TODO do we need columns?

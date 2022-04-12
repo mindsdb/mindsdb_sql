@@ -43,13 +43,15 @@ class QueryPlanner():
         self.default_namespace = default_namespace
 
         # allow to select from mindsdb namespace
-        self.integrations.append(self.predictor_namespace)
+        # self.integrations.append(self.predictor_namespace)
 
         self.statement = None
 
     def is_predictor(self, identifier):
         parts = identifier.parts
-        if parts[0].lower() == self.predictor_namespace and parts[-1].lower() in self.predictor_metadata:
+        if parts[-1].lower() in ['predictors']:
+            return False
+        if parts[0].lower() == self.predictor_namespace:
             return True
         elif len(parts) == 1 and self.default_namespace == self.predictor_namespace:
             return True
