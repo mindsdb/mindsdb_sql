@@ -59,6 +59,7 @@ class MindsDBParser(Parser):
        'delete',
        'drop_database',
        'drop_view',
+       'drop_table',
        'create_table',
        )
     def query(self, p):
@@ -438,8 +439,7 @@ class MindsDBParser(Parser):
 
     # DROP PREDICTOR
     @_('DROP PREDICTOR identifier',
-       'DROP PREDICTOR IF_EXISTS identifier',
-       'DROP TABLE identifier')
+       'DROP PREDICTOR IF_EXISTS identifier')
     def drop_predictor(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropPredictor(p.identifier, if_exists=if_exists)
@@ -453,6 +453,13 @@ class MindsDBParser(Parser):
     @_('DROP DATASET identifier')
     def drop_dataset(self, p):
         return DropDataset(p.identifier)
+
+    # DROP TABLE
+    @_('DROP TABLE IF_EXISTS identifier')
+    @_('DROP TABLE identifier')
+    def drop_table(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropTables(tables=[p.identifier], if_exists=if_exists)
 
     # create table
     @_('CREATE TABLE identifier select')
