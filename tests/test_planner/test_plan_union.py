@@ -60,7 +60,7 @@ class TestPlanUnion:
             ],
         )
 
-        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]

@@ -118,7 +118,7 @@ class TestPreparedStatement:
 
                 tests = klass()
                 for test_name, test_method in inspect.getmembers(tests, predicate=inspect.ismethod):
-                    if not test_name.startswith('test_'):
+                    if not test_name.startswith('test_') or test_name.endswith('_error'):
                         continue
                     try:
                         test_method()

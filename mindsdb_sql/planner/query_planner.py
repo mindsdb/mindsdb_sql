@@ -49,7 +49,7 @@ class QueryPlanner():
 
     def is_predictor(self, identifier):
         parts = identifier.parts
-        if parts[-1].lower() in ['predictors']:
+        if not parts[-1].lower() in self.predictor_metadata:
             return False
         if parts[0].lower() == self.predictor_namespace:
             return True
