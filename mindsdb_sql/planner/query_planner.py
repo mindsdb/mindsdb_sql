@@ -52,12 +52,8 @@ class QueryPlanner():
         if not parts[-1].lower() in self.predictor_metadata:
             return False
         if parts[0].lower() == self.predictor_namespace:
-            if parts[-1].lower() == 'predictors':
-                return False
             return True
         elif len(parts) == 1 and self.default_namespace == self.predictor_namespace:
-            if parts[-1].lower() == 'predictors':
-                return False
             return True
         return False
 
