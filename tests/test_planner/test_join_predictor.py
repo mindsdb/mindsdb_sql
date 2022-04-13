@@ -31,7 +31,7 @@ class TestPlanJoinPredictor:
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab1.column1'), Identifier('pred.predicted')]),
             ],
         )
-        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
@@ -58,7 +58,7 @@ class TestPlanJoinPredictor:
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab1.column1'), Identifier('pred.predicted')]),
             ],
         )
-        plan = plan_query(query, integrations=['int'], predictor_namespace='MINDSDB')
+        plan = plan_query(query, integrations=['int'], predictor_namespace='MINDSDB', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
         
@@ -84,7 +84,7 @@ class TestPlanJoinPredictor:
                 ProjectStep(dataframe=Result(2), columns=[Identifier('ta.column1'), Identifier('tb.predicted')]),
             ],
         )
-        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
         
@@ -124,7 +124,7 @@ class TestPlanJoinPredictor:
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab.column1'), Identifier('pred.predicted')]),
             ],
         )
-        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
         
@@ -152,7 +152,7 @@ class TestPlanJoinPredictor:
                        )
 
         with pytest.raises(PlanningException):
-            plan_query(query, integrations=['postgres_90'], predictor_namespace='mindsdb')
+            plan_query(query, integrations=['postgres_90'], predictor_namespace='mindsdb', predictor_metadata={'hrp3': {}})
 
     def test_join_predictor_plan_group_by(self):
         query = Select(targets=[Identifier('tab.asset'), Identifier('tab.time'), Identifier('pred.predicted')],
@@ -182,7 +182,7 @@ class TestPlanJoinPredictor:
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab.asset'), Identifier('tab.time'), Identifier('pred.predicted')]),
             ],
         )
-        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
         
@@ -216,7 +216,7 @@ class TestPlanJoinPredictor:
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab.column1'), Identifier('pred.predicted')]),
             ],
         )
-        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
         
@@ -252,7 +252,7 @@ class TestPlanJoinPredictor:
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab.column1'), Identifier('pred.predicted')]),
             ],
         )
-        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
         
@@ -278,7 +278,7 @@ class TestPlanJoinPredictor:
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab1.column1'), Identifier('pred_alias.predicted')]),
             ],
         )
-        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb')
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
         
@@ -292,7 +292,7 @@ class TestPlanJoinPredictor:
                        )
 
         with pytest.raises(PlanningException):
-            plan = plan_query(query, integrations=['int'])
+            plan = plan_query(query, integrations=['int'], predictor_metadata={'pred': {}})
 
     def test_join_predictor_plan_default_namespace_integration(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('pred.predicted')],
@@ -316,7 +316,7 @@ class TestPlanJoinPredictor:
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab1.column1'), Identifier('pred.predicted')]),
             ],
         )
-        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', default_namespace='int')
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', default_namespace='int', predictor_metadata={'pred': {}})
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
@@ -343,7 +343,7 @@ class TestPlanJoinPredictor:
                 ProjectStep(dataframe=Result(2), columns=[Identifier('tab1.column1'), Identifier('pred.predicted')]),
             ],
         )
-        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', default_namespace='mindsdb')
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', default_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]

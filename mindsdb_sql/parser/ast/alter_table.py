@@ -2,6 +2,9 @@ from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
 
 
+class Alter(ASTNode):
+    ...
+
 class AlterTable(ASTNode):
     def __init__(self,
                  target,

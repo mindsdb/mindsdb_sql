@@ -26,7 +26,7 @@ class TestPlanSelectFromPredictor:
 
                                   )
 
-        plan = plan_query(query, predictor_namespace='mindsdb')
+        plan = plan_query(query, predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
         
@@ -56,7 +56,7 @@ class TestPlanSelectFromPredictor:
 
                                   )
 
-        plan = plan_query(query, predictor_namespace='mindsdb')
+        plan = plan_query(query, predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
         
@@ -77,7 +77,7 @@ class TestPlanSelectFromPredictor:
                                   ],
                                   )
 
-        plan = plan_query(query, predictor_namespace='mindsdb')
+        plan = plan_query(query, predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
         
@@ -97,7 +97,7 @@ class TestPlanSelectFromPredictor:
                                   ],
                                   )
 
-        plan = plan_query(query, predictor_namespace='mindsdb')
+        plan = plan_query(query, predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
         
@@ -110,7 +110,7 @@ class TestPlanSelectFromPredictor:
                        group_by=[Identifier('x1')]
                        )
         with pytest.raises(PlanningException):
-            plan_query(query, predictor_namespace='mindsdb')
+            plan_query(query, predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
 
     def test_select_from_predictor_wrong_where_op_error(self):
@@ -122,7 +122,7 @@ class TestPlanSelectFromPredictor:
                                              ))
 
         with pytest.raises(PlanningException):
-            plan_query(query, predictor_namespace='mindsdb')
+            plan_query(query, predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
 
     def test_select_from_predictor_multiple_values_error(self):
@@ -134,7 +134,7 @@ class TestPlanSelectFromPredictor:
                                              ))
 
         with pytest.raises(PlanningException):
-            plan_query(query, predictor_namespace='mindsdb')
+            plan_query(query, predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
 
     def test_select_from_predictor_no_where_error(self):
@@ -142,7 +142,7 @@ class TestPlanSelectFromPredictor:
                        from_table=Identifier('mindsdb.pred'))
 
         with pytest.raises(PlanningException):
-            plan_query(query, predictor_namespace='mindsdb')
+            plan_query(query, predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
     def test_select_from_predictor_default_namespace(self):
         query = Select(targets=[Star()],
@@ -160,7 +160,7 @@ class TestPlanSelectFromPredictor:
                                   ],
                                   )
 
-        plan = plan_query(query, predictor_namespace='mindsdb', default_namespace='mindsdb')
+        plan = plan_query(query, predictor_namespace='mindsdb', default_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
 
@@ -183,6 +183,6 @@ class TestPlanSelectFromPredictor:
                                   ],
                                   )
 
-        plan = plan_query(query, predictor_namespace='mindsdb', default_namespace='mindsdb')
+        plan = plan_query(query, predictor_namespace='mindsdb', default_namespace='mindsdb', predictor_metadata={'hdi_predictor_external': {}})
 
         assert plan.steps == expected_plan.steps

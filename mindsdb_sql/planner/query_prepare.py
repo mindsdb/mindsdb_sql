@@ -51,7 +51,7 @@ class Column:
 
 class Statement:
     def __init__(self):
-        self.columns = None
+        self.columns = []
         # self.query = None
         self.params = None
         self.result = None
@@ -460,16 +460,7 @@ class PreparedStatementPlanner():
 
         query = copy.deepcopy(query)
 
-        # find all parameters
-        params = []
-
-        def params_find(node, **kwargs):
-            if isinstance(node, ast.Parameter):
-                params.append(node)
-                return node
-                # return ast.Constant('0')
-
-        utils.query_traversal(query, params_find)
+        params = utils.get_query_params(query)
 
         stmt.params = params
 
@@ -481,7 +472,9 @@ class PreparedStatementPlanner():
             # get column definition only from select
             return self.prepare_select(query.left)
         if isinstance(query, ast.Insert):
-            return self.prepare_insert(query)
+            # return self.prepare_insert(query)
+            # TODO do we need columns?
+            return []
         if isinstance(query, ast.Delete):
             ...
             # TODO do we need columns?
@@ -509,18 +502,12 @@ class PreparedStatementPlanner():
         query = self.planner.query
 
         if params is not None:
-            params = copy.deepcopy(params)
 
             if len(params) != len(stmt.params):
                 raise PlanningException("Count of execution parameters don't match prepared statement")
 
-            def params_replace(node, **kwargs):
-                if isinstance(node, ast.Parameter):
-                    value = params.pop(0)
-                    return ast.Constant(value)
+            query = utils.fill_query_params(query, params)
 
-            # put parameters into query
-            utils.query_traversal(query, params_replace)
             self.planner.query = query
 
         # prevent from second execution

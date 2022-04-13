@@ -1,6 +1,7 @@
 import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
+from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
                                     BetweenOperation, Union, NullConstant, CreateTable)
 
@@ -20,6 +21,7 @@ from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
                                        recursively_check_join_identifiers_for_ambiguity,
                                        query_traversal)
 from mindsdb_sql.planner.query_plan import QueryPlan
+from mindsdb_sql.planner import utils
 from .query_prepare import PreparedStatementPlanner
 
 
@@ -40,17 +42,18 @@ class QueryPlanner():
         self.predictor_metadata = predictor_metadata or defaultdict(dict)
         self.default_namespace = default_namespace
 
+        # allow to select from mindsdb namespace
+        # self.integrations.append(self.predictor_namespace)
+
         self.statement = None
 
     def is_predictor(self, identifier):
         parts = identifier.parts
+        if not parts[-1].lower() in self.predictor_metadata:
+            return False
         if parts[0].lower() == self.predictor_namespace:
-            if parts[-1].lower() == 'predictors':
-                return False
             return True
         elif len(parts) == 1 and self.default_namespace == self.predictor_namespace:
-            if parts[-1].lower() == 'predictors':
-                return False
             return True
         return False
 
@@ -567,6 +570,7 @@ class QueryPlanner():
             raise PlanningException(f'Unsupported query type {type(query)}')
 
         return self.plan
+
 
     def prepare_steps(self, query):
         statement_planner = PreparedStatementPlanner(self)
