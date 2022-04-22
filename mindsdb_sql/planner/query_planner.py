@@ -400,15 +400,15 @@ class QueryPlanner():
             query = join_left
 
             if query.from_table.alias is not None:
-                table_alias = query.from_table.alias.parts[0]
+                table_alias = [query.from_table.alias.parts[0]]
             else:
-                table_alias = query.from_table.parts[-1]
+                table_alias = query.from_table.parts
 
             def add_aliases(node, is_table, **kwargs):
                 if not is_table and isinstance(node, Identifier):
                     if len(node.parts) == 1:
                         # add table alias to field
-                        node.parts.insert(0, table_alias)
+                        node.parts = table_alias + node.parts
 
             query_traversal(query.where, add_aliases)
 
