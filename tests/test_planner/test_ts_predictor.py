@@ -953,13 +953,13 @@ class TestJoinTimeseriesPredictor:
                     steps=[
                         FetchDataframeStep(
                             integration='files',
-                            query=parse_sql(f"select * from sweat as ta \
+                            query=parse_sql(f"select * from schem.sweat as ta \
                                              WHERE ta.date <= '2015-12-31' AND ta.date IS NOT NULL \
                                              ORDER BY ta.date DESC LIMIT {predictor_window}"),
                         ),
                         FetchDataframeStep(
                             integration='files',
-                            query=parse_sql(f"select * from sweat as ta \
+                            query=parse_sql(f"select * from schem.sweat as ta \
                                              WHERE ta.date > '2015-12-31' AND ta.date IS NOT NULL \
                                              ORDER BY ta.date DESC"),
                         ),
@@ -981,14 +981,14 @@ class TestJoinTimeseriesPredictor:
             ],
         )
 
-        sql = '''select * from files.sweat as ta
+        sql = '''select * from files.schem.sweat as ta
                   join mindsdb.tp3 as tb 
                  where ta.date > '2015-12-31'
             '''
         self._test_timeseries_no_group(sql, expected_plan)
 
         sql = '''select * from (
-                    select * from files.sweat as ta                  
+                    select * from files.schem.sweat as ta                  
                     where ta.date > '2015-12-31'
                  )
                  join mindsdb.tp3 as tb 
@@ -998,7 +998,7 @@ class TestJoinTimeseriesPredictor:
         sql = '''
             create or replace table files.model_name (
                 select * from (
-                           select * from sweat as ta                  
+                           select * from schem.sweat as ta                  
                            where ta.date > '2015-12-31'
                 )
                 join mindsdb.tp3 as tb 
