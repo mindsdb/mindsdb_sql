@@ -3,7 +3,7 @@ from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
-                                    BetweenOperation, Union, NullConstant, CreateTable)
+                                    BetweenOperation, Union, NullConstant, CreateTable, Function)
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
@@ -369,13 +369,17 @@ class QueryPlanner():
 
     def plan_project(self, query, dataframe):
         out_identifiers = []
+
         for target in query.targets:
-            if isinstance(target, Identifier) or isinstance(target, Star) or isinstance(target, Constant):
+            if isinstance(target, Identifier) \
+                    or isinstance(target, Star) \
+                    or isinstance(target, Function) \
+                    or isinstance(target, Constant):
                 out_identifiers.append(target)
             else:
                 new_identifier = Identifier(str(target.to_string(alias=False)), alias=target.alias)
                 out_identifiers.append(new_identifier)
-        return self.plan.add_step(ProjectStep(dataframe=dataframe, columns=out_identifiers))
+        return self.plan.add_step(ProjectStep(dataframe=dataframe, columns=out_identifiers, ignore_doubles=ignore_doubles))
 
     def get_aliased_fields(self, targets):
         # get aliases from select target
@@ -539,13 +543,13 @@ class QueryPlanner():
 
         if isinstance(from_table, Identifier):
             if self.is_predictor(from_table):
-                return self.plan_select_from_predictor(query)
+                self.plan_select_from_predictor(query)
             else:
-                return self.plan_integration_select(query)
+                self.plan_integration_select(query)
         elif isinstance(from_table, Select):
-            return self.plan_integration_nested_select(query)
+            self.plan_integration_nested_select(query)
         elif isinstance(from_table, Join):
-            return self.plan_join(query, integration=integration)
+            self.plan_join(query, integration=integration)
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 
