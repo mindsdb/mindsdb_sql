@@ -94,11 +94,34 @@ class QueryPlanner():
         return self.plan.add_step(self.get_integration_select_step(select))
 
     def plan_integration_nested_select(self, select):
-        fetch_df_select = copy.deepcopy(select)
-        deepest_select = get_deepest_select(fetch_df_select)
-        integration_name, table = self.get_integration_path_from_identifier_or_error(deepest_select.from_table)
-        recursively_disambiguate_identifiers(deepest_select, integration_name, table)
-        return self.plan.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
+        # plan nested select
+
+        if select.limit == 0:
+            # TODO don't run predictor if limit is 0
+            ...
+
+        self.plan_select(select.from_table)
+
+        last_step = self.plan.steps[-1]
+        group_step = self.plan_group(select, last_step)
+        if group_step is not None:
+            self.plan.add_step(group_step)
+            # don't do project step
+            return
+
+        # do we need projection?
+        if len(select.targets) != 1 or not isinstance(select.targets[0], Star):
+            # remove prefix alias
+            alias = select.from_table.alias
+            if alias is not None:
+                alias = alias.parts[0]
+                for t in select.targets:
+                    if isinstance(t, Identifier) and t.parts[0] == alias:
+                        t.parts.pop(0)
+
+
+            self.plan_project(select, last_step.result, ignore_doubles=True)
+
 
     def plan_select_from_predictor(self, select):
         predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(select.from_table, self.default_namespace)
@@ -367,7 +390,29 @@ class QueryPlanner():
 
         return self.plan.add_step(JoinStep(left=select_left_step.result, right=select_right_step.result, query=new_join))
 
-    def plan_project(self, query, dataframe):
+    def plan_group(self, query, last_step):
+        # check group
+        funcs = []
+        for t in query.targets:
+            if isinstance(t, Function):
+                funcs.append(t.op.lower())
+        agg_funcs = ['sum', 'min', 'max', 'avg', 'count', 'std']
+
+        if (
+                query.having is not None
+                or query.group_by is not None
+                or set(agg_funcs) & set(funcs)
+        ):
+            # is aggregate
+            group_by_targets = []
+            for t in query.targets:
+                target_copy = copy.deepcopy(t)
+                group_by_targets.append(target_copy)
+            # last_step = self.plan.steps[-1]
+            return GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets)
+
+
+    def plan_project(self, query, dataframe, ignore_doubles=False):
         out_identifiers = []
 
         for target in query.targets:
