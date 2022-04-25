@@ -21,7 +21,7 @@ def ensure_select_keyword_order(select, operation):
         'WHERE': ['FROM'],
         'GROUP BY': ['FROM'],
         'ORDER BY': ['FROM'],
-        'HAVING': ['GROUP BY'],
+        # 'HAVING': ['GROUP BY'],
     }
 
     precedence = ['FROM', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY', 'LIMIT', 'OFFSET', 'MODE']

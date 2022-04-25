@@ -36,12 +36,14 @@ class PlanStep:
     def set_result(self, result):
         self.result_data = result
 
+
 class ProjectStep(PlanStep):
     """Selects columns from a dataframe"""
-    def __init__(self, columns, dataframe, *args, **kwargs):
+    def __init__(self, columns, dataframe, ignore_doubles=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.columns = columns
         self.dataframe = dataframe
+        self.ignore_doubles = ignore_doubles
 
         if isinstance(dataframe, Result):
             self.references.append(dataframe)
