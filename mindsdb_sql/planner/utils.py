@@ -132,10 +132,12 @@ def recursively_disambiguate_identifiers_in_select(select, integration_name, tab
 
     if select.group_by:
         group_by = copy.deepcopy(select.group_by)
-        group_by = [
-            disambiguate_integration_column_identifier(id, integration_name, table)
-            for id in group_by]
-        select.group_by = group_by
+        group_by2 = []
+        for field in group_by:
+            if isinstance(field, Identifier):
+                field = disambiguate_integration_column_identifier(field, integration_name, table)
+            group_by2.append(field)
+        select.group_by = group_by2
 
     if select.having:
         if not isinstance(select.having, BinaryOperation):
@@ -339,6 +341,11 @@ def query_traversal(node, callback, is_table=False):
             node_out = query_traversal(node.where, callback)
             if node_out is not None:
                 node.where = node_out
+    elif isinstance(node, ast.OrderBy):
+        if node.field is not None:
+            node_out = query_traversal(node.field, callback)
+            if node_out is not None:
+                node.field = node_out
     # TODO update statement
 
 
