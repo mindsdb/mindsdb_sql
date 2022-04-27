@@ -1032,6 +1032,6 @@ class TestJoinTimeseriesPredictor:
         )
 
         for i in range(len(plan.steps)):
-            print(plan.steps[i])
-            print(expected_plan.steps[i])
+            # print(plan.steps[i])
+            # print(expected_plan.steps[i])
             assert plan.steps[i] == expected_plan.steps[i]

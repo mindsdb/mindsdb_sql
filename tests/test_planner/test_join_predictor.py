@@ -5,8 +5,10 @@ from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep)
+from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
+                                       LimitOffsetStep, GroupByStep)
 from mindsdb_sql.parser.utils import JoinType
+from mindsdb_sql import parse_sql
 
 
 class TestPlanJoinPredictor:
@@ -347,4 +349,85 @@ class TestPlanJoinPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_nested_select(self):
+        # for tableau
+
+        sql = f'''
+            SELECT time
+            FROM ( 
+               select * from int.covid 
+               join mindsdb.pred 
+               limit 10
+            ) `Custom SQL Query`
+            limit 1
+         '''
+
+        query = parse_sql(sql, dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            default_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=parse_sql('select * from covid limit 10')),
+                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(0), predictor=Identifier('pred')),
+                JoinStep(left=Result(0), right=Result(1),
+                         query=Join(left=Identifier('result_0', alias=Identifier('covid')),
+                                    right=Identifier('result_1', alias=Identifier('pred')),
+                                    join_type=JoinType.JOIN)),
+                ProjectStep(dataframe=Result(2), columns=[Star()]),
+                ProjectStep(dataframe=Result(3), columns=[Identifier('time')], ignore_doubles=True),
+                LimitOffsetStep(dataframe=Result(4), limit=1)
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=['int'],
+            predictor_namespace='mindsdb',
+            default_namespace='mindsdb',
+            predictor_metadata={'pred': {}}
+        )
+        for i in range(len(plan.steps)):
+
+            assert plan.steps[i] == expected_plan.steps[i]
+
+        sql = f'''
+                 SELECT `time`
+                 FROM (
+                   select * from int.covid
+                   join mindsdb.pred
+                 ) `Custom SQL Query`
+                GROUP BY 1
+            '''
+
+        query = parse_sql(sql, dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            default_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=parse_sql('select * from covid')),
+                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(0), predictor=Identifier('pred')),
+                JoinStep(left=Result(0), right=Result(1),
+                         query=Join(left=Identifier('result_0', alias=Identifier('covid')),
+                                    right=Identifier('result_1', alias=Identifier('pred')),
+                                    join_type=JoinType.JOIN)),
+                ProjectStep(dataframe=Result(2), columns=[Star()]),
+                GroupByStep(dataframe=Result(3), columns=[Constant(1)], targets=[Identifier('time')])
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=['int'],
+            predictor_namespace='mindsdb',
+            default_namespace='mindsdb',
+            predictor_metadata={'pred': {}}
+        )
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
+
+
 

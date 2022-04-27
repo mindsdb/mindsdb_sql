@@ -174,7 +174,7 @@ class TestPlanJoinTables:
                                       FilterStep(dataframe=Result(3), query=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Constant(0)])),
                                       ProjectStep(dataframe=Result(4),
                                                   columns=[Identifier('tab1.column1'), Identifier('tab2.column1'),
-                                                           Identifier('sum(tab2.column2)', alias=Identifier('total'))]),
+                                                           Function(op='sum', args=[Identifier('tab2.column2')], alias=Identifier('total'))]),
                                   ],
                                   )
         assert plan.steps == expected_plan.steps

@@ -93,34 +93,66 @@ class QueryPlanner():
 
         return self.plan.add_step(self.get_integration_select_step(select))
 
+    def plan_nested_select(self, select):
+
+        # get all predictors
+        query_predictors = []
+
+        def find_predictors(node, is_table, **kwargs):
+            if is_table and isinstance(node, ast.Identifier):
+                if self.is_predictor(node):
+                    query_predictors.append(node)
+
+        utils.query_traversal(select, find_predictors)
+
+        if len(query_predictors) == 0:
+            # if no predictor inside = run as is
+            return self.plan_integration_nested_select(select)
+        else:
+            return self.plan_predictor_nested_select(select)
+
     def plan_integration_nested_select(self, select):
+        fetch_df_select = copy.deepcopy(select)
+        deepest_select = get_deepest_select(fetch_df_select)
+        integration_name, table = self.get_integration_path_from_identifier_or_error(deepest_select.from_table)
+        recursively_disambiguate_identifiers(deepest_select, integration_name, table)
+        return self.plan.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
+
+    def plan_predictor_nested_select(self, select):
         # plan nested select
 
         if select.limit == 0:
             # TODO don't run predictor if limit is 0
             ...
-
-        self.plan_select(select.from_table)
+        select2 = copy.deepcopy(select.from_table)
+        select2.parentheses = False
+        select2.alias = None
+        self.plan_select(select2)
 
         last_step = self.plan.steps[-1]
         group_step = self.plan_group(select, last_step)
         if group_step is not None:
             self.plan.add_step(group_step)
             # don't do project step
-            return
 
-        # do we need projection?
-        if len(select.targets) != 1 or not isinstance(select.targets[0], Star):
-            # remove prefix alias
-            alias = select.from_table.alias
-            if alias is not None:
-                alias = alias.parts[0]
-                for t in select.targets:
-                    if isinstance(t, Identifier) and t.parts[0] == alias:
-                        t.parts.pop(0)
+        else:
+            # do we need projection?
+            if len(select.targets) != 1 or not isinstance(select.targets[0], Star):
+                # remove prefix alias
+                alias = select.from_table.alias
+                if alias is not None:
+                    alias = alias.parts[0]
+                    for t in select.targets:
+                        if isinstance(t, Identifier) and t.parts[0] == alias:
+                            t.parts.pop(0)
 
+                self.plan_project(select, last_step.result, ignore_doubles=True)
 
-            self.plan_project(select, last_step.result, ignore_doubles=True)
+        # do we need limit?
+        last_step = self.plan.steps[-1]
+        if select.limit is not None:
+            last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result, limit=select.limit.value))
+        return last_step
 
 
     def plan_select_from_predictor(self, select):
@@ -588,13 +620,13 @@ class QueryPlanner():
 
         if isinstance(from_table, Identifier):
             if self.is_predictor(from_table):
-                self.plan_select_from_predictor(query)
+                return self.plan_select_from_predictor(query)
             else:
-                self.plan_integration_select(query)
+                return self.plan_integration_select(query)
         elif isinstance(from_table, Select):
-            self.plan_integration_nested_select(query)
+            return self.plan_nested_select(query)
         elif isinstance(from_table, Join):
-            self.plan_join(query, integration=integration)
+            return self.plan_join(query, integration=integration)
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 
