@@ -584,6 +584,11 @@ class MindsDBParser(Parser):
     def union(self, p):
         return Union(left=p.select0, right=p.select1, unique=False)
 
+    # tableau
+    @_('LPAREN select RPAREN')
+    def select(self, p):
+        return p.select
+
     # WITH
     @_('ctes select')
     def select(self, p):
