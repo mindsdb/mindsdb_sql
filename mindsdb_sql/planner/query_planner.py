@@ -3,13 +3,13 @@ from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
-                                    BetweenOperation, Union, NullConstant, CreateTable, Function)
+                                    BetweenOperation, Union, NullConstant, CreateTable, Function, Insert)
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep,
-                                       GetPredictorColumns, SaveToTable)
+                                       GetPredictorColumns, SaveToTable, InsertToTable)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
@@ -42,6 +42,12 @@ class QueryPlanner():
         self.predictor_metadata = predictor_metadata or defaultdict(dict)
         self.default_namespace = default_namespace
 
+        # map for lower names of predictors
+        self.predictor_names = {
+            k.lower(): k
+            for k in self.predictor_metadata.keys()
+        }
+
         # allow to select from mindsdb namespace
         # self.integrations.append(self.predictor_namespace)
 
@@ -49,7 +55,7 @@ class QueryPlanner():
 
     def is_predictor(self, identifier):
         parts = identifier.parts
-        if not parts[-1].lower() in self.predictor_metadata:
+        if not parts[-1].lower() in self.predictor_names:
             return False
         if parts[0].lower() == self.predictor_namespace:
             return True
@@ -230,7 +236,9 @@ class QueryPlanner():
         return select_step
 
     def plan_timeseries_predictor(self, query, table, predictor_namespace, predictor):
-        predictor_name = predictor.to_string(alias=False)
+        predictor_name = predictor.to_string(alias=False).lower()
+        # to original case
+        predictor_name = self.predictor_names[predictor_name]
 
         predictor_time_column_name = self.predictor_metadata[predictor_name]['order_by_column']
         predictor_group_by_names = self.predictor_metadata[predictor_name]['group_by_columns']
@@ -532,7 +540,8 @@ class QueryPlanner():
                 # Apply mindsdb model to result of last dataframe fetch
                 # Then join results of applying mindsdb with table
 
-                if self.predictor_metadata[predictor.to_string(alias=False)].get('timeseries'):
+                predictor_name = self.predictor_names[predictor.to_string(alias=False).lower()]
+                if self.predictor_metadata[predictor_name].get('timeseries'):
                     predictor_steps = self.plan_timeseries_predictor(query, table, predictor_namespace, predictor)
                 else:
                     predictor_steps = self.plan_predictor(query, table, predictor_namespace, predictor)
