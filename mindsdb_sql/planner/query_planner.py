@@ -624,6 +624,19 @@ class QueryPlanner():
             is_replace=query.is_replace,
         ))
 
+    def plan_insert(self, query):
+        if query.from_select is None:
+            raise PlanningException(f'Support only insert from select')
+
+        # plan sub-select first
+        last_step = self.plan_select(query.from_select)
+
+        table = query.table
+        self.plan.add_step(InsertToTable(
+            table=table,
+            dataframe=last_step,
+        ))
+
     def plan_select(self, query, integration=None):
         from_table = query.from_table
 
@@ -656,6 +669,8 @@ class QueryPlanner():
             self.plan_union(query)
         elif isinstance(query, CreateTable):
             self.plan_create_table(query)
+        elif isinstance(query, Insert):
+            self.plan_insert(query)
         else:
             raise PlanningException(f'Unsupported query type {type(query)}')
 

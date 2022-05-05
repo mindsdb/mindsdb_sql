@@ -210,3 +210,10 @@ class SaveToTable(PlanStep):
         self.dataframe = dataframe
         self.is_replace = is_replace
 
+
+class InsertToTable(PlanStep):
+    def __init__(self, table, dataframe, is_replace=False, *args, **kwargs):
+        """Runs multiple steps and reduces results to a single dataframe"""
+        super().__init__(*args, **kwargs)
+        self.table = table
+        self.dataframe = dataframe

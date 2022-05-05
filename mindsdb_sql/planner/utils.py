@@ -333,7 +333,7 @@ def query_traversal(node, callback, is_table=False):
             node.values = rows
 
         if not node.from_select is None:
-            node_out = query_traversal(node.from_table, callback)
+            node_out = query_traversal(node.from_select, callback)
             if node_out is not None:
                 node.from_select = node_out
     elif isinstance(node, ast.Delete):
