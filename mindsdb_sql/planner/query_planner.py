@@ -502,7 +502,10 @@ class QueryPlanner():
             query_traversal(query.where, add_aliases)
 
             if isinstance(query.from_table, Identifier):
-                if integration is not None and query.from_table.parts[0] != integration:
+                if (
+                    integration is not None
+                    and query.from_table.parts[0] not in self.integrations
+                ):
                     # add integration name to table
                     query.from_table.parts.insert(0, integration)
 

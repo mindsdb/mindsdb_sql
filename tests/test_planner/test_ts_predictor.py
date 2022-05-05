@@ -998,7 +998,7 @@ class TestJoinTimeseriesPredictor:
             '''
         self._test_timeseries_no_group(sql, expected_plan)
 
-        # create table
+        # create table no integration
 
         sql = '''
             create or replace table files.model_name (
@@ -1012,6 +1012,25 @@ class TestJoinTimeseriesPredictor:
         expected_plan2 = copy.deepcopy(expected_plan)
         expected_plan2.add_step(SaveToTable(
             table=Identifier('files.model_name'),
+            dataframe=expected_plan2.steps[-1],
+            is_replace=True,
+        ))
+        self._test_timeseries_no_group(sql, expected_plan2)
+
+        # create table with integration
+
+        sql = '''
+            create or replace table int1.model_name (
+                select * from (
+                           select * from files.schem.sweat as ta                  
+                           where ta.date > '2015-12-31'
+                )
+                join mindsdb.tp3 as tb 
+            )       
+            '''
+        expected_plan2 = copy.deepcopy(expected_plan)
+        expected_plan2.add_step(SaveToTable(
+            table=Identifier('int1.model_name'),
             dataframe=expected_plan2.steps[-1],
             is_replace=True,
         ))
@@ -1041,7 +1060,7 @@ class TestJoinTimeseriesPredictor:
 
         plan = plan_query(
             query,
-            integrations=['files'],
+            integrations=['files', 'int1'],
             predictor_namespace='mindsdb',
             predictor_metadata={
                 'tp3': {
