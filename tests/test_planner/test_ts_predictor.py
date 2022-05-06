@@ -1037,6 +1037,11 @@ class TestJoinTimeseriesPredictor:
         self._test_timeseries_no_group(sql, expected_plan2)
 
         # insert into table
+        expected_plan2 = copy.deepcopy(expected_plan)
+        expected_plan2.add_step(InsertToTable(
+            table=Identifier('int1.model_name'),
+            dataframe=expected_plan2.steps[-1],
+        ))
 
         sql = '''
             insert into int1.model_name (
@@ -1047,11 +1052,18 @@ class TestJoinTimeseriesPredictor:
                 join mindsdb.tp3 as tb 
             )       
             '''
-        expected_plan2 = copy.deepcopy(expected_plan)
-        expected_plan2.add_step(InsertToTable(
-            table=Identifier('int1.model_name'),
-            dataframe=expected_plan2.steps[-1],
-        ))
+        self._test_timeseries_no_group(sql, expected_plan2)
+
+        sql = '''
+            insert into int1.model_name 
+            select * from (
+                           select * from files.schem.sweat as ta                  
+                           where ta.date > '2015-12-31'
+                )
+                join mindsdb.tp3 as tb 
+
+            '''
+
         self._test_timeseries_no_group(sql, expected_plan2)
 
     def _test_timeseries_no_group(self, sql, expected_plan):
