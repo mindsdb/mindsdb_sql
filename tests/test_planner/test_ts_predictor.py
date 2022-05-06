@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 from mindsdb_sql import parse_sql
@@ -7,8 +9,7 @@ from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, ApplyTimeseriesPredictorStep,
-                                       LimitOffsetStep, MapReduceStep, MultipleSteps, JoinStep, SaveToTable)
+from mindsdb_sql.planner.steps import *
 from mindsdb_sql.parser.utils import JoinType
 
 
@@ -981,6 +982,8 @@ class TestJoinTimeseriesPredictor:
             ],
         )
 
+        # different way to join predictor
+
         sql = '''select * from files.schem.sweat as ta
                   join mindsdb.tp3 as tb 
                  where ta.date > '2015-12-31'
@@ -995,6 +998,8 @@ class TestJoinTimeseriesPredictor:
             '''
         self._test_timeseries_no_group(sql, expected_plan)
 
+        # create table no integration
+
         sql = '''
             create or replace table files.model_name (
                 select * from (
@@ -1004,13 +1009,62 @@ class TestJoinTimeseriesPredictor:
                 join mindsdb.tp3 as tb 
             )       
             '''
-        expected_plan.add_step(SaveToTable(
+        expected_plan2 = copy.deepcopy(expected_plan)
+        expected_plan2.add_step(SaveToTable(
             table=Identifier('files.model_name'),
-            dataframe=expected_plan.steps[-1],
+            dataframe=expected_plan2.steps[-1],
             is_replace=True,
         ))
-        self._test_timeseries_no_group(sql, expected_plan)
+        self._test_timeseries_no_group(sql, expected_plan2)
 
+        # create table with integration
+
+        sql = '''
+            create or replace table int1.model_name (
+                select * from (
+                           select * from files.schem.sweat as ta                  
+                           where ta.date > '2015-12-31'
+                )
+                join mindsdb.tp3 as tb 
+            )       
+            '''
+        expected_plan2 = copy.deepcopy(expected_plan)
+        expected_plan2.add_step(SaveToTable(
+            table=Identifier('int1.model_name'),
+            dataframe=expected_plan2.steps[-1],
+            is_replace=True,
+        ))
+        self._test_timeseries_no_group(sql, expected_plan2)
+
+        # insert into table
+        expected_plan2 = copy.deepcopy(expected_plan)
+        expected_plan2.add_step(InsertToTable(
+            table=Identifier('int1.model_name'),
+            dataframe=expected_plan2.steps[-1],
+        ))
+
+        sql = '''
+            insert into int1.model_name (
+                select * from (
+                           select * from files.schem.sweat as ta                  
+                           where ta.date > '2015-12-31'
+                )
+                join mindsdb.tp3 as tb 
+            )       
+            '''
+        self._test_timeseries_no_group(sql, expected_plan2)
+
+        sql = '''
+            insert into int1.model_name 
+            select * from (
+                           select * from files.schem.sweat as ta                  
+                           where ta.date > '2015-12-31'
+                )
+                join mindsdb.tp3 as tb 
+
+            '''
+
+        self._test_timeseries_no_group(sql, expected_plan2)
 
     def _test_timeseries_no_group(self, sql, expected_plan):
         predictor_window = 3
@@ -1018,7 +1072,7 @@ class TestJoinTimeseriesPredictor:
 
         plan = plan_query(
             query,
-            integrations=['files'],
+            integrations=['files', 'int1'],
             predictor_namespace='mindsdb',
             predictor_metadata={
                 'tp3': {
