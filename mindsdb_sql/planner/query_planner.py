@@ -502,6 +502,8 @@ class QueryPlanner():
             query_traversal(query.where, add_aliases)
 
             if isinstance(query.from_table, Identifier):
+                # DBT workaround: allow use tables without integration.
+                #   if table.part[0] not in integration - take integration name from create table command
                 if (
                     integration is not None
                     and query.from_table.parts[0] not in self.integrations
