@@ -20,11 +20,3 @@ class TestTimeSeries:
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
-
-    def test_multi_groupby(self):
-        sql = """SELECT m.saledate as date, m.MA as forecast FROM mindsdb.home_sales_model as m 
-                 JOIN files.HR_MA as t WHERE t.saledate > LATEST AND t.type = 'house' AND t.bedrooms = 2 LIMIT 4;"""
-        ast = parse_sql(sql, dialect='mindsdb')
-        allowed_cols = ['type', 'bedrooms',  # groupby
-                        'saledate']          # orderby
-        validate_ts_where_condition(ast.where, allowed_columns=allowed_cols)
