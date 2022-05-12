@@ -9,12 +9,14 @@ pip install from mindsdb_sql
 # Components
 
 
-- Parser
-Takes a string as input and parses it to AST-tree 
-- Planner
-Takes AST-tree as input and converts it to sequence of steps to perform query
-- Render
-Takes AST-tree as input and converts it to sql string of selected dialect
+Parser. 
+- Takes a string as input and parses it to AST-tree 
+
+Planner
+- Takes AST-tree as input and converts it to sequence of steps to perform query 
+
+Render
+- Takes AST-tree as input and converts it to sql string of selected dialect
 
 # Parser
 
@@ -40,17 +42,20 @@ query.to_string()
 
 ## Available dialects
 
-- mysql
-Sql dialect of mysql-server. Is not complete and in process of improving  
-- sqlite 
-Not complete yet and is simplified version of the mysql syntax now
-- mindsdb
-Extended mysql dialect with support of mindsdb sql commands and operators [https://docs.mindsdb.com/]
+mysql
+- Sql dialect of mysql-server. Is not complete and in process of improving  
+
+sqlite 
+- Not complete yet and is simplified version of the mysql syntax now
+
+mindsdb
+- Extended mysql dialect with support of mindsdb sql commands and operators [https://docs.mindsdb.com/]
 
 ## Architecture
 
 ### Parsing
 For parsing is used [SLY](https://sly.readthedocs.io/en/latest/sly.html) library.
+
 Parsing consists of 2 stages, (separate module for every dialect): 
 - Defining keywords in lexer.py module. It is made mostly with regexp 
 - Defining syntax rules in parser.py module. It is made by describing rules in [BNF grammar](https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form)
@@ -99,8 +104,9 @@ Detailed description of timeseries predictor: [https://docs.mindsdb.com/sql/crea
 
 
 **Plan of prepared statement**
+
 Planner can be used in case of query with parameters: query is not complete and can't be executed. 
-But we can get list of columns and parameters from query
+But it is possible to get list of columns and parameters from query.
 
 ```python
 for step in planner.prepare_steps(ast_query):
@@ -135,7 +141,8 @@ Query result data will be on output of the last step.
 
 At the moment execution plan doesn't dependent from results of previous steps. 
 But this behavior can be changed in the future.
-With the current behavior that it is possible to get plan of query as list.
+
+With the current behavior that it is possible to get plan of query as list:
 
 ```python
 from mindsdb_sql.planner import plan_query
@@ -178,6 +185,7 @@ The most complex part of planner is planning of join table with timeseries predi
 **Useful functions** 
 
 1. planner.utils.query_traversal
+
 It can be used to analyse composition of AST-tree. An example:
 
 ```python
