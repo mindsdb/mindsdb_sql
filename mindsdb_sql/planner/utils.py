@@ -336,6 +336,23 @@ def query_traversal(node, callback, is_table=False):
             node_out = query_traversal(node.from_select, callback)
             if node_out is not None:
                 node.from_select = node_out
+    elif isinstance(node, ast.CreateTable):
+        array = []
+        if node.columns is not None:
+            for node2 in node.columns:
+                node_out = query_traversal(node2, callback) or node2
+                array.append(node_out)
+            node.columns = array
+
+        if node.name is not None:
+            node_out = query_traversal(node.name, callback, is_table=True)
+            if node_out is not None:
+                node.name = node_out
+
+        if node.from_select is not None:
+            node_out = query_traversal(node.from_select, callback)
+            if node_out is not None:
+                node.from_select = node_out
     elif isinstance(node, ast.Delete):
         if node.where is not None:
             node_out = query_traversal(node.where, callback)
