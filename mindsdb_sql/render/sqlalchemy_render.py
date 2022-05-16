@@ -6,10 +6,12 @@ from sqlalchemy.schema import CreateTable, DropTable
 
 from mindsdb_sql.parser import ast
 
+
 class RenderError(Exception):
     ...
 
-class SqlalchemyRender():
+
+class SqlalchemyRender:
 
     def __init__(self, dialect_name):
         dialects = {
@@ -466,7 +468,6 @@ class SqlalchemyRender():
 
         stmt = table.insert().values(values)
         return stmt
-
 
     def get_string(self, ast_query, with_failback=True):
         try:

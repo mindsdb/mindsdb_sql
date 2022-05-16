@@ -633,8 +633,10 @@ class QueryPlanner():
         if query.from_select is None:
             raise PlanningException(f'Support only insert from select')
 
+        integration_name = query.table.parts[0]
+
         # plan sub-select first
-        last_step = self.plan_select(query.from_select)
+        last_step = self.plan_select(query.from_select, integration=integration_name)
 
         table = query.table
         self.plan.add_step(InsertToTable(
