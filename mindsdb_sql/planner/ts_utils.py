@@ -68,6 +68,6 @@ def validate_ts_where_condition(op, allowed_columns, allow_and=True):
                     f'For time series predictor only the following columns are allowed in WHERE: {str(allowed_columns)}, found instead: {str(arg)}.')
 
     if isinstance(op.args[0], Operation):
-        validate_ts_where_condition(op.args[0], allowed_columns, allow_and=False)
+        validate_ts_where_condition(op.args[0], allowed_columns, allow_and=True)
     if isinstance(op.args[1], Operation):
-        validate_ts_where_condition(op.args[1], allowed_columns, allow_and=False)
+        validate_ts_where_condition(op.args[1], allowed_columns, allow_and=True)

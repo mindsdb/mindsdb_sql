@@ -1089,3 +1089,71 @@ class TestJoinTimeseriesPredictor:
             # print(plan.steps[i])
             # print(expected_plan.steps[i])
             assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_several_groups(self):
+
+        sql = '''
+             SELECT tb.saledate as date, tb.MA as forecast
+              FROM mindsdb.pr as tb 
+              JOIN ds.HR_MA as t
+             WHERE t.saledate > LATEST AND t.type = 'house' AND t.bedrooms = 2
+             LIMIT 4;
+        '''
+        predictor_window = 3
+        query = parse_sql(sql,  dialect='mindsdb')
+
+        plan = plan_query(
+            query,
+            integrations=['ds', 'int'],
+            predictor_namespace='mindsdb',
+            predictor_metadata={
+                'pr': {
+                    'timeseries': True,
+                    'window': predictor_window,
+                    'order_by_column': 'saledate',
+                    'group_by_columns': ['type', 'bedrooms']}
+            },
+            default_namespace='mindsdb'
+        )
+
+        expected_plan = QueryPlan(
+            default_namespace='ds',
+            steps=[
+                FetchDataframeStep(integration='ds',
+                                   query=parse_sql("SELECT DISTINCT t.type AS type, t.bedrooms AS bedrooms FROM HR_MA as t\
+                                                    WHERE t.type = 'house' AND t.bedrooms = 2")),
+                MapReduceStep(values=Result(0),
+                              reduce='union',
+                              step=FetchDataframeStep(
+                                  integration='ds',
+                                  query=parse_sql(f"SELECT * FROM HR_MA as t \
+                                                   WHERE t.type = 'house' AND t.bedrooms = 2 \
+                                                   AND t.saledate IS NOT NULL \
+                                                   AND t.type = '$var[type]' \
+                                                   AND t.bedrooms = '$var[bedrooms]' \
+                                                   ORDER BY t.saledate DESC LIMIT {predictor_window}")
+                              ),
+                ),
+                ApplyTimeseriesPredictorStep(
+                    output_time_filter=BinaryOperation('>', args=[Identifier('t.saledate'), Latest()]),
+                    namespace='mindsdb',
+                    predictor=Identifier('pr', alias=Identifier('tb')),
+                    dataframe=Result(1)),
+                JoinStep(left=Result(2),
+                         right=Result(1),
+                         query=Join(
+                             right=Identifier('result_1', alias=Identifier('t')),
+                             left=Identifier('result_2', alias=Identifier('tb')),
+                             join_type=JoinType.JOIN)
+                         ),
+                LimitOffsetStep(step_num=4,
+                                dataframe=Result(3),
+                                limit=Constant(4)),
+                ProjectStep(dataframe=Result(4),
+                            columns=[Identifier(parts=['tb', 'saledate'], alias=Identifier('date')),
+                                     Identifier(parts=['tb', 'MA'], alias=Identifier('forecast'))])
+            ],
+        )
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
