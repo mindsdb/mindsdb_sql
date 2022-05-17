@@ -3,7 +3,7 @@
 
 
 ```
-pip install from mindsdb_sql
+pip install mindsdb_sql
 ```
 
 # Components
