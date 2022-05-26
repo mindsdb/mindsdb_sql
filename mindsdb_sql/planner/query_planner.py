@@ -405,6 +405,9 @@ class QueryPlanner():
         right_table_path = right_table.to_string(alias=False)
 
         new_condition_args = []
+
+        if join.condition is None:
+            raise PlanningException('Join between two tables must have ON clause')
         for arg in join.condition.args:
             if isinstance(arg, Identifier):
                 if left_table_path in arg.parts:
