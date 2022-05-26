@@ -310,6 +310,16 @@ class QueryPlanner():
                                         )
             integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
             integration_selects = [integration_select]
+        elif isinstance(time_filter, BinaryOperation) and time_filter.op == '=' and time_filter.args[1] == Latest():
+            integration_select = Select(targets=[Star()],
+                                        from_table=table,
+                                        where=preparation_where,
+                                        order_by=order_by,
+                                        limit=Constant(predictor_window),
+                                        offset=Constant(1),  # exclude last record
+                                        )
+            integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
+            integration_selects = [integration_select]
 
         elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('>', '>='):
             time_filter_date = time_filter.args[1]
