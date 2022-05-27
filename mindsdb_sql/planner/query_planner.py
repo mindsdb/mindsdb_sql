@@ -492,6 +492,23 @@ class QueryPlanner():
 
         if isinstance(join_left, Select):
             # dbt query.
+
+            # move latest into subquery
+            moved_conditions = []
+
+            def move_latest(node, **kwargs):
+                if isinstance(node, BinaryOperation):
+                    if Latest() in node.args:
+                        for arg in node.args:
+                            if isinstance(arg, Identifier):
+                                # remove table alias
+                                arg.parts = [arg.parts[-1]]
+                        moved_conditions.append(node)
+
+            query_traversal(query.where, move_latest)
+
+            # TODO make project step from query.target
+
             # TODO support complex query. Only one table is supported at the moment.
             if not isinstance(join_left.from_table, Identifier):
                 raise PlanningException(f'Statement not supported: {query.to_string()}')
@@ -503,6 +520,13 @@ class QueryPlanner():
                 table_alias = [query.from_table.alias.parts[0]]
             else:
                 table_alias = query.from_table.parts
+
+            # add latest to query.where
+            for cond in moved_conditions:
+                if query.where is not None:
+                    query.where = BinaryOperation('and', args=[query.where, cond])
+                else:
+                    query.where = cond
 
             def add_aliases(node, is_table, **kwargs):
                 if not is_table and isinstance(node, Identifier):
