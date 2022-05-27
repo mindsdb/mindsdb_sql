@@ -1077,6 +1077,7 @@ class MindsDBParser(Parser):
     @_('identifier EQUALS float')
     @_('identifier EQUALS object')
     @_('identifier EQUALS json')
+    @_('identifier EQUALS json_array_list')
     def kw_parameter(self, p):
         key = '.'.join(p.identifier.parts)
         return {key: p[2]}

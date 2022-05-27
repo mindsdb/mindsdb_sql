@@ -1086,8 +1086,6 @@ class TestJoinTimeseriesPredictor:
         )
 
         for i in range(len(plan.steps)):
-            # print(plan.steps[i])
-            # print(expected_plan.steps[i])
             assert plan.steps[i] == expected_plan.steps[i]
 
     def test_several_groups(self):
@@ -1156,4 +1154,72 @@ class TestJoinTimeseriesPredictor:
         )
 
         for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_dbt_latest(self):
+
+        sql = '''
+          select * from (
+             SELECT
+               *
+             from ds.HR_MA as t
+             WHERE t.type = 'house' 
+        ) as t1
+           JOIN mindsdb.pr as tb                
+          WHERE t1.saledate > LATEST 
+        '''
+        predictor_window = 3
+        query = parse_sql(sql,  dialect='mindsdb')
+
+        plan = plan_query(
+            query,
+            integrations=['ds', 'int'],
+            predictor_namespace='mindsdb',
+            predictor_metadata={
+                'pr': {
+                    'timeseries': True,
+                    'window': predictor_window,
+                    'order_by_column': 'saledate',
+                    'group_by_columns': ['type']}
+            },
+            default_namespace='mindsdb'
+        )
+
+        expected_plan = QueryPlan(
+            default_namespace='ds',
+            steps=[
+                FetchDataframeStep(integration='ds',
+                                   query=parse_sql("SELECT DISTINCT t.type AS type FROM HR_MA as t\
+                                                    WHERE t.type = 'house'")),
+                MapReduceStep(values=Result(0),
+                              reduce='union',
+                              step=FetchDataframeStep(
+                                  integration='ds',
+                                  query=parse_sql(f"SELECT * FROM HR_MA as t \
+                                                   WHERE t.type = 'house' \
+                                                   AND t.saledate IS NOT NULL \
+                                                   AND t.type = '$var[type]' \
+                                                   ORDER BY t.saledate DESC LIMIT {predictor_window}")
+                              ),
+                ),
+                ApplyTimeseriesPredictorStep(
+                    output_time_filter=BinaryOperation('>', args=[Identifier('t.saledate'), Latest()]),
+                    namespace='mindsdb',
+                    predictor=Identifier('pr', alias=Identifier('tb')),
+                    dataframe=Result(1)),
+                JoinStep(left=Result(1),
+                         right=Result(2),
+                         query=Join(
+                             right=Identifier('result_2', alias=Identifier('tb')),
+                             left=Identifier('result_1', alias=Identifier('t')),
+                             join_type=JoinType.JOIN)
+                         ),
+                ProjectStep(dataframe=Result(3),
+                            columns=[Star()])
+            ],
+        )
+
+        for i in range(len(plan.steps)):
+            # print(plan.steps[i])
+            # print(expected_plan.steps[i])
             assert plan.steps[i] == expected_plan.steps[i]
