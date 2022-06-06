@@ -1,3 +1,5 @@
+import copy
+
 from mindsdb_sql import ParsingException
 from mindsdb_sql.parser.utils import to_single_line
 
@@ -30,6 +32,9 @@ class ASTNode:
 
     def to_string(self, alias=True):
         return self.maybe_add_alias(self.maybe_add_parentheses(self.get_string()), alias=alias)
+
+    def copy(self):
+        return copy.deepcopy(self)
 
     def __str__(self):
         return self.to_string()
