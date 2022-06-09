@@ -131,11 +131,15 @@ class QueryPlanner():
         if select.limit == 0:
             # TODO don't run predictor if limit is 0
             ...
+
+        subselect_alias = select.from_table.alias
+        if subselect_alias is not None:
+            subselect_alias = subselect_alias.parts[0]
+
         select2 = copy.deepcopy(select.from_table)
         select2.parentheses = False
         select2.alias = None
         self.plan_select(select2)
-
         last_step = self.plan.steps[-1]
 
         if select.where is not None:
@@ -162,11 +166,9 @@ class QueryPlanner():
             # do we need projection?
             if len(select.targets) != 1 or not isinstance(select.targets[0], Star):
                 # remove prefix alias
-                alias = select.from_table.alias
-                if alias is not None:
-                    alias = alias.parts[0]
+                if subselect_alias is not None:
                     for t in select.targets:
-                        if isinstance(t, Identifier) and t.parts[0] == alias:
+                        if isinstance(t, Identifier) and t.parts[0] == subselect_alias:
                             t.parts.pop(0)
 
                 self.plan_project(select, last_step.result, ignore_doubles=True)
