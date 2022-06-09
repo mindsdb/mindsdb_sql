@@ -102,20 +102,21 @@ class QueryPlanner():
     def plan_nested_select(self, select):
 
         # get all predictors
-        query_predictors = []
+        mdb_entities = []
 
         def find_predictors(node, is_table, **kwargs):
             if is_table and isinstance(node, ast.Identifier):
-                if self.is_predictor(node):
-                    query_predictors.append(node)
+                is_view = len(node.parts) > 1 and node.parts[0] == 'views'
+                if self.is_predictor(node) or is_view:
+                    mdb_entities.append(node)
 
         utils.query_traversal(select, find_predictors)
 
-        if len(query_predictors) == 0:
+        if len(mdb_entities) == 0:
             # if no predictor inside = run as is
             return self.plan_integration_nested_select(select)
         else:
-            return self.plan_predictor_nested_select(select)
+            return self.plan_mdb_nested_select(select)
 
     def plan_integration_nested_select(self, select):
         fetch_df_select = copy.deepcopy(select)
@@ -124,7 +125,7 @@ class QueryPlanner():
         recursively_disambiguate_identifiers(deepest_select, integration_name, table)
         return self.plan.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
-    def plan_predictor_nested_select(self, select):
+    def plan_mdb_nested_select(self, select):
         # plan nested select
 
         if select.limit == 0:
