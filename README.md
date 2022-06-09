@@ -71,7 +71,7 @@ SLY does not support inheritance, therefore every dialect is described completel
 - Every class have to have these methods:
   - to_tree - to return hierarchical representation of object
   - get_string - to return object as sql expression (or sub-expression)
-  
+  - copy - to copy AST-tree to new object
 
 # Planner
 
