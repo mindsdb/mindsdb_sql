@@ -102,20 +102,21 @@ class QueryPlanner():
     def plan_nested_select(self, select):
 
         # get all predictors
-        query_predictors = []
+        mdb_entities = []
 
         def find_predictors(node, is_table, **kwargs):
             if is_table and isinstance(node, ast.Identifier):
-                if self.is_predictor(node):
-                    query_predictors.append(node)
+                is_view = len(node.parts) > 1 and node.parts[0] == 'views'
+                if self.is_predictor(node) or is_view:
+                    mdb_entities.append(node)
 
         utils.query_traversal(select, find_predictors)
 
-        if len(query_predictors) == 0:
+        if len(mdb_entities) == 0:
             # if no predictor inside = run as is
             return self.plan_integration_nested_select(select)
         else:
-            return self.plan_predictor_nested_select(select)
+            return self.plan_mdb_nested_select(select)
 
     def plan_integration_nested_select(self, select):
         fetch_df_select = copy.deepcopy(select)
@@ -124,18 +125,38 @@ class QueryPlanner():
         recursively_disambiguate_identifiers(deepest_select, integration_name, table)
         return self.plan.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
-    def plan_predictor_nested_select(self, select):
+    def plan_mdb_nested_select(self, select):
         # plan nested select
 
         if select.limit == 0:
             # TODO don't run predictor if limit is 0
             ...
+
+        subselect_alias = select.from_table.alias
+        if subselect_alias is not None:
+            subselect_alias = subselect_alias.parts[0]
+
         select2 = copy.deepcopy(select.from_table)
         select2.parentheses = False
         select2.alias = None
         self.plan_select(select2)
-
         last_step = self.plan.steps[-1]
+
+        if select.where is not None:
+            # remove subselect alias
+            where_query = select.where
+            if subselect_alias is not None:
+                def remove_aliases(node, **kwargs):
+                    if isinstance(node, Identifier):
+
+                        if len(node.parts) > 1:
+                            if node.parts[0] == subselect_alias:
+                                node.parts = node.parts[1:]
+
+                query_traversal(where_query, remove_aliases)
+
+            last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=where_query))
+
         group_step = self.plan_group(select, last_step)
         if group_step is not None:
             self.plan.add_step(group_step)
@@ -145,11 +166,9 @@ class QueryPlanner():
             # do we need projection?
             if len(select.targets) != 1 or not isinstance(select.targets[0], Star):
                 # remove prefix alias
-                alias = select.from_table.alias
-                if alias is not None:
-                    alias = alias.parts[0]
+                if subselect_alias is not None:
                     for t in select.targets:
-                        if isinstance(t, Identifier) and t.parts[0] == alias:
+                        if isinstance(t, Identifier) and t.parts[0] == subselect_alias:
                             t.parts.pop(0)
 
                 self.plan_project(select, last_step.result, ignore_doubles=True)
