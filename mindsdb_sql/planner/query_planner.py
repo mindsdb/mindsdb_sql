@@ -136,6 +136,22 @@ class QueryPlanner():
         self.plan_select(select2)
 
         last_step = self.plan.steps[-1]
+
+        if select.where is not None:
+            # remove subselect alias
+            where_query = select.where
+            if subselect_alias is not None:
+                def remove_aliases(node, **kwargs):
+                    if isinstance(node, Identifier):
+
+                        if len(node.parts) > 1:
+                            if node.parts[0] == subselect_alias:
+                                node.parts = node.parts[1:]
+
+                query_traversal(where_query, remove_aliases)
+
+            last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=where_query))
+
         group_step = self.plan_group(select, last_step)
         if group_step is not None:
             self.plan.add_step(group_step)
