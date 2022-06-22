@@ -490,7 +490,7 @@ class TestSelectStructure:
 
             with pytest.raises(ParsingException) as excinfo:
                 ast = parse_sql(bad_sql)
-            assert 'must go after' in str(excinfo.value) or ' requires ' in str(excinfo.value)
+            assert 'must go before' in str(excinfo.value) or ' requires ' in str(excinfo.value)
 
     def test_select_from_inner_join(self, dialect):
         sql = """SELECT * FROM t1 INNER JOIN t2 ON t1.x1 = t2.x2 and t1.x2 = t2.x2"""
