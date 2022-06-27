@@ -220,7 +220,7 @@ class QueryPlanner():
 
     def plan_predictor(self, query, table, predictor_namespace, predictor):
         integration_select_step = self.plan_integration_select(
-            Select(targets=[Star()],
+            Select(targets=[Star()],  # TODO why not query.targets?
                                             from_table=table,
                                             where=query.where,
                                             group_by=query.group_by,
@@ -505,6 +505,8 @@ class QueryPlanner():
         return aliased_fields
 
     def plan_join(self, query, integration=None):
+        orig_query = query
+
         join = query.from_table
         join_left = join.left
         join_right = join.right
@@ -666,7 +668,7 @@ class QueryPlanner():
 
         else:
             raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')
-        return self.plan_project(query, last_step.result)
+        return self.plan_project(orig_query, last_step.result)
 
     def plan_create_table(self, query):
         if query.from_select is None:
