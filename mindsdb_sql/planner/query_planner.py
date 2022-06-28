@@ -220,7 +220,7 @@ class QueryPlanner():
 
     def plan_predictor(self, query, table, predictor_namespace, predictor):
         integration_select_step = self.plan_integration_select(
-            Select(targets=[Star()],
+            Select(targets=[Star()],  # TODO why not query.targets?
                                             from_table=table,
                                             where=query.where,
                                             group_by=query.group_by,
@@ -505,6 +505,8 @@ class QueryPlanner():
         return aliased_fields
 
     def plan_join(self, query, integration=None):
+        orig_query = query
+
         join = query.from_table
         join_left = join.left
         join_right = join.right
@@ -538,7 +540,7 @@ class QueryPlanner():
             if query.from_table.alias is not None:
                 table_alias = [query.from_table.alias.parts[0]]
             else:
-                table_alias = query.from_table.parts
+                table_alias = [query.from_table.parts[-1]]
 
             # add latest to query.where
             for cond in moved_conditions:
@@ -566,6 +568,9 @@ class QueryPlanner():
                     query.from_table.parts.insert(0, integration)
 
             join_left = join_left.from_table
+
+            if orig_query.limit is not None:
+                query.limit = orig_query.limit
 
         aliased_fields = self.get_aliased_fields(query.targets)
 
@@ -666,7 +671,7 @@ class QueryPlanner():
 
         else:
             raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')
-        return self.plan_project(query, last_step.result)
+        return self.plan_project(orig_query, last_step.result)
 
     def plan_create_table(self, query):
         if query.from_select is None:
