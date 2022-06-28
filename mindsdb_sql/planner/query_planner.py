@@ -540,7 +540,7 @@ class QueryPlanner():
             if query.from_table.alias is not None:
                 table_alias = [query.from_table.alias.parts[0]]
             else:
-                table_alias = query.from_table.parts
+                table_alias = [query.from_table.parts[-1]]
 
             # add latest to query.where
             for cond in moved_conditions:
@@ -568,6 +568,9 @@ class QueryPlanner():
                     query.from_table.parts.insert(0, integration)
 
             join_left = join_left.from_table
+
+            if orig_query.limit is not None:
+                query.limit = orig_query.limit
 
         aliased_fields = self.get_aliased_fields(query.targets)
 
