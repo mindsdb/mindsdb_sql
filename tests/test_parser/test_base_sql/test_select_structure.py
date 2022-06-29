@@ -255,7 +255,6 @@ class TestSelectStructure:
         assert ast.where.args[0].op == '!='
         assert isinstance(ast.where.args[1], BinaryOperation)
         assert ast.where.args[1].op == '>'
-        assert str(ast).lower() == sql.lower()
 
     def test_select_where_must_be_an_op(self, dialect):
         sql = f'SELECT column FROM tab WHERE column'

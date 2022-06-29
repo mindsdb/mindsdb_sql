@@ -61,7 +61,6 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -82,7 +81,6 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert ast == expected_ast
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -106,7 +104,6 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -121,7 +118,7 @@ class TestOperations:
 
                                                                        ))])
 
-        assert str(ast).lower() == sql.lower()
+        assert str(ast).lower() == str(expected_ast).lower()
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_precedence_or_and(self, dialect):
@@ -141,7 +138,6 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert ast == expected_ast
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -162,7 +158,6 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert ast == expected_ast
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -179,13 +174,11 @@ class TestOperations:
                                                          ),
                                                          parentheses=True),
                                          Identifier.from_path_str('column3'),
-
                                      ),
                                      )
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -208,7 +201,6 @@ class TestOperations:
                                   ))
         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -242,7 +234,6 @@ class TestOperations:
                                   ))
         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -416,7 +407,6 @@ class TestOperations:
                               )
 
         assert ast.to_tree() == expected_ast.to_tree()
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
 
 

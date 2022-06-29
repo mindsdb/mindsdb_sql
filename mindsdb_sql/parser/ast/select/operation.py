@@ -41,7 +41,14 @@ class BetweenOperation(Operation):
 
 class BinaryOperation(Operation):
     def get_string(self, *args, **kwargs):
-        arg_strs = [arg.to_string() for arg in self.args]
+        arg_strs = []
+        for arg in self.args:
+            arg_str = arg.to_string()
+            if isinstance(arg, BinaryOperation):
+                # to parens
+                arg_str = f'({arg_str})'
+            arg_strs.append(arg_str)
+
         return f'{arg_strs[0]} {self.op.upper()} {arg_strs[1]}'
 
     def assert_arguments(self):

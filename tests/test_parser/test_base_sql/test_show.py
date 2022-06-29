@@ -66,7 +66,6 @@ class TestShow:
                             ]),
                         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
