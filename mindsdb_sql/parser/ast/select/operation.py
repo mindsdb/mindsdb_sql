@@ -44,7 +44,7 @@ class BinaryOperation(Operation):
         arg_strs = []
         for arg in self.args:
             arg_str = arg.to_string()
-            if isinstance(arg, BinaryOperation):
+            if isinstance(arg, BinaryOperation) or isinstance(arg, BetweenOperation):
                 # to parens
                 arg_str = f'({arg_str})'
             arg_strs.append(arg_str)

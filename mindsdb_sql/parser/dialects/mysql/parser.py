@@ -14,10 +14,14 @@ class MySQLParser(SQLParser):
     tokens = MySQLLexer.tokens
 
     precedence = (
-        ('left', PLUS, MINUS, OR),
-        ('left', STAR, DIVIDE, AND),
-        ('right', UMINUS, UNOT),  # Unary minus operator, unary not
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS, IN, BETWEEN, IS, IS_NOT, LIKE),
+        ('left', OR),
+        ('left', AND),
+        ('right', UNOT),
+        ('left', EQUALS, NEQUALS),
+        ('left', PLUS, MINUS),
+        ('left', STAR, DIVIDE),
+        ('right', UMINUS),  # Unary minus operator, unary not
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, BETWEEN, IS, IS_NOT, LIKE),
     )
 
     # Top-level statements
