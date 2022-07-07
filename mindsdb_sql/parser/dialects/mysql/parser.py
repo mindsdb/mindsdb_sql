@@ -768,8 +768,12 @@ class MySQLParser(SQLParser):
         return Function(op=p.id, distinct=True, args=p.expr_list)
 
     @_('id LPAREN expr_list_or_nothing RPAREN')
+    @_('id LPAREN star RPAREN')
     def function(self, p):
-        args = p.expr_list_or_nothing
+        if hasattr(p, 'star'):
+            args = [p.star]
+        else:
+            args = p.expr_list_or_nothing
         if not args:
             args = []
         return Function(op=p.id, args=args)

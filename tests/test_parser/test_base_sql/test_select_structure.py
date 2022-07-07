@@ -972,3 +972,18 @@ class TestSelectStructureNoSqlite:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_select_function_star(self, dialect):
+        sql = f'select count(*) from tab1'
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[
+                Function(op='count', args=[
+                    Star()
+                ])
+            ],
+            from_table=Identifier('tab1')
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
