@@ -644,6 +644,8 @@ class MySQLParser(SQLParser):
        'FULL JOIN',
        'CROSS JOIN',
        'OUTER JOIN',
+       'LEFT OUTER JOIN',
+       'FULL OUTER JOIN',
        )
     def join_clause(self, p):
         return ' '.join([x for x in p])
