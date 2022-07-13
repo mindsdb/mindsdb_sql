@@ -255,7 +255,6 @@ class TestSelectStructure:
         assert ast.where.args[0].op == '!='
         assert isinstance(ast.where.args[1], BinaryOperation)
         assert ast.where.args[1].op == '>'
-        assert str(ast).lower() == sql.lower()
 
     def test_select_where_must_be_an_op(self, dialect):
         sql = f'SELECT column FROM tab WHERE column'
@@ -973,3 +972,18 @@ class TestSelectStructureNoSqlite:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_select_function_star(self, dialect):
+        sql = f'select count(*) from tab1'
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[
+                Function(op='count', args=[
+                    Star()
+                ])
+            ],
+            from_table=Identifier('tab1')
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)

@@ -14,10 +14,14 @@ class MySQLParser(SQLParser):
     tokens = MySQLLexer.tokens
 
     precedence = (
-        ('left', PLUS, MINUS, OR),
-        ('left', STAR, DIVIDE, AND),
-        ('right', UMINUS, UNOT),  # Unary minus operator, unary not
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, EQUALS, NEQUALS, IN, BETWEEN, IS, IS_NOT, LIKE),
+        ('left', OR),
+        ('left', AND),
+        ('right', UNOT),
+        ('left', EQUALS, NEQUALS),
+        ('left', PLUS, MINUS),
+        ('left', STAR, DIVIDE),
+        ('right', UMINUS),  # Unary minus operator, unary not
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, BETWEEN, IS, IS_NOT, LIKE),
     )
 
     # Top-level statements
@@ -640,6 +644,8 @@ class MySQLParser(SQLParser):
        'FULL JOIN',
        'CROSS JOIN',
        'OUTER JOIN',
+       'LEFT OUTER JOIN',
+       'FULL OUTER JOIN',
        )
     def join_clause(self, p):
         return ' '.join([x for x in p])
@@ -764,8 +770,12 @@ class MySQLParser(SQLParser):
         return Function(op=p.id, distinct=True, args=p.expr_list)
 
     @_('id LPAREN expr_list_or_nothing RPAREN')
+    @_('id LPAREN star RPAREN')
     def function(self, p):
-        args = p.expr_list_or_nothing
+        if hasattr(p, 'star'):
+            args = [p.star]
+        else:
+            args = p.expr_list_or_nothing
         if not args:
             args = []
         return Function(op=p.id, args=args)

@@ -2,7 +2,7 @@ import copy
 
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryOperation, Constant,
-                                    OrderBy, BetweenOperation, NullConstant)
+                                    OrderBy, BetweenOperation, NullConstant, TypeCast)
 from mindsdb_sql.parser import ast
 
 def get_integration_path_from_identifier(identifier):
@@ -109,6 +109,11 @@ def disambiguate_select_targets(targets, integration_name, table):
         elif isinstance(target, Operation) or isinstance(target, Select):
             new_op = copy.deepcopy(target)
             recursively_disambiguate_identifiers(new_op, integration_name, table)
+            new_query_targets.append(new_op)
+        elif isinstance(target, TypeCast):
+            new_op = copy.deepcopy(target)
+            if isinstance(target.arg, Identifier):
+                disambiguate_integration_column_identifier(new_op.arg, integration_name, table)
             new_query_targets.append(new_op)
         else:
             raise PlanningException(f'Unknown select target {type(target)}')

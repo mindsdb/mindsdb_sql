@@ -61,7 +61,6 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -82,7 +81,6 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert ast == expected_ast
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -106,7 +104,6 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -121,7 +118,7 @@ class TestOperations:
 
                                                                        ))])
 
-        assert str(ast).lower() == sql.lower()
+        assert str(ast).lower() == str(expected_ast).lower()
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_operator_precedence_or_and(self, dialect):
@@ -141,7 +138,6 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert ast == expected_ast
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -162,7 +158,6 @@ class TestOperations:
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert ast == expected_ast
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -179,13 +174,11 @@ class TestOperations:
                                                          ),
                                                          parentheses=True),
                                          Identifier.from_path_str('column3'),
-
                                      ),
                                      )
                      ]
         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -208,7 +201,6 @@ class TestOperations:
                                   ))
         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -242,7 +234,6 @@ class TestOperations:
                                   ))
         )
 
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -416,7 +407,6 @@ class TestOperations:
                               )
 
         assert ast.to_tree() == expected_ast.to_tree()
-        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
 
 
@@ -449,6 +439,52 @@ class TestOperations:
                                  )
             assert ast.to_tree() == expected_ast.to_tree()
             assert str(ast) == str(expected_ast)
+
+    def test_complex_precedence(self, dialect):
+        sql = '''
+          SELECT * from tb 
+          WHERE 
+              not a=2+1 
+            and
+              b=c 
+          or
+              d between e and f
+            and
+              g
+        '''
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(
+            targets=[Star()],
+            from_table=Identifier.from_path_str('tb'),
+            where=BinaryOperation(op='or', args=(
+                BinaryOperation(op='and', args=(
+                    UnaryOperation(op='not', args=[
+                        BinaryOperation(op='=', args=(
+                            Identifier(parts=['a']),
+                            BinaryOperation(op='+', args=(
+                                Constant(value=2),
+                                Constant(value=1)
+                            ))
+                        ))
+                    ]),
+                    BinaryOperation(op='=', args=(
+                        Identifier(parts=['b']),
+                        Identifier(parts=['c'])
+                    ))
+                )),
+                BinaryOperation(op='and', args=(
+                    BetweenOperation(args=(
+                        Identifier(parts=['d']),
+                        Identifier(parts=['e']),
+                        Identifier(parts=['f'])
+                    )),
+                    Identifier(parts=['g'])
+                ))
+            )),
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
 
 
 # it doesn't work in sqlite
