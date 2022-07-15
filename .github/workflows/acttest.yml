@@ -17,7 +17,3 @@ jobs:
         run: |
           apt update
           apt install libffi-dev
-      - name: build and upload manylinux wheels
-        uses: Niraj-Kamdar/manylinux-wheel-builder@master
-        with:
-          python-versions: "3.*"
