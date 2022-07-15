@@ -1,0 +1,24 @@
+name: Build and publish to pypi
+
+on:
+  push:
+    branches:
+      - actions-test
+
+jobs:
+  build-linux:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      TWINE_USERNAME: __token__
+      TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          apt update
+          apt install libffi-dev
+      - name: build and upload manylinux wheels
+        uses: Niraj-Kamdar/manylinux-wheel-builder@master
+        with:
+          python-versions: "3.*"
