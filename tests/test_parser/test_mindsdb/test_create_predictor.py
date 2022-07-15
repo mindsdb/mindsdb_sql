@@ -19,11 +19,12 @@ class TestCreatePredictor:
                 WINDOW 100
                 HORIZON 7
                 USING 
+                    a=null, b=true, c=false,
                     x.`part 2`.part3=1, 
                     y= "a", 
                     z=0.7,
                     j={'t': [1,2.1,[], {}, False, true, null]},
-                    q=Filter(a='c', b=2, j={"ar": [1], 'j': {"d": "d"}})
+                    q=Filter(x=null, y=true, z=false, a='c', b=2, j={"ar": [1], 'j': {"d": "d"}})
                 """ % keyword
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreatePredictor(
@@ -41,11 +42,13 @@ class TestCreatePredictor:
             window=100,
             horizon=7,
             using={
+                'a': None, 'b': True, 'c': False,
                 'x.part 2.part3': 1,
                 'y': "a",
                 'z': 0.7,
                 'j': {'t': [1,2.1,[], {}, False, True, None]},
                 'q': Object(type='Filter', params={
+                    'x': None, 'y': True, 'z': False,
                     'a': 'c',
                     'b': 1,
                     'j': {"ar": [1], 'j': {"d": "d"}}
