@@ -34,6 +34,10 @@ jobs:
       TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
     steps:
       - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          apt update
+          apt install libffi-dev
       - name: build and upload manylinux wheels
         uses: Niraj-Kamdar/manylinux-wheel-builder@master
         with:
