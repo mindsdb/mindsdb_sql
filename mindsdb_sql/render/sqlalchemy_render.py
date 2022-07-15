@@ -28,9 +28,14 @@ class SqlalchemyRender:
             'Snowflake': oracle,
         }
 
+        if isinstance(dialect_name, str):
+            dialect = dialects[dialect_name].dialect
+        else:
+            dialect = dialect_name
+
         # remove double percent signs
         # https://docs.sqlalchemy.org/en/14/faq/sqlexpressions.html#why-are-percent-signs-being-doubled-up-when-stringifying-sql-statements
-        self.dialect = dialects[dialect_name].dialect(paramstyle="named")
+        self.dialect = dialect(paramstyle="named")
 
         if dialect_name == 'mssql':
             # update version to MS_2008_VERSION for supports_multivalues_insert
