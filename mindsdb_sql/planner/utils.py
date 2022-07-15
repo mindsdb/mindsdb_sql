@@ -2,7 +2,7 @@ import copy
 
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryOperation, Constant,
-                                    OrderBy, BetweenOperation, NullConstant)
+                                    OrderBy, BetweenOperation, NullConstant, TypeCast)
 from mindsdb_sql.parser import ast
 
 def get_integration_path_from_identifier(identifier):
@@ -109,6 +109,11 @@ def disambiguate_select_targets(targets, integration_name, table):
         elif isinstance(target, Operation) or isinstance(target, Select):
             new_op = copy.deepcopy(target)
             recursively_disambiguate_identifiers(new_op, integration_name, table)
+            new_query_targets.append(new_op)
+        elif isinstance(target, TypeCast):
+            new_op = copy.deepcopy(target)
+            if isinstance(target.arg, Identifier):
+                disambiguate_integration_column_identifier(new_op.arg, integration_name, table)
             new_query_targets.append(new_op)
         else:
             raise PlanningException(f'Unknown select target {type(target)}')
@@ -336,6 +341,23 @@ def query_traversal(node, callback, is_table=False):
             node_out = query_traversal(node.from_select, callback)
             if node_out is not None:
                 node.from_select = node_out
+    elif isinstance(node, ast.CreateTable):
+        array = []
+        if node.columns is not None:
+            for node2 in node.columns:
+                node_out = query_traversal(node2, callback) or node2
+                array.append(node_out)
+            node.columns = array
+
+        if node.name is not None:
+            node_out = query_traversal(node.name, callback, is_table=True)
+            if node_out is not None:
+                node.name = node_out
+
+        if node.from_select is not None:
+            node_out = query_traversal(node.from_select, callback)
+            if node_out is not None:
+                node.from_select = node_out
     elif isinstance(node, ast.Delete):
         if node.where is not None:
             node_out = query_traversal(node.where, callback)
@@ -402,3 +424,4 @@ def fill_query_params(query, params):
     query_traversal(query, params_replace)
 
     return query
+

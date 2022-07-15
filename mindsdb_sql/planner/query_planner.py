@@ -102,20 +102,21 @@ class QueryPlanner():
     def plan_nested_select(self, select):
 
         # get all predictors
-        query_predictors = []
+        mdb_entities = []
 
         def find_predictors(node, is_table, **kwargs):
             if is_table and isinstance(node, ast.Identifier):
-                if self.is_predictor(node):
-                    query_predictors.append(node)
+                is_view = len(node.parts) > 1 and node.parts[0] == 'views'
+                if self.is_predictor(node) or is_view:
+                    mdb_entities.append(node)
 
         utils.query_traversal(select, find_predictors)
 
-        if len(query_predictors) == 0:
+        if len(mdb_entities) == 0:
             # if no predictor inside = run as is
             return self.plan_integration_nested_select(select)
         else:
-            return self.plan_predictor_nested_select(select)
+            return self.plan_mdb_nested_select(select)
 
     def plan_integration_nested_select(self, select):
         fetch_df_select = copy.deepcopy(select)
@@ -124,18 +125,38 @@ class QueryPlanner():
         recursively_disambiguate_identifiers(deepest_select, integration_name, table)
         return self.plan.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
-    def plan_predictor_nested_select(self, select):
+    def plan_mdb_nested_select(self, select):
         # plan nested select
 
         if select.limit == 0:
             # TODO don't run predictor if limit is 0
             ...
+
+        subselect_alias = select.from_table.alias
+        if subselect_alias is not None:
+            subselect_alias = subselect_alias.parts[0]
+
         select2 = copy.deepcopy(select.from_table)
         select2.parentheses = False
         select2.alias = None
         self.plan_select(select2)
-
         last_step = self.plan.steps[-1]
+
+        if select.where is not None:
+            # remove subselect alias
+            where_query = select.where
+            if subselect_alias is not None:
+                def remove_aliases(node, **kwargs):
+                    if isinstance(node, Identifier):
+
+                        if len(node.parts) > 1:
+                            if node.parts[0] == subselect_alias:
+                                node.parts = node.parts[1:]
+
+                query_traversal(where_query, remove_aliases)
+
+            last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=where_query))
+
         group_step = self.plan_group(select, last_step)
         if group_step is not None:
             self.plan.add_step(group_step)
@@ -145,11 +166,9 @@ class QueryPlanner():
             # do we need projection?
             if len(select.targets) != 1 or not isinstance(select.targets[0], Star):
                 # remove prefix alias
-                alias = select.from_table.alias
-                if alias is not None:
-                    alias = alias.parts[0]
+                if subselect_alias is not None:
                     for t in select.targets:
-                        if isinstance(t, Identifier) and t.parts[0] == alias:
+                        if isinstance(t, Identifier) and t.parts[0] == subselect_alias:
                             t.parts.pop(0)
 
                 self.plan_project(select, last_step.result, ignore_doubles=True)
@@ -201,7 +220,7 @@ class QueryPlanner():
 
     def plan_predictor(self, query, table, predictor_namespace, predictor):
         integration_select_step = self.plan_integration_select(
-            Select(targets=[Star()],
+            Select(targets=[Star()],  # TODO why not query.targets?
                                             from_table=table,
                                             where=query.where,
                                             group_by=query.group_by,
@@ -310,7 +329,15 @@ class QueryPlanner():
                                         )
             integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
             integration_selects = [integration_select]
-
+        elif isinstance(time_filter, BinaryOperation) and time_filter.op == '=' and time_filter.args[1] == Latest():
+            integration_select = Select(targets=[Star()],
+                                        from_table=table,
+                                        where=preparation_where,
+                                        order_by=order_by,
+                                        limit=Constant(predictor_window),
+                                        )
+            integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
+            integration_selects = [integration_select]
         elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('>', '>='):
             time_filter_date = time_filter.args[1]
             preparation_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
@@ -405,6 +432,9 @@ class QueryPlanner():
         right_table_path = right_table.to_string(alias=False)
 
         new_condition_args = []
+
+        if join.condition is None:
+            raise PlanningException('Join between two tables must have ON clause')
         for arg in join.condition.args:
             if isinstance(arg, Identifier):
                 if left_table_path in arg.parts:
@@ -475,12 +505,31 @@ class QueryPlanner():
         return aliased_fields
 
     def plan_join(self, query, integration=None):
+        orig_query = query
+
         join = query.from_table
         join_left = join.left
         join_right = join.right
 
         if isinstance(join_left, Select):
             # dbt query.
+
+            # move latest into subquery
+            moved_conditions = []
+
+            def move_latest(node, **kwargs):
+                if isinstance(node, BinaryOperation):
+                    if Latest() in node.args:
+                        for arg in node.args:
+                            if isinstance(arg, Identifier):
+                                # remove table alias
+                                arg.parts = [arg.parts[-1]]
+                        moved_conditions.append(node)
+
+            query_traversal(query.where, move_latest)
+
+            # TODO make project step from query.target
+
             # TODO support complex query. Only one table is supported at the moment.
             if not isinstance(join_left.from_table, Identifier):
                 raise PlanningException(f'Statement not supported: {query.to_string()}')
@@ -491,7 +540,14 @@ class QueryPlanner():
             if query.from_table.alias is not None:
                 table_alias = [query.from_table.alias.parts[0]]
             else:
-                table_alias = query.from_table.parts
+                table_alias = [query.from_table.parts[-1]]
+
+            # add latest to query.where
+            for cond in moved_conditions:
+                if query.where is not None:
+                    query.where = BinaryOperation('and', args=[query.where, cond])
+                else:
+                    query.where = cond
 
             def add_aliases(node, is_table, **kwargs):
                 if not is_table and isinstance(node, Identifier):
@@ -512,6 +568,9 @@ class QueryPlanner():
                     query.from_table.parts.insert(0, integration)
 
             join_left = join_left.from_table
+
+            if orig_query.limit is not None:
+                query.limit = orig_query.limit
 
         aliased_fields = self.get_aliased_fields(query.targets)
 
@@ -612,7 +671,7 @@ class QueryPlanner():
 
         else:
             raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')
-        return self.plan_project(query, last_step.result)
+        return self.plan_project(orig_query, last_step.result)
 
     def plan_create_table(self, query):
         if query.from_select is None:
@@ -633,8 +692,10 @@ class QueryPlanner():
         if query.from_select is None:
             raise PlanningException(f'Support only insert from select')
 
+        integration_name = query.table.parts[0]
+
         # plan sub-select first
-        last_step = self.plan_select(query.from_select)
+        last_step = self.plan_select(query.from_select, integration=integration_name)
 
         table = query.table
         self.plan.add_step(InsertToTable(

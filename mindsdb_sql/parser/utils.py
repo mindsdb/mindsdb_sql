@@ -39,7 +39,7 @@ def ensure_select_keyword_order(select, operation):
 
     for next_op in precedence[op_precedence_pos:]:
         if op_to_attr[next_op]:
-            raise ParsingException(f"{operation} must go after {next_op}")
+            raise ParsingException(f"{operation} must go before {next_op}")
 
 
 class JoinType:

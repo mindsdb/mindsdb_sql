@@ -1,3 +1,4 @@
+import datetime as dt
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
 
@@ -16,6 +17,8 @@ class Constant(ASTNode):
             out_str = f"\'{self.value}\'"
         elif isinstance(self.value, bool):
             out_str = 'TRUE' if self.value else 'FALSE'
+        elif isinstance(self.value, (dt.date, dt.datetime, dt.timedelta)):
+            out_str = "'{}'".format(str(self.value).replace("'", "''"))
         else:
             out_str = str(self.value)
         return out_str

@@ -175,7 +175,7 @@ class GetPredictorColumns(PlanStep):
 
 
 class GetTableColumns(PlanStep):
-    """Returns an empty dataframe of shape and columns like predictor results."""
+    """Returns an empty dataframe of shape and columns like select from table."""
     def __init__(self, namespace, table, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.namespace = namespace
@@ -204,7 +204,10 @@ class MultipleSteps(PlanStep):
 
 class SaveToTable(PlanStep):
     def __init__(self, table, dataframe, is_replace=False, *args, **kwargs):
-        """Runs multiple steps and reduces results to a single dataframe"""
+        """
+            Creates table if not exists and fills it with content of dataframe
+            is_replace - to drop table beforehand
+        """
         super().__init__(*args, **kwargs)
         self.table = table
         self.dataframe = dataframe
@@ -212,8 +215,8 @@ class SaveToTable(PlanStep):
 
 
 class InsertToTable(PlanStep):
-    def __init__(self, table, dataframe, is_replace=False, *args, **kwargs):
-        """Runs multiple steps and reduces results to a single dataframe"""
+    def __init__(self, table, dataframe, *args, **kwargs):
+        """Fills table with content of dataframe"""
         super().__init__(*args, **kwargs)
         self.table = table
         self.dataframe = dataframe

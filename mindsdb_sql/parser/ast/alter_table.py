@@ -5,6 +5,7 @@ from mindsdb_sql.parser.utils import indent
 class Alter(ASTNode):
     ...
 
+
 class AlterTable(ASTNode):
     def __init__(self,
                  target,
@@ -19,7 +20,7 @@ class AlterTable(ASTNode):
         target_str = f'target={self.target.to_tree(level=level+2)}, '
         arg_str = f'arg={repr(self.arg)},'
 
-        out_str = f'{ind}Explain(' \
+        out_str = f'{ind}AlterTable(' \
                   f'{target_str}' \
                   f'{arg_str}' \
                   f'\n{ind})'
