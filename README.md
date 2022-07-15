@@ -238,14 +238,3 @@ It runs all tests for components
 ```bash
 env PYTHONPATH=./ pytest
 ```
-
-
-
-
-
-
-
-
-
-
-
