@@ -7,7 +7,6 @@ on:
 
 jobs:
   build-linux:
-    needs: test
     runs-on: ubuntu-latest
     env:
       TWINE_USERNAME: __token__
