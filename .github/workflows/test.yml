@@ -28,7 +28,7 @@ jobs:
         shell: bash
   source-dist:
     needs: test
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     env:
       TWINE_USERNAME: __token__
       TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
