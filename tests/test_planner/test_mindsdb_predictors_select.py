@@ -21,7 +21,7 @@ class TestPlanPredictorsSelect:
         expected_plan = QueryPlan(integrations=['mindsdb'],
                                   steps=[
                                       FetchDataframeStep(integration='mindsdb',
-                                                         query=Select(targets=[Identifier('predictors.column1', alias=Identifier('column1')),
+                                                         query=Select(targets=[Identifier('column1'),
                                                                                Constant(1),
                                                                                NullConstant(),
                                                                                Function('database', args=[]),
@@ -29,10 +29,10 @@ class TestPlanPredictorsSelect:
                                                                       from_table=Identifier('predictors'),
                                                                       where=BinaryOperation('and', args=[
                                                                               BinaryOperation('=',
-                                                                                              args=[Identifier('predictors.column1'),
-                                                                                                    Identifier('predictors.column2')]),
+                                                                                              args=[Identifier('column1'),
+                                                                                                    Identifier('column2')]),
                                                                               BinaryOperation('>',
-                                                                                              args=[Identifier('predictors.column3'),
+                                                                                              args=[Identifier('column3'),
                                                                                                     Constant(0)]),
                                                                           ])
                                                                       ),

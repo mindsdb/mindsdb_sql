@@ -121,11 +121,19 @@ def disambiguate_select_targets(targets, integration_name, table):
 
 
 def recursively_disambiguate_identifiers_in_select(select, integration_name, table):
-    select.targets = disambiguate_select_targets(select.targets, integration_name, table)
 
     if select.from_table:
         if isinstance(select.from_table, Identifier):
             select.from_table = table
+
+    if isinstance(select.from_table, Identifier):
+        # don't change query if it's single table
+        # copy to query to just check it below
+        select0 = select
+        select = copy.deepcopy(select0)
+
+    select.targets = disambiguate_select_targets(select.targets, integration_name, table)
+
     if select.where:
         if not isinstance(select.where, BinaryOperation) and not isinstance(select.where, BetweenOperation):
             raise PlanningException(

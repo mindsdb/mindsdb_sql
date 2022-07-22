@@ -21,7 +21,7 @@ class TestPlanIntegrationSelect:
         expected_plan = QueryPlan(integrations=['int'],
                                   steps=[
                                       FetchDataframeStep(integration='int',
-                                                         query=Select(targets=[Identifier('tab.column1', alias=Identifier('column1')),
+                                                         query=Select(targets=[Identifier('column1'),
                                                                                Constant(1),
                                                                                NullConstant(),
                                                                                Function('database', args=[]),
@@ -29,10 +29,10 @@ class TestPlanIntegrationSelect:
                                                                       from_table=Identifier('tab'),
                                                                       where=BinaryOperation('and', args=[
                                                                               BinaryOperation('=',
-                                                                                              args=[Identifier('tab.column1'),
-                                                                                                    Identifier('tab.column2')]),
+                                                                                              args=[Identifier('column1'),
+                                                                                                    Identifier('column2')]),
                                                                               BinaryOperation('>',
-                                                                                              args=[Identifier('tab.column3'),
+                                                                                              args=[Identifier('column3'),
                                                                                                     Constant(0)]),
                                                                           ])
                                                                       ),
@@ -56,14 +56,14 @@ class TestPlanIntegrationSelect:
         expected_plan = QueryPlan(integrations=['int'],
                                   steps=[
                                       FetchDataframeStep(integration='int',
-                                                         query=Select(targets=[Identifier('tab.column1', alias=Identifier('column1'))],
+                                                         query=Select(targets=[Identifier('column1')],
                                                                       from_table=Identifier('tab'),
                                                                       where=BinaryOperation('and', args=[
                                                                               BinaryOperation('=',
-                                                                                              args=[Identifier('tab.column1'),
-                                                                                                    Identifier('tab.column2')]),
+                                                                                              args=[Identifier('column1'),
+                                                                                                    Identifier('column2')]),
                                                                               BinaryOperation('>',
-                                                                                              args=[Identifier('tab.column3'),
+                                                                                              args=[Identifier('column3'),
                                                                                                     Constant(0)]),
                                                                           ])
                                                                       )),
@@ -85,11 +85,11 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier('tab.column1', alias=Identifier('column1'))],
+                                                             targets=[Identifier('column1')],
                                                              from_table=Identifier('tab'),
-                                                             where=BinaryOperation('=', args=[Identifier('tab.column1'),
+                                                             where=BinaryOperation('=', args=[Identifier('column1'),
                                                                                               Identifier(
-                                                                                                  'tab.column2')]),
+                                                                                                  'column2')]),
                                                              limit=Constant(10),
                                                              offset=Constant(15),
                                                              ),
@@ -113,14 +113,14 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier('tab.column1', alias=Identifier('column1'))],
+                                                             targets=[Identifier('column1')],
                                                              from_table=Identifier('tab'),
-                                                             where=BinaryOperation('=', args=[Identifier('tab.column1'),
+                                                             where=BinaryOperation('=', args=[Identifier('column1'),
                                                                                               Identifier(
-                                                                                                  'tab.column2')]),
+                                                                                                  'column2')]),
                                                              limit=Constant(10),
                                                              offset=Constant(15),
-                                                             order_by=[OrderBy(field=Identifier('tab.column1'))],
+                                                             order_by=[OrderBy(field=Identifier('column1'))],
                                                              ),
                                                          ),
                                   ])
@@ -172,8 +172,7 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier(parts=['alias', 'col1'],
-                                                                                 alias=Identifier('col1'))],
+                                                             targets=[Identifier(parts=['col1'])],
                                                              from_table=Identifier(parts=['tab'], alias=Identifier('alias'))),
                                                          ),
                                   ])
@@ -191,7 +190,7 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier(parts=['tab', 'col1'], alias=Identifier('column_alias'))],
+                                                             targets=[Identifier(parts=['col1'], alias=Identifier('column_alias'))],
                                                              from_table=Identifier(parts=['tab'])),
                                                          ),
                                   ])
@@ -209,7 +208,7 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier(parts=['ta', 'sqft'], alias=Identifier('sqft'))],
+                                                             targets=[Identifier(parts=['ta', 'sqft'])],
                                                              from_table=Identifier(parts=['test_data', 'home_rentals'], alias=Identifier('ta'))),
                                                          ),
                                   ])
@@ -233,16 +232,16 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(targets=[
-                                                             Identifier('tab.column1', alias=Identifier('column1')),
-                                                             Identifier('tab.column2', alias=Identifier('column2')),
+                                                             Identifier('column1'),
+                                                             Identifier('column2'),
                                                              Function(op="sum",
-                                                                      args=[Identifier(parts=['tab', 'column3'])],
+                                                                      args=[Identifier(parts=['column3'])],
                                                                       alias=Identifier('total')),
 
                                                          ],
                                                              from_table=Identifier('tab'),
-                                                             group_by=[Identifier('tab.column1'), Identifier('tab.column2')],
-                                                             having=BinaryOperation('=', args=[Identifier('tab.column1'),
+                                                             group_by=[Identifier('column1'), Identifier('column2')],
+                                                             having=BinaryOperation('=', args=[Identifier('column1'),
                                                                                                Constant(0)])
                                                          )),
                                   ])
@@ -322,9 +321,9 @@ class TestPlanIntegrationSelect:
                                                                       from_table=Identifier('tab1'),
                                                                       where=BinaryOperation(op='in',
                                                                                             args=[
-                                                                                                Identifier('tab1.column1'),
+                                                                                                Identifier('column1'),
                                                                                                 Select(targets=[
-                                                                                                    Identifier('tab2.column2', alias=Identifier('column2'))],
+                                                                                                    Identifier('column2')],
                                                                                                        from_table=Identifier('tab2'),
                                                                                                        parentheses=True)]
                                                                                             ))),
@@ -346,17 +345,17 @@ class TestPlanIntegrationSelect:
                                   default_namespace='int',
                                   steps=[
                                       FetchDataframeStep(integration='int',
-                                                         query=Select(targets=[Identifier('tab.column1', alias=Identifier('column1')),
+                                                         query=Select(targets=[Identifier('column1'),
                                                                                Constant(1),
                                                                                Function('database', args=[]),
                                                                                ],
                                                                       from_table=Identifier('tab'),
                                                                       where=BinaryOperation('and', args=[
                                                                               BinaryOperation('=',
-                                                                                              args=[Identifier('tab.column1'),
-                                                                                                    Identifier('tab.column2')]),
+                                                                                              args=[Identifier('column1'),
+                                                                                                    Identifier('column2')]),
                                                                               BinaryOperation('>',
-                                                                                              args=[Identifier('tab.column3'),
+                                                                                              args=[Identifier('column3'),
                                                                                                     Constant(0)]),
                                                                           ])
                                                                       ),
@@ -382,7 +381,7 @@ class TestPlanIntegrationSelect:
                                                          query=Select(
                                                              targets=[Identifier('column1')],
                                                              from_table=Select(
-                                                                 targets=[Identifier('tab.column1', alias=Identifier('column1'))],
+                                                                 targets=[Identifier('column1')],
                                                                  from_table=Identifier('tab'),
                                                                  alias=Identifier('subquery')),
                                                              )),
@@ -405,7 +404,7 @@ class TestPlanIntegrationSelect:
                                              targets=[Star()],
                                              from_table=Identifier('yyy.zzz'),
                                              where=BinaryOperation(op='>', args=[
-                                                 Identifier('yyy.zzz.x'),
+                                                 Identifier('x'),
                                                  Constant(1)
                                              ])
                                           )

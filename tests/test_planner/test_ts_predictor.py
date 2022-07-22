@@ -26,7 +26,7 @@ class TestJoinTimeseriesPredictor:
         expected_plan = QueryPlan(
             steps=[
                 FetchDataframeStep(integration='mysql',
-                                   query=Select(targets=[Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                   query=Select(targets=[Identifier(parts=[group_by_column])],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 distinct=True,
                                                 )
@@ -35,7 +35,7 @@ class TestJoinTimeseriesPredictor:
                               reduce='union',
                               step=FetchDataframeStep(integration='mysql',
                                    query=parse_sql("SELECT * FROM data.ny_output AS ta\
-                                    WHERE ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC")
+                                    WHERE pickup_hour is not null and vendor_id = '$var[vendor_id]' ORDER BY pickup_hour DESC")
                                    ),
                               ),
                 ApplyTimeseriesPredictorStep(namespace='mindsdb',
@@ -78,7 +78,7 @@ class TestJoinTimeseriesPredictor:
         expected_plan = QueryPlan(
             steps=[
                 FetchDataframeStep(integration='mysql',
-                                   query=Select(targets=[Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                   query=Select(targets=[Identifier(parts=[group_by_column])],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 distinct=True,
                                                 )
@@ -87,7 +87,7 @@ class TestJoinTimeseriesPredictor:
                               reduce='union',
                               step=FetchDataframeStep(integration='mysql',
                                    query=parse_sql("SELECT * FROM data.ny_output AS ta\
-                                    WHERE ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC")
+                                    WHERE pickup_hour is not null and vendor_id = '$var[vendor_id]' ORDER BY pickup_hour DESC")
                                    ),
                               ),
                 ApplyTimeseriesPredictorStep(namespace='mindsdb',
@@ -131,7 +131,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[
-                                       Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                       Identifier(parts=[group_by_column])],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 distinct=True,
                                                 )
@@ -141,7 +141,7 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(
                                   integration='mysql',
                                   query=parse_sql("SELECT * FROM data.ny_output AS ta\
-                                   WHERE ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC")
+                                   WHERE pickup_hour is not null and vendor_id = '$var[vendor_id]' ORDER BY pickup_hour DESC")
                               ),
                 ),
                 ApplyTimeseriesPredictorStep(namespace='mindsdb',
@@ -186,7 +186,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[
-                                       Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                       Identifier(parts=[group_by_column])],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
                                                 distinct=True,
@@ -197,8 +197,8 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(
                                   integration='mysql',
                                   query=parse_sql("SELECT * FROM data.ny_output AS ta\
-                                     WHERE ta.vendor_id = 1 AND ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' \
-                                     ORDER BY ta.pickup_hour DESC")
+                                     WHERE ta.vendor_id = 1 AND pickup_hour is not null and vendor_id = '$var[vendor_id]' \
+                                     ORDER BY pickup_hour DESC")
                               ),
                 ),
                 ApplyTimeseriesPredictorStep(namespace='mindsdb',
@@ -246,7 +246,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[
-                                       Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                       Identifier(parts=[group_by_column])],
                                        from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                        where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
                                        distinct=True,
@@ -257,8 +257,8 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(
                                   integration='mysql',
                                   query=parse_sql(f"SELECT * FROM data.ny_output AS ta\
-                                    WHERE ta.vendor_id = 1 AND ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]'\
-                                    ORDER BY ta.pickup_hour DESC LIMIT {predictor_window}")
+                                    WHERE ta.vendor_id = 1 AND pickup_hour is not null and vendor_id = '$var[vendor_id]'\
+                                    ORDER BY pickup_hour DESC LIMIT {predictor_window}")
                                                       ),
                               ),
                 ApplyTimeseriesPredictorStep(
@@ -301,7 +301,7 @@ class TestJoinTimeseriesPredictor:
         expected_plan = QueryPlan(
             steps=[
                 FetchDataframeStep(integration='mysql',
-                                   query=parse_sql("SELECT DISTINCT ta.vendor_id AS vendor_id FROM data.ny_output AS ta\
+                                   query=parse_sql("SELECT DISTINCT vendor_id FROM data.ny_output AS ta\
                                                    WHERE ta.vendor_id = 1")
                                    ),
                 MapReduceStep(values=Result(0),
@@ -312,15 +312,15 @@ class TestJoinTimeseriesPredictor:
                                       FetchDataframeStep(
                                           integration='mysql',
                                           query=parse_sql(f"SELECT * FROM data.ny_output AS ta \
-                                          WHERE ta.pickup_hour < 1 AND ta.vendor_id = 1 and ta.pickup_hour is not null \
-                                          AND ta.vendor_id = '$var[vendor_id]' \
-                                          ORDER BY ta.pickup_hour DESC LIMIT {predictor_window}"),
+                                          WHERE pickup_hour < 1 AND ta.vendor_id = 1 and pickup_hour is not null \
+                                          AND vendor_id = '$var[vendor_id]' \
+                                          ORDER BY pickup_hour DESC LIMIT {predictor_window}"),
                                       ),
                                       FetchDataframeStep(
                                           integration='mysql',
                                           query=parse_sql("SELECT * FROM data.ny_output AS ta\
-                                           WHERE ta.pickup_hour BETWEEN 1 AND 10 AND ta.vendor_id = 1 and ta.pickup_hour is not null \
-                                            AND ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC"),
+                                           WHERE ta.pickup_hour BETWEEN 1 AND 10 AND ta.vendor_id = 1 and pickup_hour is not null \
+                                            AND vendor_id = '$var[vendor_id]' ORDER BY pickup_hour DESC"),
                                       ),
 
                                   ]
@@ -369,7 +369,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[
-                                       Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                       Identifier(parts=[group_by_column])],
                                        from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                        where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
                                        distinct=True,
@@ -383,14 +383,14 @@ class TestJoinTimeseriesPredictor:
                                       FetchDataframeStep(
                                           integration='mysql',
                                           query=parse_sql(f"SELECT * FROM data.ny_output AS ta \
-                                          WHERE ta.pickup_hour <= 10 AND ta.vendor_id = 1 and ta.pickup_hour is not null \
-                                          AND ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC LIMIT {predictor_window}"),
+                                          WHERE pickup_hour <= 10 AND ta.vendor_id = 1 and pickup_hour is not null \
+                                          AND vendor_id = '$var[vendor_id]' ORDER BY pickup_hour DESC LIMIT {predictor_window}"),
                                       ),
                                       FetchDataframeStep(
                                           integration='mysql',
                                           query=parse_sql("SELECT * FROM data.ny_output AS ta \
-                                          WHERE ta.pickup_hour > 10 AND ta.vendor_id = 1 and ta.pickup_hour is not null \
-                                          AND ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC"),
+                                          WHERE ta.pickup_hour > 10 AND ta.vendor_id = 1 and pickup_hour is not null \
+                                          AND vendor_id = '$var[vendor_id]' ORDER BY pickup_hour DESC"),
                                       ),
 
                                   ]
@@ -435,7 +435,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[
-                                       Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                       Identifier(parts=[group_by_column])],
                                        from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                        where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
                                        distinct=True,
@@ -449,14 +449,14 @@ class TestJoinTimeseriesPredictor:
                                       FetchDataframeStep(
                                           integration='mysql',
                                           query=parse_sql(f"SELECT * FROM data.ny_output AS ta\
-                                           WHERE ta.pickup_hour < 10 AND ta.vendor_id = 1 AND ta.pickup_hour is not null and\
-                                           ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC LIMIT {predictor_window}"),
+                                           WHERE pickup_hour < 10 AND ta.vendor_id = 1 AND pickup_hour is not null and\
+                                           vendor_id = '$var[vendor_id]' ORDER BY pickup_hour DESC LIMIT {predictor_window}"),
                                       ),
                                       FetchDataframeStep(
                                           integration='mysql',
                                           query=parse_sql("SELECT * FROM data.ny_output AS ta\
-                                           WHERE ta.pickup_hour >= 10 AND ta.vendor_id = 1 AND ta.pickup_hour is not null and\
-                                           ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC"),
+                                           WHERE ta.pickup_hour >= 10 AND ta.vendor_id = 1 AND pickup_hour is not null and\
+                                           vendor_id = '$var[vendor_id]' ORDER BY pickup_hour DESC"),
                                       ),
 
                                   ]
@@ -501,7 +501,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[
-                                       Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                       Identifier(parts=[group_by_column])],
                                        from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                        where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
                                        distinct=True,
@@ -512,9 +512,9 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(
                                   integration='mysql',
                                   query=parse_sql("SELECT * FROM data.ny_output AS ta \
-                                  WHERE ta.pickup_hour < 10 AND ta.vendor_id = 1 AND ta.pickup_hour is not null and\
-                                  ta.vendor_id = '$var[vendor_id]' \
-                                  ORDER BY ta.pickup_hour DESC"),
+                                  WHERE ta.pickup_hour < 10 AND ta.vendor_id = 1 AND pickup_hour is not null and\
+                                  vendor_id = '$var[vendor_id]' \
+                                  ORDER BY pickup_hour DESC"),
                               ),
                 ),
                 ApplyTimeseriesPredictorStep(
@@ -559,7 +559,7 @@ class TestJoinTimeseriesPredictor:
             steps=[
                 FetchDataframeStep(integration='mysql',
                                    query=Select(targets=[
-                                       Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                       Identifier(parts=[ group_by_column])],
                                        from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                        where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
                                        distinct=True,
@@ -570,9 +570,9 @@ class TestJoinTimeseriesPredictor:
                               step=FetchDataframeStep(
                                   integration='mysql',
                                   query=parse_sql("SELECT * FROM data.ny_output AS ta\
-                                  WHERE  ta.pickup_hour <= 10 AND ta.vendor_id = 1 AND ta.pickup_hour is not null and\
-                                   ta.vendor_id = '$var[vendor_id]'\
-                                   ORDER BY ta.pickup_hour DESC"),
+                                  WHERE  ta.pickup_hour <= 10 AND ta.vendor_id = 1 AND pickup_hour is not null and\
+                                   vendor_id = '$var[vendor_id]'\
+                                   ORDER BY pickup_hour DESC"),
                               ),
                 ),
                 ApplyTimeseriesPredictorStep(
@@ -666,7 +666,7 @@ class TestJoinTimeseriesPredictor:
             default_namespace='mindsdb',
             steps=[
                 FetchDataframeStep(integration='mysql',
-                                   query=Select(targets=[Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                   query=Select(targets=[Identifier(parts=[group_by_column])],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 distinct=True,
                                                 )
@@ -675,7 +675,7 @@ class TestJoinTimeseriesPredictor:
                               reduce='union',
                               step=FetchDataframeStep(integration='mysql',
                                    query=parse_sql("SELECT * FROM data.ny_output AS ta\
-                                    WHERE ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC")
+                                    WHERE pickup_hour is not null and vendor_id = '$var[vendor_id]' ORDER BY pickup_hour DESC")
                                    ),
                               ),
                 ApplyTimeseriesPredictorStep(
@@ -721,7 +721,7 @@ class TestJoinTimeseriesPredictor:
             default_namespace='mysql',
             steps=[
                 FetchDataframeStep(integration='mysql',
-                                   query=Select(targets=[Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                   query=Select(targets=[Identifier(parts=[group_by_column])],
                                                 from_table=Identifier('data.ny_output', alias=Identifier('ta')),
                                                 distinct=True,
                                                 )
@@ -730,7 +730,7 @@ class TestJoinTimeseriesPredictor:
                               reduce='union',
                               step=FetchDataframeStep(integration='mysql',
                                    query=parse_sql("SELECT * FROM data.ny_output AS ta\
-                                    WHERE ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC")
+                                    WHERE pickup_hour is not null and vendor_id = '$var[vendor_id]' ORDER BY pickup_hour DESC")
                                    ),
                               ),
                 ApplyTimeseriesPredictorStep(
@@ -791,8 +791,8 @@ class TestJoinTimeseriesPredictor:
                 FetchDataframeStep(
                     integration='ds',
                     query=parse_sql(f"SELECT * FROM data.ny_output AS ta\
-                     WHERE ta.f1 is not null\
-                     ORDER BY ta.f1 DESC LIMIT {predictor_window}")
+                     WHERE f1 is not null\
+                     ORDER BY f1 DESC LIMIT {predictor_window}")
                 ),
                 ApplyTimeseriesPredictorStep(
                     namespace='mindsdb',
@@ -849,7 +849,7 @@ class TestJoinTimeseriesPredictor:
             default_namespace='ds',
             steps=[
                 FetchDataframeStep(integration='ds',
-                                   query=parse_sql("SELECT DISTINCT ta.f2 AS f2 FROM data.ny_output as ta\
+                                   query=parse_sql("SELECT DISTINCT f2 FROM data.ny_output as ta\
                                                     WHERE ta.f2 BETWEEN '2020-11-01' AND '2020-12-01'")),
                 MapReduceStep(values=Result(0),
                               reduce='union',
@@ -857,9 +857,9 @@ class TestJoinTimeseriesPredictor:
                                   integration='ds',
                                   query=parse_sql(f"SELECT * FROM data.ny_output as ta \
                                                    WHERE ta.f2 BETWEEN '2020-11-01' AND '2020-12-01' \
-                                                   AND ta.f1 IS NOT NULL \
-                                                   AND ta.f2 = '$var[f2]' \
-                                                   ORDER BY ta.f1 DESC LIMIT {predictor_window}")
+                                                   AND f1 IS NOT NULL \
+                                                   AND f2 = '$var[f2]' \
+                                                   ORDER BY f1 DESC LIMIT {predictor_window}")
                               ),
                 ),
                 ApplyTimeseriesPredictorStep(
@@ -901,15 +901,15 @@ class TestJoinTimeseriesPredictor:
             default_namespace='ds',
             steps=[
                 FetchDataframeStep(integration='ds',
-                                   query=parse_sql("SELECT DISTINCT ta.F2 AS F2, ta.f3 AS f3 FROM data.ny_output as ta\
+                                   query=parse_sql("SELECT DISTINCT F2, f3 FROM data.ny_output as ta\
                                                     WHERE ta.f2 > '2020-11-01'")),
                 MapReduceStep(values=Result(0),
                               reduce='union',
                               step=FetchDataframeStep(
                                   integration='ds',
                                   query=parse_sql("SELECT * FROM data.ny_output AS ta\
-                                   WHERE ta.f2 > '2020-11-01' AND ta.F1 IS NOT NULL AND ta.F2 = '$var[F2]' AND ta.f3 = '$var[f3]'\
-                                   ORDER BY ta.F1 DESC LIMIT 3")
+                                   WHERE ta.f2 > '2020-11-01' AND F1 IS NOT NULL AND F2 = '$var[F2]' AND f3 = '$var[f3]'\
+                                   ORDER BY F1 DESC LIMIT 3")
                               ),
                 ),
                 ApplyTimeseriesPredictorStep(
@@ -955,14 +955,14 @@ class TestJoinTimeseriesPredictor:
                         FetchDataframeStep(
                             integration='files',
                             query=parse_sql(f"select * from schem.sweat as ta \
-                                             WHERE ta.date <= '2015-12-31' AND ta.date IS NOT NULL \
-                                             ORDER BY ta.date DESC LIMIT {predictor_window}"),
+                                             WHERE date <= '2015-12-31' AND date IS NOT NULL \
+                                             ORDER BY date DESC LIMIT {predictor_window}"),
                         ),
                         FetchDataframeStep(
                             integration='files',
                             query=parse_sql(f"select * from schem.sweat as ta \
-                                             WHERE ta.date > '2015-12-31' AND ta.date IS NOT NULL \
-                                             ORDER BY ta.date DESC"),
+                                             WHERE ta.date > '2015-12-31' AND date IS NOT NULL \
+                                             ORDER BY date DESC"),
                         ),
                     ]
                 ),
@@ -1118,7 +1118,7 @@ class TestJoinTimeseriesPredictor:
             default_namespace='ds',
             steps=[
                 FetchDataframeStep(integration='ds',
-                                   query=parse_sql("SELECT DISTINCT t.type AS type, t.bedrooms AS bedrooms FROM HR_MA as t\
+                                   query=parse_sql("SELECT DISTINCT type, bedrooms FROM HR_MA as t\
                                                     WHERE t.type = 'house' AND t.bedrooms = 2")),
                 MapReduceStep(values=Result(0),
                               reduce='union',
@@ -1126,10 +1126,10 @@ class TestJoinTimeseriesPredictor:
                                   integration='ds',
                                   query=parse_sql(f"SELECT * FROM HR_MA as t \
                                                    WHERE t.type = 'house' AND t.bedrooms = 2 \
-                                                   AND t.saledate IS NOT NULL \
-                                                   AND t.type = '$var[type]' \
-                                                   AND t.bedrooms = '$var[bedrooms]' \
-                                                   ORDER BY t.saledate DESC LIMIT {predictor_window}")
+                                                   AND saledate IS NOT NULL \
+                                                   AND type = '$var[type]' \
+                                                   AND bedrooms = '$var[bedrooms]' \
+                                                   ORDER BY saledate DESC LIMIT {predictor_window}")
                               ),
                 ),
                 ApplyTimeseriesPredictorStep(
@@ -1189,7 +1189,7 @@ class TestJoinTimeseriesPredictor:
             default_namespace='ds',
             steps=[
                 FetchDataframeStep(integration='ds',
-                                   query=parse_sql("SELECT DISTINCT t.type AS type FROM HR_MA as t\
+                                   query=parse_sql("SELECT DISTINCT type FROM HR_MA as t\
                                                     WHERE t.type = 'house'")),
                 MapReduceStep(values=Result(0),
                               reduce='union',
@@ -1197,9 +1197,9 @@ class TestJoinTimeseriesPredictor:
                                   integration='ds',
                                   query=parse_sql(f"SELECT * FROM HR_MA as t \
                                                    WHERE t.type = 'house' \
-                                                   AND t.saledate IS NOT NULL \
-                                                   AND t.type = '$var[type]' \
-                                                   ORDER BY t.saledate DESC LIMIT {predictor_window}")
+                                                   AND saledate IS NOT NULL \
+                                                   AND type = '$var[type]' \
+                                                   ORDER BY saledate DESC LIMIT {predictor_window}")
                               ),
                 ),
                 ApplyTimeseriesPredictorStep(
