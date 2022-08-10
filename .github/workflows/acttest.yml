@@ -26,22 +26,6 @@ jobs:
       - name: Run unit tests
         run: pytest
         shell: bash
-  build-linux:
-    needs: test
-    runs-on: ubuntu-latest
-    env:
-      TWINE_USERNAME: __token__
-      TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          apt update
-          apt install libffi-dev
-      - name: build and upload manylinux wheels
-        uses: Niraj-Kamdar/manylinux-wheel-builder@master
-        with:
-          python-versions: "3.*"
   build-windows-macos:
     needs: test
     runs-on: ${{ matrix.os }}
