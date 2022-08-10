@@ -49,7 +49,7 @@ class QueryPlanner():
         }
 
         # allow to select from mindsdb namespace
-        # self.integrations.append(self.predictor_namespace)
+        self.integrations.append(self.predictor_namespace)
 
         self.statement = None
 
@@ -219,17 +219,11 @@ class QueryPlanner():
         return predictor_step, project_step
 
     def plan_predictor(self, query, table, predictor_namespace, predictor):
-        integration_select_step = self.plan_integration_select(
-            Select(targets=[Star()],  # TODO why not query.targets?
-                                            from_table=table,
-                                            where=query.where,
-                                            group_by=query.group_by,
-                                            having=query.having,
-                                            order_by=query.order_by,
-                                            limit=query.limit,
-                                            offset=query.offset,
-                                            )
-        )
+        int_select = copy.deepcopy(query)
+        int_select.targets = [Star()]  # TODO why not query.targets?
+        int_select.from_table = table
+        integration_select_step = self.plan_integration_select(int_select)
+
         predictor_step = self.plan.add_step(ApplyPredictorStep(namespace=predictor_namespace,
                                          dataframe=integration_select_step.result,
                                          predictor=predictor))
@@ -250,6 +244,7 @@ class QueryPlanner():
             targets=targets,
             from_table=table,
             where=query.where,
+            modifiers=query.modifiers,
         )
         select_step = self.plan_integration_select(query)
         return select_step
@@ -285,6 +280,8 @@ class QueryPlanner():
 
         preparation_where = copy.deepcopy(query.where)
 
+        query_modifiers = query.modifiers
+
         # add {order_by_field} is not null
         def add_order_not_null(condition):
             order_field_not_null = BinaryOperation(op='is not', args=[
@@ -311,12 +308,14 @@ class QueryPlanner():
             integration_select_1 = Select(targets=[Star()],
                                         from_table=table,
                                         where=add_order_not_null(preparation_where2),
+                                        modifiers=query_modifiers,
                                         order_by=order_by,
                                         limit=Constant(predictor_window))
 
             integration_select_2 = Select(targets=[Star()],
                                           from_table=table,
                                           where=preparation_where,
+                                          modifiers=query_modifiers,
                                           order_by=order_by)
 
             integration_selects = [integration_select_1, integration_select_2]
@@ -324,6 +323,7 @@ class QueryPlanner():
             integration_select = Select(targets=[Star()],
                                         from_table=table,
                                         where=preparation_where,
+                                        modifiers=query_modifiers,
                                         order_by=order_by,
                                         limit=Constant(predictor_window),
                                         )
@@ -333,6 +333,7 @@ class QueryPlanner():
             integration_select = Select(targets=[Star()],
                                         from_table=table,
                                         where=preparation_where,
+                                        modifiers=query_modifiers,
                                         order_by=order_by,
                                         limit=Constant(predictor_window),
                                         )
@@ -347,12 +348,14 @@ class QueryPlanner():
             integration_select_1 = Select(targets=[Star()],
                                           from_table=table,
                                           where=add_order_not_null(preparation_where2),
+                                          modifiers=query_modifiers,
                                           order_by=order_by,
                                           limit=Constant(predictor_window))
 
             integration_select_2 = Select(targets=[Star()],
                                           from_table=table,
                                           where=preparation_where,
+                                          modifiers=query_modifiers,
                                           order_by=order_by)
 
             integration_selects = [integration_select_1, integration_select_2]
@@ -360,6 +363,7 @@ class QueryPlanner():
             integration_select = Select(targets=[Star()],
                                         from_table=table,
                                         where=preparation_where,
+                                        modifiers=query_modifiers,
                                         order_by=order_by,
                                         )
             integration_selects = [integration_select]
@@ -422,9 +426,19 @@ class QueryPlanner():
 
 
     def plan_join_two_tables(self, join):
-        select_left_step = self.plan_integration_select(Select(targets=[Star()], from_table=join.left))
-        select_right_step = self.plan_integration_select(Select(targets=[Star()], from_table=join.right))
+        select_left = join.left
+        if isinstance(select_left, Identifier):
+            select_left = Select(targets=[Star()], from_table=select_left)
 
+        select_right = join.right
+        if isinstance(select_right, Identifier):
+            select_right = Select(targets=[Star()], from_table=select_right)
+
+        select_left_step = self.plan_integration_select(select_left)
+        select_right_step = self.plan_integration_select(select_right)
+
+        if isinstance(join.left, Select) or isinstance(join.right, Select):
+            raise PlanningException('Join table in select using integration is not supported yet')
         left_integration_name, left_table = self.get_integration_path_from_identifier_or_error(join.left)
         right_integration_name, right_table = self.get_integration_path_from_identifier_or_error(join.right)
 

@@ -16,6 +16,7 @@ class Select(ASTNode):
                  offset=None,
                  cte=None,
                  mode=None,
+                 modifiers=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.targets = targets
@@ -29,6 +30,9 @@ class Select(ASTNode):
         self.offset = offset
         self.cte = cte
         self.mode = mode
+        if modifiers is None:
+            modifiers = []
+        self.modifiers = modifiers
 
         if self.alias:
             self.parentheses = True
