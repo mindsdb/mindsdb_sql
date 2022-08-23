@@ -129,10 +129,11 @@ class LimitOffsetStep(PlanStep):
 
 class FetchDataframeStep(PlanStep):
     """Fetches a dataframe from external integration"""
-    def __init__(self, integration, query, *args, **kwargs):
+    def __init__(self, integration, query=None, raw_query=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.integration = integration
         self.query = query
+        self.raw_query = raw_query
 
 
 class ApplyPredictorStep(PlanStep):
@@ -220,3 +221,13 @@ class InsertToTable(PlanStep):
         super().__init__(*args, **kwargs)
         self.table = table
         self.dataframe = dataframe
+
+
+class SubSelectStep(PlanStep):
+    def __init__(self, query, dataframe, table_name=None, *args, **kwargs):
+        """Performs select from dataframe"""
+        super().__init__(*args, **kwargs)
+        self.query = query
+        self.dataframe = dataframe
+        self.table_name = table_name
+

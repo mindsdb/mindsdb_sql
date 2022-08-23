@@ -7,7 +7,7 @@ from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, ApplyPredictorStep,
-                                       ApplyPredictorRowStep, GroupByStep)
+                                       ApplyPredictorRowStep, GroupByStep, SubSelectStep)
 
 
 class TestPlanIntegrationSelect:
@@ -415,3 +415,41 @@ class TestPlanIntegrationSelect:
         plan = plan_query(query, integrations=['xxx'])
 
         assert plan.steps == expected_plan.steps
+
+    def test_native_query_no_sub_select(self):
+
+        # Just select to integration
+        sql = "select * from integration1 (select * from task_items)"
+        query = parse_sql(sql, dialect='mindsdb')
+
+        plan = plan_query(query, integrations=['integration1'])
+
+        expected_plan = QueryPlan(
+            default_namespace='integration1',
+            steps=[
+                FetchDataframeStep(integration='integration1', raw_query='select * from task_items'),
+            ]
+        )
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_native_query(self):
+
+        # select on results after select to integration
+
+        sql = "select date_trunc('m', last_date) from integration1 (select * from task_items  )  a limit 1"
+        query = parse_sql(sql, dialect='mindsdb')
+
+        plan = plan_query(query, integrations=['integration1'])
+
+        expected_plan = QueryPlan(
+            default_namespace='integration1',
+            steps=[
+                FetchDataframeStep(integration='integration1', raw_query='select * from task_items'),
+                SubSelectStep(dataframe=Result(0),
+                              query=parse_sql("select date_trunc('m', last_date) limit 1"),
+                              table_name='a'),
+            ]
+        )
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
