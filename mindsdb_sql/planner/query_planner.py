@@ -3,13 +3,14 @@ from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
-                                    BetweenOperation, Union, NullConstant, CreateTable, Function, Insert)
+                                    BetweenOperation, Union, NullConstant, CreateTable, Function, Insert,
+                                    NativeQuery)
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep,
-                                       GetPredictorColumns, SaveToTable, InsertToTable)
+                                       GetPredictorColumns, SaveToTable, InsertToTable, SubSelectStep)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
@@ -103,16 +104,28 @@ class QueryPlanner():
 
         # get all predictors
         mdb_entities = []
+        used_integrations = set()
 
         def find_predictors(node, is_table, **kwargs):
+            if isinstance(node, ast.NativeQuery):
+                # has NativeQuery syntax
+                mdb_entities.append(node)
+
             if is_table and isinstance(node, ast.Identifier):
-                is_view = len(node.parts) > 1 and node.parts[0] == 'views'
-                if self.is_predictor(node) or is_view:
+                if len(node.parts) > 1 and node.parts[0] in self.integrations:
+                    used_integrations.add(node.parts[0])
+
+                if self.is_predictor(node):
                     mdb_entities.append(node)
 
         utils.query_traversal(select, find_predictors)
 
-        if len(mdb_entities) == 0:
+        if (
+            len(mdb_entities) == 0
+            and len(used_integrations) < 2
+            and not 'files' in used_integrations
+            and not 'views' in used_integrations
+        ):
             # if no predictor inside = run as is
             return self.plan_integration_nested_select(select)
         else:
@@ -128,13 +141,13 @@ class QueryPlanner():
     def plan_mdb_nested_select(self, select):
         # plan nested select
 
-        if select.limit == 0:
+        # if select.limit == 0:
             # TODO don't run predictor if limit is 0
-            ...
+            # ...
 
-        subselect_alias = select.from_table.alias
-        if subselect_alias is not None:
-            subselect_alias = subselect_alias.parts[0]
+        # subselect_alias = select.from_table.alias
+        # if subselect_alias is not None:
+        #     subselect_alias = subselect_alias.parts[0]
 
         select2 = copy.deepcopy(select.from_table)
         select2.parentheses = False
@@ -142,42 +155,49 @@ class QueryPlanner():
         self.plan_select(select2)
         last_step = self.plan.steps[-1]
 
-        if select.where is not None:
-            # remove subselect alias
-            where_query = select.where
-            if subselect_alias is not None:
-                def remove_aliases(node, **kwargs):
-                    if isinstance(node, Identifier):
+        sup_select = self.sub_select_step(select, last_step)
+        if sup_select is not None:
+            self.plan.add_step(sup_select)
+            last_step = sup_select
 
-                        if len(node.parts) > 1:
-                            if node.parts[0] == subselect_alias:
-                                node.parts = node.parts[1:]
+        return last_step
 
-                query_traversal(where_query, remove_aliases)
-
-            last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=where_query))
-
-        group_step = self.plan_group(select, last_step)
-        if group_step is not None:
-            self.plan.add_step(group_step)
-            # don't do project step
-
-        else:
-            # do we need projection?
-            if len(select.targets) != 1 or not isinstance(select.targets[0], Star):
-                # remove prefix alias
-                if subselect_alias is not None:
-                    for t in select.targets:
-                        if isinstance(t, Identifier) and t.parts[0] == subselect_alias:
-                            t.parts.pop(0)
-
-                self.plan_project(select, last_step.result, ignore_doubles=True)
+        # if select.where is not None:
+        #     # remove subselect alias
+        #     where_query = select.where
+        #     if subselect_alias is not None:
+        #         def remove_aliases(node, **kwargs):
+        #             if isinstance(node, Identifier):
+        #
+        #                 if len(node.parts) > 1:
+        #                     if node.parts[0] == subselect_alias:
+        #                         node.parts = node.parts[1:]
+        #
+        #         query_traversal(where_query, remove_aliases)
+        #
+        #     last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=where_query))
+        #
+        # group_step = self.plan_group(select, last_step)
+        # if group_step is not None:
+        #     self.plan.add_step(group_step)
+        #     # don't do project step
+        #
+        # else:
+        #     # do we need projection?
+        #     if len(select.targets) != 1 or not isinstance(select.targets[0], Star):
+        #         # remove prefix alias
+        #         if subselect_alias is not None:
+        #             for t in select.targets:
+        #                 if isinstance(t, Identifier) and t.parts[0] == subselect_alias:
+        #                     t.parts.pop(0)
+        #
+        #         self.plan_project(select, last_step.result, ignore_doubles=True)
 
         # do we need limit?
-        last_step = self.plan.steps[-1]
-        if select.limit is not None:
-            last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result, limit=select.limit.value))
-        return last_step
+        # last_step = self.plan.steps[-1]
+        # if select.limit is not None:
+        #     last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result, limit=select.limit.value))
+        # return last_step
 
 
     def plan_select_from_predictor(self, select):
@@ -475,6 +495,8 @@ class QueryPlanner():
         return self.plan.add_step(JoinStep(left=select_left_step.result, right=select_right_step.result, query=new_join))
 
     def plan_group(self, query, last_step):
+        # ! is not using yet
+
         # check group
         funcs = []
         for t in query.targets:
@@ -729,8 +751,36 @@ class QueryPlanner():
             return self.plan_nested_select(query)
         elif isinstance(from_table, Join):
             return self.plan_join(query, integration=integration)
+        elif isinstance(from_table, NativeQuery):
+            integration = from_table.integration.parts[0].lower()
+            step = FetchDataframeStep(integration=integration, raw_query=from_table.query)
+            self.plan.add_step(step)
+            sup_select = self.sub_select_step(query, step)
+            if sup_select is not None:
+                self.plan.add_step(sup_select)
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
+
+    def sub_select_step(self, query, prev_step):
+        if (
+            query.group_by is not None
+            or query.order_by is not None
+            or query.having is not None
+            or query.distinct is True
+            or query.where is not None
+            or query.limit is not None
+            or query.offset is not None
+            or len(query.targets) != 1
+            or not isinstance(query.targets[0], Star)
+        ):
+            if query.from_table.alias is not None:
+                table_name = query.from_table.alias.parts[-1]
+            else:
+                table_name = None
+
+            query2 = copy.deepcopy(query)
+            query2.from_table = None
+            return SubSelectStep(query2, prev_step.result, table_name=table_name)
 
     def plan_union(self, query):
         query1 = self.plan_select(query.left)

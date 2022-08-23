@@ -42,3 +42,25 @@ class TestSpecificSelects:
         # assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_native_query(self):
+        sql = """
+           SELECT status 
+           FROM int1 (select q from p from r) 
+           group by 1
+           limit 1
+        """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = Select(
+            targets=[Identifier('status')],
+            from_table=NativeQuery(
+                integration=Identifier('int1'),
+                query='select q from p from r'
+            ),
+            limit=Constant(1),
+            group_by=[Constant(1)]
+        )
+
+        # assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()

@@ -6,7 +6,7 @@ from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
-                                       LimitOffsetStep, GroupByStep)
+                                       LimitOffsetStep, GroupByStep, SubSelectStep)
 from mindsdb_sql.parser.utils import JoinType
 from mindsdb_sql import parse_sql
 
@@ -376,7 +376,7 @@ class TestPlanJoinPredictor:
                                     right=Identifier('result_1', alias=Identifier('pred')),
                                     join_type=JoinType.JOIN)),
                 ProjectStep(dataframe=Result(2), columns=[Star()]),
-                ProjectStep(dataframe=Result(3), columns=[Identifier('time')], ignore_doubles=True),
+                SubSelectStep(dataframe=Result(3), query=parse_sql('SELECT time limit 1'), table_name='Custom SQL Query'),
                 LimitOffsetStep(dataframe=Result(4), limit=1)
             ],
         )
@@ -414,7 +414,9 @@ class TestPlanJoinPredictor:
                                     right=Identifier('result_1', alias=Identifier('pred')),
                                     join_type=JoinType.JOIN)),
                 ProjectStep(dataframe=Result(2), columns=[Star()]),
-                GroupByStep(dataframe=Result(3), columns=[Constant(1)], targets=[Identifier('time')])
+                SubSelectStep(dataframe=Result(3),
+                              query=Select(targets=[Identifier('time')], group_by=[Constant(1)]),
+                              table_name='Custom SQL Query'),
             ],
         )
 

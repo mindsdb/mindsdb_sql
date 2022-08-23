@@ -372,8 +372,8 @@ class MindsDBParser(Parser):
         return p[0]
 
     # DELETE
-    @_('DELETE FROM from_table WHERE expr')
-    @_('DELETE FROM from_table')
+    @_('DELETE FROM identifier WHERE expr')
+    @_('DELETE FROM identifier')
     def delete(self, p):
         where = getattr(p, 'expr', None)
 
@@ -381,20 +381,20 @@ class MindsDBParser(Parser):
             raise ParsingException(
                 f"WHERE must contain an operation that evaluates to a boolean, got: {str(where)}")
 
-        return Delete(table=p.from_table, where=where)
+        return Delete(table=p.identifier, where=where)
 
     # INSERT
-    @_('INSERT INTO from_table LPAREN result_columns RPAREN select')
-    @_('INSERT INTO from_table select')
+    @_('INSERT INTO identifier LPAREN result_columns RPAREN select')
+    @_('INSERT INTO identifier select')
     def insert(self, p):
         columns = getattr(p, 'result_columns', None)
-        return Insert(table=p.from_table, columns=columns, from_select=p.select)
+        return Insert(table=p.identifier, columns=columns, from_select=p.select)
 
-    @_('INSERT INTO from_table LPAREN result_columns RPAREN VALUES expr_list_set')
-    @_('INSERT INTO from_table VALUES expr_list_set')
+    @_('INSERT INTO identifier LPAREN result_columns RPAREN VALUES expr_list_set')
+    @_('INSERT INTO identifier VALUES expr_list_set')
     def insert(self, p):
         columns = getattr(p, 'result_columns', None)
-        return Insert(table=p.from_table, columns=columns, values=p.expr_list_set)
+        return Insert(table=p.identifier, columns=columns, values=p.expr_list_set)
 
     @_('expr_list_set COMMA expr_list_set')
     def expr_list_set(self, p):
@@ -786,6 +786,15 @@ class MindsDBParser(Parser):
         if hasattr(p, 'dquote_string'):
             entity.alias = Identifier(p.dquote_string)
         return entity
+
+    # native query
+    @_('identifier LPAREN raw_query RPAREN')
+    def from_table(self, p):
+        query = NativeQuery(
+            integration=p.identifier,
+            query=tokens_to_string(p.raw_query)
+        )
+        return query
 
     @_('LPAREN query RPAREN')
     def from_table(self, p):

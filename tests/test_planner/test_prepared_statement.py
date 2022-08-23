@@ -120,6 +120,9 @@ class TestPreparedStatement:
                 for test_name, test_method in inspect.getmembers(tests, predicate=inspect.ismethod):
                     if not test_name.startswith('test_') or test_name.endswith('_error'):
                         continue
+                    if test_name in ('test_native_query_no_sub_select',):
+                        # skipped tests
+                        continue
                     try:
                         test_method()
                     except query_planner.PlanningException as e:
