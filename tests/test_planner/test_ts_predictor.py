@@ -65,6 +65,57 @@ class TestJoinTimeseriesPredictor:
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
 
+    def test_join_predictor_timeseries_other_ml(self):
+        predictor_window = 10
+        group_by_column = 'vendor_id'
+        query = parse_sql('select * from mysql.data.ny_output ta'
+                          ' left join mlflow.tp3 tb')
+
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[
+                                       Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                                from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                                distinct=True,
+                                                )
+                                   ),
+                MapReduceStep(values=Result(0),
+                              reduce='union',
+                              step=FetchDataframeStep(integration='mysql',
+                                                      query=parse_sql("SELECT * FROM data.ny_output AS ta\
+                                       WHERE ta.pickup_hour is not null and ta.vendor_id = '$var[vendor_id]' ORDER BY ta.pickup_hour DESC")
+                                                      ),
+                              ),
+                ApplyTimeseriesPredictorStep(namespace='mlflow',
+                                             predictor=Identifier('tp3', alias=Identifier('tb')),
+                                             dataframe=Result(1)),
+                JoinStep(left=Result(1),
+                         right=Result(2),
+                         query=Join(
+                             right=Identifier('result_2', alias=Identifier('tb')),
+                             left=Identifier('result_1', alias=Identifier('ta')),
+                             join_type=JoinType.LEFT_JOIN)
+                         ),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
+            ],
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql', 'mlflow'],
+                          predictor_metadata=[
+                              {'timeseries': True,
+                               'name':'tp3',
+                               'integration_name': 'mlflow',
+                               'order_by_column': 'pickup_hour',
+                               'group_by_columns': [group_by_column],
+                               'window': predictor_window}
+                          ])
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
     def test_join_predictor_timeseries_select_table_columns(self):
         predictor_window = 10
         group_by_column = 'vendor_id'

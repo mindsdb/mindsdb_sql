@@ -31,47 +31,56 @@ class QueryPlanner():
 
     def __init__(self,
                  query=None,
-                 integrations=None,
+                 integrations: list = None,
                  predictor_namespace=None,
-                 predictor_metadata=None,
-                 default_namespace=None):
+                 predictor_metadata: list = None,
+                 default_namespace: str = None):
         self.query = query
         self.plan = QueryPlan()
 
         self.integrations = [int.lower() for int in integrations] if integrations else []
-        self.predictor_namespace = predictor_namespace.lower() if predictor_namespace else 'mindsdb'
-        self.predictor_metadata = predictor_metadata or defaultdict(dict)
         self.default_namespace = default_namespace
 
+        # legacy parameter
+        self.predictor_namespace = predictor_namespace.lower() if predictor_namespace else 'mindsdb'
+
         # map for lower names of predictors
-        self.predictor_names = {
-            k.lower(): k
-            for k in self.predictor_metadata.keys()
-        }
+
+        self.predictor_info = {}
+        if isinstance(predictor_metadata, list):
+            # convert to dict
+            if predictor_metadata is not None:
+                for predictor in predictor_metadata:
+                    integration_name = predictor.get('integration_name', self.predictor_namespace)
+
+                    idx = f'{integration_name}.{predictor["name"]}'.lower()
+                    self.predictor_info[idx] = predictor
+        elif isinstance(predictor_metadata, dict):
+            # legacy behaviour
+            for name, predictor in predictor_metadata.items():
+                if '.' not in name:
+                    integration_name = predictor.get('integration_name', self.predictor_namespace)
+                    name = f'{integration_name}.{name}'.lower()
+
+                self.predictor_info[name] = predictor
 
         # allow to select from mindsdb namespace
-        self.integrations.append(self.predictor_namespace)
+        if 'mindsdb' not in self.integrations:
+            self.integrations.append('mindsdb')
 
         self.statement = None
 
     def is_predictor(self, identifier):
-        parts = identifier.parts
-        if not parts[-1].lower() in self.predictor_names:
-            return False
-        if parts[0].lower() == self.predictor_namespace:
-            return True
-        elif len(parts) == 1 and self.default_namespace == self.predictor_namespace:
-            return True
-        return False
+        return self.get_predictor(identifier) is not None
 
-    # not used
-    # def is_integration_table(self, identifier):
-    #     parts = identifier.parts
-    #     if parts[0].lower() in self.integrations:
-    #         return True
-    #     elif len(parts) == 1 and self.default_namespace in self.integrations:
-    #         return True
-    #     return False
+    def get_predictor(self, identifier):
+        name_parts = list(identifier.parts)
+        if len(name_parts) == 1:
+            if self.default_namespace is not None:
+                name_parts.insert(0, self.default_namespace)
+
+        name = '.'.join(name_parts).lower()
+        return self.predictor_info.get(name)
 
     def get_integration_path_from_identifier_or_error(self, identifier, recurse=True):
         try:
@@ -205,9 +214,10 @@ class QueryPlanner():
 
         if select.where == BinaryOperation('=', args=[Constant(1), Constant(0)]):
             # Hardcoded mysql way of getting predictor columns
+            predictor_identifier = utils.get_predictor_name_identifier(predictor)
             predictor_step = self.plan.add_step(
                 GetPredictorColumns(namespace=predictor_namespace,
-                                      predictor=predictor)
+                                      predictor=predictor_identifier)
             )
         else:
             new_query_targets = []
@@ -228,11 +238,12 @@ class QueryPlanner():
             if not where_clause:
                 raise PlanningException(f'WHERE clause required when selecting from predictor')
 
-            recursively_extract_column_values(where_clause, row_dict, predictor)
+            predictor_identifier = utils.get_predictor_name_identifier(predictor)
+            recursively_extract_column_values(where_clause, row_dict, predictor_identifier)
 
             predictor_step = self.plan.add_step(
                 ApplyPredictorRowStep(namespace=predictor_namespace,
-                                                predictor=predictor,
+                                                predictor=predictor_identifier,
                                                 row_dict=row_dict)
             )
         project_step = self.plan_project(select, predictor_step.result)
@@ -244,9 +255,10 @@ class QueryPlanner():
         int_select.from_table = table
         integration_select_step = self.plan_integration_select(int_select)
 
+        predictor_identifier = utils.get_predictor_name_identifier(predictor)
         predictor_step = self.plan.add_step(ApplyPredictorStep(namespace=predictor_namespace,
                                          dataframe=integration_select_step.result,
-                                         predictor=predictor))
+                                         predictor=predictor_identifier))
 
         return {
             'predictor': predictor_step,
@@ -270,15 +282,14 @@ class QueryPlanner():
         return select_step
 
     def plan_timeseries_predictor(self, query, table, predictor_namespace, predictor):
-        predictor_name = predictor.to_string(alias=False).lower()
-        # to original case
-        predictor_name = self.predictor_names[predictor_name]
 
-        predictor_time_column_name = self.predictor_metadata[predictor_name]['order_by_column']
-        predictor_group_by_names = self.predictor_metadata[predictor_name]['group_by_columns']
+        predictor_metadata = self.get_predictor(predictor)
+
+        predictor_time_column_name = predictor_metadata['order_by_column']
+        predictor_group_by_names = predictor_metadata['group_by_columns']
         if predictor_group_by_names is None:
             predictor_group_by_names = []
-        predictor_window = self.predictor_metadata[predictor_name]['window']
+        predictor_window = predictor_metadata['window']
 
         if query.order_by:
             raise PlanningException(
@@ -429,12 +440,14 @@ class QueryPlanner():
             map_reduce_step = self.plan.add_step(MapReduceStep(values=select_partitions_step.result, reduce='union', step=select_partition_step))
             data_step = map_reduce_step
 
+        predictor_identifier = utils.get_predictor_name_identifier(predictor)
+
         predictor_step = self.plan.add_step(
             ApplyTimeseriesPredictorStep(
                 output_time_filter=time_filter,
                 namespace=predictor_namespace,
                 dataframe=data_step.result,
-                predictor=predictor,
+                predictor=predictor_identifier,
             )
         )
 
@@ -624,13 +637,13 @@ class QueryPlanner():
             table = None
             predictor_is_left = False
             if self.is_predictor(join_left):
-                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join_left, self.default_namespace)
+                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join_left, self.predictor_namespace)
                 predictor_is_left = True
             else:
                 table = join_left
 
             if self.is_predictor(join_right):
-                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join_right, self.default_namespace)
+                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join_right, self.predictor_namespace)
             else:
                 table = join_right
 
@@ -640,8 +653,7 @@ class QueryPlanner():
                 # Apply mindsdb model to result of last dataframe fetch
                 # Then join results of applying mindsdb with table
 
-                predictor_name = self.predictor_names[predictor.to_string(alias=False).lower()]
-                if self.predictor_metadata[predictor_name].get('timeseries'):
+                if self.get_predictor(predictor).get('timeseries'):
                     predictor_steps = self.plan_timeseries_predictor(query, table, predictor_namespace, predictor)
                 else:
                     predictor_steps = self.plan_predictor(query, table, predictor_namespace, predictor)
@@ -651,8 +663,9 @@ class QueryPlanner():
                 _, table = self.get_integration_path_from_identifier_or_error(table)
                 table_alias = table.alias or Identifier(table.to_string(alias=False).replace('.', '_'))
 
+                predictor_identifier = utils.get_predictor_name_identifier(predictor)
                 left = Identifier(predictor_steps['predictor'].result.ref_name,
-                                   alias=predictor.alias or Identifier(predictor.to_string(alias=False)))
+                                   alias=predictor_identifier.alias or Identifier(predictor_identifier.to_string(alias=False)))
                 right = Identifier(predictor_steps['data'].result.ref_name, alias=table_alias)
 
                 if not predictor_is_left:
