@@ -55,6 +55,9 @@ class QueryPlanner():
 
                     idx = f'{integration_name}.{predictor["name"]}'.lower()
                     self.predictor_info[idx] = predictor
+                    if integration_name == 'lightwood':
+                        self.predictor_info[f'mindsdb.{predictor["name"]}'.lower()] = predictor
+
         elif isinstance(predictor_metadata, dict):
             # legacy behaviour
             for name, predictor in predictor_metadata.items():
