@@ -21,22 +21,24 @@ def get_integration_path_from_identifier(identifier):
     return integration_name, new_identifier
 
 
-def get_predictor_namespace_and_name_from_identifier(identifier, default_namespace):
-    parts = identifier.parts
-    namespace = parts[0]
-    new_parts = parts[1:]
-    if len(parts) == 1:
-        if default_namespace:
-            namespace = default_namespace
-            new_parts = [parts[0]]
-        else:
-            raise PlanningException(f'No predictor name specified for predictor: {str(identifier)}')
-    elif len(parts) > 4:
-        raise PlanningException(f'Too many parts (dots) in predictor identifier: {str(identifier)}')
-
+def get_predictor_name_identifier(identifier):
     new_identifier = copy.deepcopy(identifier)
-    new_identifier.parts = new_parts
+    if len(new_identifier.parts) > 1:
+        new_identifier.parts.pop(0)
+    return new_identifier
+
+
+def get_predictor_namespace_and_name_from_identifier(identifier, default_namespace):
+    new_identifier = copy.deepcopy(identifier)
+    if len(new_identifier.parts) > 1:
+        namespace = new_identifier.parts[0]
+    else:
+        # add namespace if not exists
+        namespace = default_namespace
+        new_identifier.parts.insert(0, namespace)
+
     return namespace, new_identifier
+
 
 
 def disambiguate_integration_column_identifier(identifier, integration_name, table,

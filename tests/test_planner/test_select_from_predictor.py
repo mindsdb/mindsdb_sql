@@ -6,7 +6,7 @@ from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import (ProjectStep, ApplyPredictorRowStep, GetPredictorColumns)
+from mindsdb_sql.planner.steps import (ProjectStep, ApplyPredictorRowStep, GetPredictorColumns, FetchDataframeStep)
 
 
 class TestPlanSelectFromPredictor:
@@ -27,6 +27,25 @@ class TestPlanSelectFromPredictor:
                                   )
 
         plan = plan_query(query, predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
+
+        assert plan.steps == expected_plan.steps
+
+    def test_select_from_predictor_plan_other_ml(self):
+        query = parse_sql('''
+            select * from mlflow.pred
+            where x1 = 1 and x2 = '2'
+        ''')
+
+        expected_plan = QueryPlan(predictor_namespace='mindsdb',
+                                  steps=[
+                                      ApplyPredictorRowStep(namespace='mlflow', predictor=Identifier('pred'),
+                                                            row_dict={'x1': 1, 'x2': '2'}),
+                                      ProjectStep(dataframe=Result(0), columns=[Star()]),
+                                  ],
+
+                                  )
+
+        plan = plan_query(query, predictor_metadata=[{'name': 'pred', 'integration_name': 'mlflow'}])
 
         assert plan.steps == expected_plan.steps
         
@@ -99,8 +118,8 @@ class TestPlanSelectFromPredictor:
 
         plan = plan_query(query, predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
-        assert plan.steps == expected_plan.steps
-        
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
 
 
 
@@ -186,3 +205,21 @@ class TestPlanSelectFromPredictor:
         plan = plan_query(query, predictor_namespace='mindsdb', default_namespace='mindsdb', predictor_metadata={'hdi_predictor_external': {}})
 
         assert plan.steps == expected_plan.steps
+
+
+class TestMLSelect:
+
+    def test_select_from_predictor_plan_other_ml(self):
+        # sends to integrations
+        query = parse_sql(''' select * from mlflow.predictors ''')
+
+        expected_plan = QueryPlan(steps=[
+            FetchDataframeStep(step_num=0, integration='mlflow', query=parse_sql('SELECT * FROM predictors'))
+          ],
+        )
+
+        plan = plan_query(query, predictor_metadata=[], integrations=['mlflow'])
+
+        assert plan.steps == expected_plan.steps
+
+
