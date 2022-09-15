@@ -474,6 +474,76 @@ class TestJoinTimeseriesPredictor:
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
 
+    def test_join_predictor_timeseries_concrete_date_greater_2_group_fields(self):
+        predictor_window = 10
+
+        sql = "select * from mysql.data.ny_output as ta left join mindsdb.tp3 as tb\
+            where ta.pickup_hour > 10 and ta.vendor_id = 1 and ta.type = 2"
+
+        query = parse_sql(sql, dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(
+                    integration='mysql',
+                    query=parse_sql('''
+                         select distinct ta.vendor_id as vendor_id, ta.type as type
+                         from data.ny_output as ta
+                         where ta.vendor_id = 1 and ta.type = 2
+                       ''')
+                ),
+                MapReduceStep(
+                    values=Result(0),
+                    reduce='union',
+                    step=MultipleSteps(
+                        reduce='union',
+                        steps=[
+                            FetchDataframeStep(
+                                integration='mysql',
+                                query=parse_sql(f"SELECT * FROM data.ny_output AS ta \
+                                  WHERE ta.pickup_hour <= 10 AND ta.vendor_id = 1 and ta.type = 2 and ta.pickup_hour is not null \
+                                  AND ta.vendor_id = '$var[vendor_id]' AND ta.type = '$var[type]'\
+                                  ORDER BY ta.pickup_hour DESC LIMIT {predictor_window}"),
+                            ),
+                            FetchDataframeStep(
+                                integration='mysql',
+                                query=parse_sql("SELECT * FROM data.ny_output AS ta \
+                                  WHERE ta.pickup_hour > 10 AND ta.vendor_id = 1 and ta.type = 2 and ta.pickup_hour is not null \
+                                  AND ta.vendor_id = '$var[vendor_id]' AND ta.type = '$var[type]'\
+                                  ORDER BY ta.pickup_hour DESC"),
+                            ),
+
+                        ]
+                    )),
+                ApplyTimeseriesPredictorStep(
+                    output_time_filter=BinaryOperation('>', args=[Identifier('ta.pickup_hour'), Constant(10)]),
+                    namespace='mindsdb',
+                    predictor=Identifier('tp3', alias=Identifier('tb')),
+                    dataframe=Result(1)),
+                JoinStep(left=Result(1),
+                         right=Result(2),
+                         query=Join(
+                             right=Identifier('result_2', alias=Identifier('tb')),
+                             left=Identifier('result_1', alias=Identifier('ta')),
+                             join_type=JoinType.LEFT_JOIN)
+                         ),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
+            ],
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql'],
+                          predictor_namespace='mindsdb',
+                          predictor_metadata={
+                              'tp3': {'timeseries': True,
+                                      'order_by_column': 'pickup_hour',
+                                      'group_by_columns': ['vendor_id', 'type'],
+                                      'window': predictor_window}
+                          })
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
     def test_join_predictor_timeseries_concrete_date_greater_or_equal(self):
         predictor_window = 10
         group_by_column = 'vendor_id'
