@@ -410,6 +410,10 @@ class MindsDBParser(Parser):
     def describe(self, p):
         return Describe(value=p.identifier)
 
+    @_('DESCRIBE PREDICTOR identifier')
+    def describe(self, p):
+        return Describe(value=p.identifier, type='predictor')
+
     # USE
 
     @_('USE identifier')
