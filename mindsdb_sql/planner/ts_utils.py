@@ -20,10 +20,9 @@ def find_time_filter(op, time_column_name):
 def replace_time_filter(op, time_filter, new_filter):
     if op == time_filter:
         return new_filter
-    elif op.args[0] == time_filter:
-        op.args[0] = new_filter
-    elif op.args[1] == time_filter:
-        op.args[1] = new_filter
+    if isinstance(op, BinaryOperation):
+        op.args[0] = replace_time_filter(op.args[0], time_filter, new_filter)
+        op.args[1] = replace_time_filter(op.args[1], time_filter, new_filter)
     return op
 
 
