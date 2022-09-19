@@ -105,14 +105,20 @@ class SqlalchemyRender:
                 col = col.label(alias)
         elif isinstance(t, ast.Function):
             op = getattr(sa.func, t.op)
-            args = [
-                self.to_expression(i)
-                for i in t.args
-            ]
-            if t.distinct:
-                # set first argument to distinct
-                args[0] = args[0].distinct()
-            col = op(*args)
+            if t.from_arg is not None:
+                arg = t.args[0].to_string()
+                from_arg = self.to_expression(t.from_arg)
+
+                col = op(arg, from_arg)
+            else:
+                args = [
+                    self.to_expression(i)
+                    for i in t.args
+                ]
+                if t.distinct:
+                    # set first argument to distinct
+                    args[0] = args[0].distinct()
+                col = op(*args)
 
             if t.alias:
                 alias = self.get_alias(t.alias)

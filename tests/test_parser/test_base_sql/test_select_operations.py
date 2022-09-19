@@ -534,3 +534,21 @@ class TestOperationsNoSqlite:
 
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_function_with_from(self, dialect):
+
+        sql = 'SELECT extract(MONTH FROM dateordered)'
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[Function(
+                op='extract',
+                args=[Identifier('MONTH')],
+                from_arg=Identifier('dateordered')
+            )],
+        )
+
+        assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+

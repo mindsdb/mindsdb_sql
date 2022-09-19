@@ -771,6 +771,10 @@ class MySQLParser(SQLParser):
             p.expr.parentheses = True
         return p.expr
 
+    @_('id LPAREN expr FROM expr RPAREN')
+    def function(self, p):
+        return Function(op=p.id, args=[p.expr0], from_arg=p.expr1)
+
     @_('DATABASE LPAREN RPAREN')
     def function(self, p):
         return Function(op=p.DATABASE, args=[])

@@ -546,6 +546,10 @@ class SQLParser(Parser):
             p.expr.parentheses = True
         return p.expr
 
+    @_('id LPAREN expr FROM expr RPAREN')
+    def function(self, p):
+        return Function(op=p.id, args=[p.expr0], from_arg=p.expr1)
+
     @_('id LPAREN DISTINCT expr_list RPAREN')
     def function(self, p):
         return Function(op=p.id, distinct=True, args=p.expr_list)
