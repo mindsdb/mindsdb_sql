@@ -515,6 +515,33 @@ class SqlalchemyRender:
 
         return stmt
 
+    def prepare_update(self, ast_query):
+        if ast_query.from_select is not None:
+            raise NotImplementedError('Render of update with sub-select is not implemented')
+
+        schema, table_name = self.get_table_name(ast_query.table)
+
+        columns = []
+
+        to_update = {}
+        for col, value in ast_query.update_columns.items():
+            columns.append(
+                sa.Column(
+                    col,
+                )
+            )
+
+            to_update[col] = self.to_expression(value)
+
+        table = sa.table(table_name, schema=schema, *columns)
+
+        stmt = table.update().values(**to_update)
+
+        if ast_query.where is not None:
+            stmt = stmt.where(self.to_expression(ast_query.where))
+
+        return stmt
+
     def get_string(self, ast_query, with_failback=True):
         try:
             if isinstance(ast_query, ast.Select):
@@ -522,6 +549,9 @@ class SqlalchemyRender:
                 sql = render_dml_query(stmt, self.dialect)
             elif isinstance(ast_query, ast.Insert):
                 stmt = self.prepare_insert(ast_query)
+                sql = render_dml_query(stmt, self.dialect)
+            elif isinstance(ast_query, ast.Update):
+                stmt = self.prepare_update(ast_query)
                 sql = render_dml_query(stmt, self.dialect)
             elif isinstance(ast_query, ast.CreateTable):
                 stmt = self.prepare_create_table(ast_query)
