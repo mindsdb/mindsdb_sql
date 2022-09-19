@@ -803,6 +803,10 @@ class MySQLParser(SQLParser):
     def expr_list_or_nothing(self, p):
         pass
 
+    @_('CAST LPAREN expr AS id LPAREN integer RPAREN RPAREN')
+    def expr(self, p):
+        return TypeCast(arg=p.expr, type_name=str(p.id), length=p.integer)
+
     @_('CAST LPAREN expr AS id RPAREN')
     def expr(self, p):
         return TypeCast(arg=p.expr, type_name=str(p.id))

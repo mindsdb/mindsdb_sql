@@ -215,6 +215,8 @@ class SqlalchemyRender:
         elif isinstance(t, ast.TypeCast):
             arg = self.to_expression(t.arg)
             type = self.get_type(t.type_name)
+            if t.length is not None:
+                type = type(t.length)
             col = sa.cast(arg, type)
 
             if t.alias:
