@@ -1187,6 +1187,45 @@ class TestJoinTimeseriesPredictor:
 
         self._test_timeseries_no_group(sql, expected_plan2)
 
+        # update table from select
+
+        expected_plan2 = copy.deepcopy(expected_plan)
+        expected_plan2.add_step(UpdateToTable(
+            table=Identifier('int1.tbl1'),
+            dataframe=expected_plan2.steps[-1],
+            update_command=Update(
+                table=Identifier('int1.tbl1'),
+                update_columns={
+                    'a': Identifier('df.a'),
+                    'b': Identifier('df.b'),
+                },
+                where=BinaryOperation(op='=', args=[
+                    Identifier('c'),
+                    Identifier('df.c')
+                ])
+            )
+        ))
+
+        sql = '''
+            update 
+                int1.tbl1                   
+            set
+                a = df.a,
+                b = df.b
+            from                            
+                (
+                        select * from (
+                                   select * from files.schem.sweat as ta                  
+                                   where ta.date > '2015-12-31'
+                        )
+                        join mindsdb.tp3 as tb 
+                )
+                as df
+            where  
+                c = df.c       
+        '''
+        self._test_timeseries_no_group(sql, expected_plan2)
+
     def _test_timeseries_no_group(self, sql, expected_plan):
         predictor_window = 3
         query = parse_sql(sql,  dialect='mindsdb')

@@ -114,6 +114,8 @@ def parse_sql2(sql, dialect='sqlite'):
                 pass
             elif dialect2 == 'sybase' and 'for update' in sql.lower():
                 pass
+            elif dialect2 == 'sqlite' and 'extract(MONTH' in sql:
+                pass
             else:
                 print(dialect2, query.to_string())
                 raise

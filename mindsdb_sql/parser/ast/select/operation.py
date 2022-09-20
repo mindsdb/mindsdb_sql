@@ -66,9 +66,10 @@ class UnaryOperation(Operation):
 
 
 class Function(Operation):
-    def __init__(self, *args, distinct=False, **kwargs):
+    def __init__(self, *args, distinct=False, from_arg=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.distinct = distinct
+        self.from_arg = from_arg
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -77,13 +78,21 @@ class Function(Operation):
         arg_trees = [arg.to_tree(level=level+2) for arg in self.args]
         arg_trees_str = ",\n".join(arg_trees)
         alias_str = f'alias={self.alias.to_tree()},' if self.alias else ''
-        out_str = f'{ind}{self.__class__.__name__}(op={repr(self.op)}, distinct={repr(self.distinct)},{alias_str}\n{ind1}args=[\n{arg_trees_str}\n{ind1}]\n{ind})'
+        from_str = f'from={self.from_arg.to_tree()}' if self.from_arg else ''
+        out_str = f'{ind}{self.__class__.__name__}(op={repr(self.op)}, distinct={repr(self.distinct)},{alias_str}\n' \
+                  f'{ind1}args=[\n' \
+                  f'{arg_trees_str}\n' \
+                  f'{ind1}]\n' \
+                  f'{ind1}{from_str}\n' \
+                  f'{ind})'
         return out_str
 
     def get_string(self, *args, **kwargs):
         args_str = ', '.join([arg.to_string() for arg in self.args])
         distinct_str = 'DISTINCT ' if self.distinct else ''
-        return f'{self.op}({distinct_str}{args_str})'
+
+        from_str = f' FROM {self.from_arg.to_string()}' if self.from_arg else ''
+        return f'{self.op}({distinct_str}{args_str}{from_str})'
 
 
 class WindowFunction(ASTNode):

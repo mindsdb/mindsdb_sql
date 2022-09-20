@@ -37,6 +37,7 @@ class MySQLParser(SQLParser):
        'union',
        'select',
        'insert',
+       'update',
        'delete',
        'drop_database',
        'drop_view',
@@ -358,6 +359,15 @@ class MySQLParser(SQLParser):
                 f"WHERE must contain an operation that evaluates to a boolean, got: {str(where)}")
 
         return Delete(table=p.from_table, where=where)
+
+    # UPDATE
+    @_('UPDATE identifier SET update_parameter_list')
+    @_('UPDATE identifier SET update_parameter_list WHERE expr')
+    def update(self, p):
+        where = getattr(p, 'expr', None)
+        return Update(table=p.identifier,
+                      update_columns=p.update_parameter_list,
+                      where=where)
 
     # INSERT
     @_('INSERT INTO from_table LPAREN result_columns RPAREN select')
@@ -761,6 +771,10 @@ class MySQLParser(SQLParser):
             p.expr.parentheses = True
         return p.expr
 
+    @_('id LPAREN expr FROM expr RPAREN')
+    def function(self, p):
+        return Function(op=p.id, args=[p.expr0], from_arg=p.expr1)
+
     @_('DATABASE LPAREN RPAREN')
     def function(self, p):
         return Function(op=p.DATABASE, args=[])
@@ -792,6 +806,10 @@ class MySQLParser(SQLParser):
     @_('empty')
     def expr_list_or_nothing(self, p):
         pass
+
+    @_('CAST LPAREN expr AS id LPAREN integer RPAREN RPAREN')
+    def expr(self, p):
+        return TypeCast(arg=p.expr, type_name=str(p.id), length=p.integer)
 
     @_('CAST LPAREN expr AS id RPAREN')
     def expr(self, p):
@@ -851,6 +869,18 @@ class MySQLParser(SQLParser):
        'NOT expr %prec UNOT', )
     def expr(self, p):
         return UnaryOperation(op=p[0], args=(p.expr,))
+
+    # update fields list
+    @_('update_parameter',
+       'update_parameter_list COMMA update_parameter')
+    def update_parameter_list(self, p):
+        params = getattr(p, 'update_parameter_list', {})
+        params.update(p.update_parameter)
+        return params
+
+    @_('id EQUALS expr')
+    def update_parameter(self, p):
+        return {p.id: p.expr}
 
     # EXPRESSIONS
 

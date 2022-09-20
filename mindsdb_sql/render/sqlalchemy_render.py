@@ -105,14 +105,20 @@ class SqlalchemyRender:
                 col = col.label(alias)
         elif isinstance(t, ast.Function):
             op = getattr(sa.func, t.op)
-            args = [
-                self.to_expression(i)
-                for i in t.args
-            ]
-            if t.distinct:
-                # set first argument to distinct
-                args[0] = args[0].distinct()
-            col = op(*args)
+            if t.from_arg is not None:
+                arg = t.args[0].to_string()
+                from_arg = self.to_expression(t.from_arg)
+
+                col = op(arg, from_arg)
+            else:
+                args = [
+                    self.to_expression(i)
+                    for i in t.args
+                ]
+                if t.distinct:
+                    # set first argument to distinct
+                    args[0] = args[0].distinct()
+                col = op(*args)
 
             if t.alias:
                 alias = self.get_alias(t.alias)
@@ -215,6 +221,8 @@ class SqlalchemyRender:
         elif isinstance(t, ast.TypeCast):
             arg = self.to_expression(t.arg)
             type = self.get_type(t.type_name)
+            if t.length is not None:
+                type = type(t.length)
             col = sa.cast(arg, type)
 
             if t.alias:
@@ -515,6 +523,33 @@ class SqlalchemyRender:
 
         return stmt
 
+    def prepare_update(self, ast_query):
+        if ast_query.from_select is not None:
+            raise NotImplementedError('Render of update with sub-select is not implemented')
+
+        schema, table_name = self.get_table_name(ast_query.table)
+
+        columns = []
+
+        to_update = {}
+        for col, value in ast_query.update_columns.items():
+            columns.append(
+                sa.Column(
+                    col,
+                )
+            )
+
+            to_update[col] = self.to_expression(value)
+
+        table = sa.table(table_name, schema=schema, *columns)
+
+        stmt = table.update().values(**to_update)
+
+        if ast_query.where is not None:
+            stmt = stmt.where(self.to_expression(ast_query.where))
+
+        return stmt
+
     def get_string(self, ast_query, with_failback=True):
         try:
             if isinstance(ast_query, ast.Select):
@@ -522,6 +557,9 @@ class SqlalchemyRender:
                 sql = render_dml_query(stmt, self.dialect)
             elif isinstance(ast_query, ast.Insert):
                 stmt = self.prepare_insert(ast_query)
+                sql = render_dml_query(stmt, self.dialect)
+            elif isinstance(ast_query, ast.Update):
+                stmt = self.prepare_update(ast_query)
                 sql = render_dml_query(stmt, self.dialect)
             elif isinstance(ast_query, ast.CreateTable):
                 stmt = self.prepare_create_table(ast_query)

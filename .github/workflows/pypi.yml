@@ -26,31 +26,6 @@ jobs:
       - name: Run unit tests
         run: pytest
         shell: bash
-  build-windows-macos:
-    needs: test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ macos-latest, windows-latest ]
-        python-version: [ 3.8 ]
-    env:
-      TWINE_USERNAME: __token__
-      TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: build wheel
-        run: |
-          pip install wheel
-          python setup.py bdist_wheel
-      - name: upload wheel
-        run: |
-          pip install twine
-          twine upload dist/*
-        continue-on-error: true
   source-dist:
     needs: test
     runs-on: windows-latest

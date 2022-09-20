@@ -60,6 +60,7 @@ class MindsDBParser(Parser):
        'union',
        'select',
        'insert',
+       'update',
        'delete',
        'drop_database',
        'drop_view',
@@ -382,6 +383,22 @@ class MindsDBParser(Parser):
                 f"WHERE must contain an operation that evaluates to a boolean, got: {str(where)}")
 
         return Delete(table=p.identifier, where=where)
+
+    # UPDATE
+    @_('UPDATE identifier SET update_parameter_list FROM LPAREN select RPAREN AS id WHERE expr')
+    @_('UPDATE identifier SET update_parameter_list WHERE expr')
+    @_('UPDATE identifier SET update_parameter_list')
+    def update(self, p):
+        where = getattr(p, 'expr', None)
+        from_select = getattr(p, 'select', None)
+        from_select_alias = getattr(p, 'id', None)
+        if from_select_alias is not None:
+            from_select_alias = Identifier(from_select_alias)
+        return Update(table=p.identifier,
+                      update_columns=p.update_parameter_list,
+                      from_select=from_select,
+                      from_select_alias=from_select_alias,
+                      where=where)
 
     # INSERT
     @_('INSERT INTO identifier LPAREN result_columns RPAREN select')
@@ -945,6 +962,10 @@ class MindsDBParser(Parser):
             p.expr.parentheses = True
         return p.expr
 
+    @_('id LPAREN expr FROM expr RPAREN')
+    def function(self, p):
+        return Function(op=p.id, args=[p.expr0], from_arg=p.expr1)
+
     @_('DATABASE LPAREN RPAREN')
     def function(self, p):
         return Function(op=p.DATABASE, args=[])
@@ -976,6 +997,10 @@ class MindsDBParser(Parser):
     @_('empty')
     def expr_list_or_nothing(self, p):
         pass
+
+    @_('CAST LPAREN expr AS id LPAREN integer RPAREN RPAREN')
+    def expr(self, p):
+        return TypeCast(arg=p.expr, type_name=str(p.id), length=p.integer)
 
     @_('CAST LPAREN expr AS id RPAREN')
     def expr(self, p):
@@ -1035,6 +1060,18 @@ class MindsDBParser(Parser):
        'NOT expr %prec UNOT', )
     def expr(self, p):
         return UnaryOperation(op=p[0], args=(p.expr,))
+
+    # update fields list
+    @_('update_parameter',
+       'update_parameter_list COMMA update_parameter')
+    def update_parameter_list(self, p):
+        params = getattr(p, 'update_parameter_list', {})
+        params.update(p.update_parameter)
+        return params
+
+    @_('id EQUALS expr')
+    def update_parameter(self, p):
+        return {p.id: p.expr}
 
     # EXPRESSIONS
 

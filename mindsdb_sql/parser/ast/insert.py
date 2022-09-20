@@ -87,7 +87,7 @@ class Insert(ASTNode):
             values_str = ''
 
         if self.from_select is not None:
-            from_select_str = self.from_select
+            from_select_str = self.from_select.to_string()
         else:
             from_select_str = ''
 
