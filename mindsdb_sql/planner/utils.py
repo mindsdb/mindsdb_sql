@@ -329,7 +329,12 @@ def query_traversal(node, callback, is_table=False):
             array.append(node_out)
         node.items = array
     elif isinstance(node, ast.Insert):
-        if not node.values is None:
+        if node.table is not None:
+            node_out = query_traversal(node.table, callback, is_table=True)
+            if node_out is not None:
+                node.table = node_out
+
+        if node.values is not None:
             rows = []
             for row in node.values:
                 items = []
@@ -339,7 +344,31 @@ def query_traversal(node, callback, is_table=False):
                 rows.append(items)
             node.values = rows
 
-        if not node.from_select is None:
+        if node.from_select is not None:
+            node_out = query_traversal(node.from_select, callback)
+            if node_out is not None:
+                node.from_select = node_out
+    elif isinstance(node, ast.Update):
+        if node.table is not None:
+            node_out = query_traversal(node.table, callback, is_table=True)
+            if node_out is not None:
+                node.table = node_out
+
+        if node.where is not None:
+            node_out = query_traversal(node.where, callback)
+            if node_out is not None:
+                node.where = node_out
+
+        if node.update_columns is not None:
+            changes = {}
+            for k, v in node.update_columns.items():
+                v2 = query_traversal(v, callback)
+                if v2 is not None:
+                    changes[k] = v2
+            if changes:
+                node.update_columns.update(changes)
+
+        if node.from_select is not None:
             node_out = query_traversal(node.from_select, callback)
             if node_out is not None:
                 node.from_select = node_out

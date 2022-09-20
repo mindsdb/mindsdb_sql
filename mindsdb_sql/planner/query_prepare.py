@@ -518,6 +518,7 @@ class PreparedStatementPlanner():
                 or isinstance(query, ast.Union)
                 or isinstance(query, ast.CreateTable)
                 or isinstance(query, ast.Insert)
+                or isinstance(query, ast.Update)
         ):
             return self.plan_query(query)
         else:

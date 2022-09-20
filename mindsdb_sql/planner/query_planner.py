@@ -4,13 +4,13 @@ from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
                                     BetweenOperation, Union, NullConstant, CreateTable, Function, Insert,
-                                    NativeQuery)
+                                    Update, NativeQuery)
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep,
-                                       GetPredictorColumns, SaveToTable, InsertToTable, SubSelectStep)
+                                       GetPredictorColumns, SaveToTable, InsertToTable, UpdateToTable, SubSelectStep)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
@@ -752,6 +752,26 @@ class QueryPlanner():
             dataframe=last_step,
         ))
 
+    def plan_update(self, query):
+        if query.from_select is None:
+            raise PlanningException(f'Support only insert from select')
+
+        integration_name = query.table.parts[0]
+
+        # plan sub-select first
+        last_step = self.plan_select(query.from_select, integration=integration_name)
+
+        update_command = copy.deepcopy(query)
+        # clear subselect
+        update_command.from_select = None
+
+        table = query.table
+        self.plan.add_step(UpdateToTable(
+            table=table,
+            dataframe=last_step,
+            update_command=update_command
+        ))
+
     def plan_select(self, query, integration=None):
         from_table = query.from_table
 
@@ -814,6 +834,8 @@ class QueryPlanner():
             self.plan_create_table(query)
         elif isinstance(query, Insert):
             self.plan_insert(query)
+        elif isinstance(query, Update):
+            self.plan_update(query)
         else:
             raise PlanningException(f'Unsupported query type {type(query)}')
 

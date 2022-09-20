@@ -223,6 +223,15 @@ class InsertToTable(PlanStep):
         self.dataframe = dataframe
 
 
+class UpdateToTable(PlanStep):
+    def __init__(self, table, dataframe, update_command, *args, **kwargs):
+        """Fills table with content of dataframe"""
+        super().__init__(*args, **kwargs)
+        self.table = table
+        self.dataframe = dataframe
+        self.update_command = update_command
+
+
 class SubSelectStep(PlanStep):
     def __init__(self, query, dataframe, table_name=None, *args, **kwargs):
         """Performs select from dataframe"""
