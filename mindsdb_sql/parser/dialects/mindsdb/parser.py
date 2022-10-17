@@ -50,7 +50,7 @@ class MindsDBParser(Parser):
        'use',
        'describe',
        'create_predictor',
-       'datasource_engine',
+       'database_engine',
        'create_integration',
        'create_view',
        'drop_predictor',
@@ -575,30 +575,39 @@ class MindsDBParser(Parser):
         pass
 
     # CREATE INTEGRATION
-    @_('CREATE datasource_engine COMMA PARAMETERS EQUALS json',
-       'CREATE datasource_engine COMMA PARAMETERS json',
-       'CREATE datasource_engine PARAMETERS EQUALS json',
-       'CREATE datasource_engine PARAMETERS json')
-    @_('CREATE OR REPLACE datasource_engine COMMA PARAMETERS EQUALS json',
-       'CREATE OR REPLACE datasource_engine COMMA PARAMETERS json',
-       'CREATE OR REPLACE datasource_engine PARAMETERS EQUALS json',
-       'CREATE OR REPLACE datasource_engine PARAMETERS json')
+    @_('CREATE database_engine'
+       'CREATE database_engine COMMA PARAMETERS EQUALS json',
+       'CREATE database_engine COMMA PARAMETERS json',
+       'CREATE database_engine PARAMETERS EQUALS json',
+       'CREATE database_engine PARAMETERS json')
+    @_('CREATE OR REPLACE database_engine COMMA PARAMETERS EQUALS json',
+       'CREATE OR REPLACE database_engine COMMA PARAMETERS json',
+       'CREATE OR REPLACE database_engine PARAMETERS EQUALS json',
+       'CREATE OR REPLACE database_engine PARAMETERS json')
     def create_integration(self, p):
         is_replace = False
         if hasattr(p, 'REPLACE'):
             is_replace = True
 
-        return CreateDatasource(name=p.datasource_engine['id'],
-                                engine=p.datasource_engine['engine'],
-                                is_replace=is_replace,
-                                parameters=p.json)
+        parameters = None
+        if hasattr(p, 'json'):
+            parameters = p.json
 
-    @_('DATASOURCE id WITH ENGINE EQUALS string',
-       'DATASOURCE id WITH ENGINE string',
-       'DATABASE id WITH ENGINE EQUALS string',
-       'DATABASE id WITH ENGINE string',)
-    def datasource_engine(self, p):
-        return {'id': p.id, 'engine': p.string}
+        return CreateDatasource(name=p.database_engine['id'],
+                                engine=p.database_engine['engine'],
+                                is_replace=is_replace,
+                                parameters=parameters)
+
+    @_('DATABASE id',
+       'DATABASE id ENGINE string',
+       'DATABASE id ENGINE EQUALS string',
+       'DATABASE id WITH ENGINE string',
+       'DATABASE id WITH ENGINE EQUALS string')
+    def database_engine(self, p):
+        string = None
+        if hasattr(p, 'string'):
+            string = p.string
+        return {'id': p.id, 'engine': string}
 
     # UNION / UNION ALL
     @_('select UNION select')
