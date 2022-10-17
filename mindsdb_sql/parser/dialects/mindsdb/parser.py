@@ -575,8 +575,8 @@ class MindsDBParser(Parser):
         pass
 
     # CREATE INTEGRATION
-    @_('CREATE database_engine'
-       'CREATE database_engine COMMA PARAMETERS EQUALS json',
+    @_('CREATE database_engine')
+    @_('CREATE database_engine COMMA PARAMETERS EQUALS json',
        'CREATE database_engine COMMA PARAMETERS json',
        'CREATE database_engine PARAMETERS EQUALS json',
        'CREATE database_engine PARAMETERS json')
