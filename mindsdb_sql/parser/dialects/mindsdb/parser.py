@@ -50,7 +50,6 @@ class MindsDBParser(Parser):
        'use',
        'describe',
        'create_predictor',
-       'database_engine',
        'create_integration',
        'create_view',
        'drop_predictor',
