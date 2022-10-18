@@ -13,5 +13,4 @@ from .latest import Latest
 from .create_file import CreateFile
 
 # Temporary
-class CreateDatasource(CreateDatabase):
-    ...
+CreateDatasource = CreateDatabase
