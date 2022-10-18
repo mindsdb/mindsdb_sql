@@ -7,7 +7,7 @@ from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
-from mindsdb_sql.parser.dialects.mindsdb.create_datasource import CreateDatasource
+from mindsdb_sql.parser.dialects.mindsdb.create_database import CreateDatabase
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
@@ -592,7 +592,7 @@ class MindsDBParser(Parser):
         if hasattr(p, 'json'):
             parameters = p.json
 
-        return CreateDatasource(name=p.database_engine['id'],
+        return CreateDatabase(name=p.database_engine['id'],
                                 engine=p.database_engine['engine'],
                                 is_replace=is_replace,
                                 parameters=parameters)
