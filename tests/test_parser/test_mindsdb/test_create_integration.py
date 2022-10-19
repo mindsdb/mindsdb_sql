@@ -2,7 +2,7 @@ import pytest
 
 from mindsdb_sql import parse_sql, ParsingException
 from mindsdb_sql.parser.dialects.mindsdb import *
-
+from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 
 class TestCreateDatabase:
     def test_create_database_lexer(self):

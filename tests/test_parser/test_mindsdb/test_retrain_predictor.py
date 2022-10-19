@@ -4,7 +4,7 @@ from mindsdb_sql import parse_sql, ParsingException
 from mindsdb_sql.parser.dialects.mindsdb import *
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mindsdb.retrain_predictor import RetrainPredictor
-
+from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 
 class TestRetrainPredictor:
     def test_retrain_predictor_lexer(self):

@@ -54,14 +54,14 @@ class SQLParser(Parser):
                           arg=' '.join([p.id0, p.id1]))
 
     # DROP VEW
-    @_('DROP VIEW identifier')
-    @_('DROP VIEW IF_EXISTS identifier')
+    @_('DROP VIEW identifier',
+       'DROP VIEW IF_EXISTS identifier')
     def drop_view(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropView([p.identifier], if_exists=if_exists)
 
-    @_('DROP VIEW enumeration')
-    @_('DROP VIEW IF_EXISTS enumeration')
+    @_('DROP VIEW enumeration',
+       'DROP VIEW IF_EXISTS enumeration')
     def drop_view(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropView(p.enumeration, if_exists=if_exists)
@@ -190,8 +190,8 @@ class SQLParser(Parser):
         return p[0]
 
     # DELETE
-    @_('DELETE FROM from_table WHERE expr')
-    @_('DELETE FROM from_table')
+    @_('DELETE FROM from_table WHERE expr',
+       'DELETE FROM from_table')
     def delete(self, p):
         where = getattr(p, 'expr', None)
 
@@ -202,8 +202,8 @@ class SQLParser(Parser):
         return Delete(table=p.from_table, where=where)
 
     # UPDATE
-    @_('UPDATE identifier SET update_parameter_list')
-    @_('UPDATE identifier SET update_parameter_list WHERE expr')
+    @_('UPDATE identifier SET update_parameter_list',
+       'UPDATE identifier SET update_parameter_list WHERE expr')
     def update(self, p):
         where = getattr(p, 'expr', None)
         return Update(table=p.identifier,
@@ -211,14 +211,14 @@ class SQLParser(Parser):
                       where=where)
 
     # INSERT
-    @_('INSERT INTO from_table LPAREN result_columns RPAREN select')
-    @_('INSERT INTO from_table select')
+    @_('INSERT INTO from_table LPAREN result_columns RPAREN select',
+       'INSERT INTO from_table select')
     def insert(self, p):
         columns = getattr(p, 'result_columns', None)
         return Insert(table=p.from_table, columns=columns, from_select=p.select)
 
-    @_('INSERT INTO from_table LPAREN result_columns RPAREN VALUES expr_list_set')
-    @_('INSERT INTO from_table VALUES expr_list_set')
+    @_('INSERT INTO from_table LPAREN result_columns RPAREN VALUES expr_list_set',
+       'INSERT INTO from_table VALUES expr_list_set')
     def insert(self, p):
         columns = getattr(p, 'result_columns', None)
         return Insert(table=p.from_table, columns=columns, values=p.expr_list_set)
@@ -434,8 +434,8 @@ class SQLParser(Parser):
         return query
 
     # keywords for table
-    @_('PLUGINS')
-    @_('ENGINES')
+    @_('PLUGINS',
+       'ENGINES')
     def from_table(self, p):
         return Identifier.from_path_str(p[0])
 

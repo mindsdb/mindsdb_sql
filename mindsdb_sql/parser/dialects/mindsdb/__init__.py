@@ -1,6 +1,3 @@
-from .lexer import MindsDBLexer
-from .parser import MindsDBParser
-
 from .create_view import CreateView
 from .create_database import CreateDatabase
 from .create_predictor import CreatePredictor
