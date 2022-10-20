@@ -9,6 +9,7 @@ from .drop_dataset import DropDataset
 from .latest import Latest
 from .create_file import CreateFile
 from .create_ml_engine import CreateMLEngine
+from .drop_ml_engine import DropMLEngine
 
 # Temporary
 CreateDatasource = CreateDatabase

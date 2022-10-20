@@ -6,6 +6,7 @@ from mindsdb_sql.parser.ast.drop import DropDatabase, DropView
 from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
+from mindsdb_sql.parser.dialects.mindsdb.drop_ml_engine import DropMLEngine
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_database import CreateDatabase
 from mindsdb_sql.parser.dialects.mindsdb.create_ml_engine import CreateMLEngine
@@ -578,13 +579,17 @@ class MindsDBParser(Parser):
         pass
 
     # ML ENGINE
-    # CREATE INTEGRATION
+    # CREATE
     @_('CREATE ML_ENGINE identifier FROM id USING kw_parameter_list')
     def create_integration(self, p):
         return CreateMLEngine(name=p.identifier,
                               handler=p.id,
                               params=p.kw_parameter_list)
 
+    # DROP
+    @_('DROP ML_ENGINE identifier')
+    def create_integration(self, p):
+        return DropMLEngine(name=p.identifier)
 
     # CREATE INTEGRATION
     @_('CREATE database_engine',
