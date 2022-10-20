@@ -465,6 +465,7 @@ class MindsDBParser(Parser):
 
     # DROP PREDICTOR
     @_('DROP PREDICTOR identifier',
+       'DROP MODEL identifier',
        'DROP PREDICTOR IF_EXISTS identifier')
     def drop_predictor(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
