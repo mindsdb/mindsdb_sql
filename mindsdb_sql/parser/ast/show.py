@@ -17,7 +17,7 @@ class Show(ASTNode):
         if category == 'SLAVE HOSTS':
             category = 'REPLICAS'
 
-        self.category = category
+        self.category = category.upper()
         self.modes = modes
         self.where = where
         self.from_table = from_table
