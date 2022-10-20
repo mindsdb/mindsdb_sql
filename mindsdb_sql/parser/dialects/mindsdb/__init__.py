@@ -8,6 +8,7 @@ from .drop_datasource import DropDatasource
 from .drop_dataset import DropDataset
 from .latest import Latest
 from .create_file import CreateFile
+from .create_ml_engine import CreateMLEngine
 
 # Temporary
 CreateDatasource = CreateDatabase
