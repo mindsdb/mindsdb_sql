@@ -1313,6 +1313,7 @@ class MindsDBParser(Parser):
        'VIEW',
        'VIEWS',
        'WARNINGS',
+       'MODEL',
     )
     def id(self, p):
         return p[0]
