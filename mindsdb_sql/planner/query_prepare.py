@@ -140,7 +140,7 @@ class PreparedStatementPlanner():
     def table_from_identifier(self, table):
         # disambiguate
         if self.planner.is_predictor(table):
-            ds, table = utils.get_predictor_namespace_and_name_from_identifier(table, self.planner.default_namespace)
+            ds, table = self.planner.get_predictor_namespace_and_name_from_identifier(table)
             is_predictor = True
 
         else:
