@@ -7,9 +7,8 @@ from mindsdb_sql.parser.utils import to_single_line
 
 
 class TestCreatePredictor:
-    @pytest.mark.parametrize('keyword', ['PREDICTOR', 'TABLE'])
-    def test_create_predictor_full(self, keyword):
-        sql = """CREATE %s pred
+    def test_create_predictor_full(self):
+        sql = """CREATE predictor pred
                 FROM integration_name 
                 (selct * FROM not some actually ( {'t': [1,2.1,[], {}, False, true, null]} ) not sql (name))
                 AS ds_name
@@ -25,7 +24,7 @@ class TestCreatePredictor:
                     z=0.7,
                     j={'t': [1,2.1,[], {}, False, true, null]},
                     q=Filter(x=null, y=true, z=false, a='c', b=2, j={"ar": [1], 'j': {"d": "d"}})
-                """ % keyword
+                """
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreatePredictor(
             name=Identifier('pred'),
@@ -96,6 +95,17 @@ class TestCreatePredictor:
         )
         assert ast.to_tree() == expected_ast.to_tree()
 
+        # test create model
+        sql = """CREATE model pred
+                FROM integration_name 
+                (select * FROM table_name)
+                AS ds_name
+                PREDICT f1 as f1_alias, f2
+                """
+        ast = parse_sql(sql, dialect='mindsdb')
+
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_create_predictor_quotes(self):
         sql = """CREATE PREDICTOR xxx 
                  FROM `yyy` 
@@ -114,17 +124,17 @@ class TestCreatePredictor:
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()
 
-        # or replace
-        sql = """CREATE or REPLACE PREDICTOR xxx 
-                         FROM `yyy` 
-                          (SELECT * FROM zzz)
-                          AS x 
-                          PREDICT sss
-                        """
-        ast = parse_sql(sql, dialect='mindsdb')
-        expected_ast.is_replace = True
-        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
-        assert ast.to_tree() == expected_ast.to_tree()
+        # # or replace
+        # sql = """CREATE or REPLACE PREDICTOR xxx
+        #                  FROM `yyy`
+        #                   (SELECT * FROM zzz)
+        #                   AS x
+        #                   PREDICT sss
+        #                 """
+        # ast = parse_sql(sql, dialect='mindsdb')
+        # expected_ast.is_replace = True
+        # assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        # assert ast.to_tree() == expected_ast.to_tree()
 
     def test_create_predictor_invalid_json(self):
         sql = """CREATE PREDICTOR pred

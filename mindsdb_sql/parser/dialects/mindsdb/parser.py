@@ -541,11 +541,9 @@ class MindsDBParser(Parser):
         return p.create_predictor
 
     @_('CREATE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns',
-       'CREATE TABLE identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns',
        'CREATE PREDICTOR identifier PREDICT result_columns',
-       'CREATE OR REPLACE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns',
-       'CREATE OR REPLACE TABLE identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns',
-       'CREATE OR REPLACE PREDICTOR identifier PREDICT result_columns')
+       'CREATE MODEL identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns',
+       'CREATE MODEL identifier PREDICT result_columns')
     def create_predictor(self, p):
         is_replace = False
         if hasattr(p, 'REPLACE'):
