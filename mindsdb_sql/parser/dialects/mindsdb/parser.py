@@ -55,7 +55,6 @@ class MindsDBParser(Parser):
        'create_integration',
        'create_view',
        'drop_predictor',
-       'retrain_predictor',
        'drop_datasource',
        'drop_dataset',
        'union',
@@ -458,11 +457,6 @@ class MindsDBParser(Parser):
     def create_view_from_table_or_nothing(self, p):
         pass
 
-    # RETRAIN PREDICTOR
-    @_('RETRAIN identifier')
-    def retrain_predictor(self, p):
-        return RetrainPredictor(p.identifier)
-
     # DROP PREDICTOR
     @_('DROP PREDICTOR identifier',
        'DROP MODEL identifier',
@@ -509,6 +503,8 @@ class MindsDBParser(Parser):
         params = p.kw_parameter_list
         return CreateFile(name=p.identifier, **params)
 
+    # create predictor
+
     @_('create_predictor USING kw_parameter_list')
     def create_predictor(self, p):
         p.create_predictor.using = p.kw_parameter_list
@@ -538,15 +534,11 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns',
+    @_('CREATE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
        'CREATE PREDICTOR identifier PREDICT result_columns',
-       'CREATE MODEL identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns',
+       'CREATE MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
        'CREATE MODEL identifier PREDICT result_columns')
     def create_predictor(self, p):
-        is_replace = False
-        if hasattr(p, 'REPLACE'):
-            is_replace = True
-
         query_str = None
         if hasattr(p, 'raw_query'):
             query_str = tokens_to_string(p.raw_query)
@@ -561,18 +553,34 @@ class MindsDBParser(Parser):
             name=name,
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
-            datasource_name=getattr(p, 'optional_data_source_name', None),
-            targets=p.result_columns,
-            is_replace=is_replace
+            targets=p.result_columns
         )
 
-    @_('AS identifier')
-    def optional_data_source_name(self, p):
-        return p.identifier
+        # RETRAIN PREDICTOR
 
-    @_('empty')
-    def optional_data_source_name(self, p):
-        pass
+    @_('RETRAIN identifier',
+       'RETRAIN identifier PREDICT result_columns',
+       'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN',
+       'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns')
+    def create_predictor(self, p):
+        query_str = None
+        if hasattr(p, 'raw_query'):
+            query_str = tokens_to_string(p.raw_query)
+
+        if hasattr(p, 'identifier'):
+            # single identifier field
+            name = p.identifier
+        else:
+            name = p.identifier0
+
+        return RetrainPredictor(
+            name=name,
+            integration_name=getattr(p, 'identifier1', None),
+            query_str=query_str,
+            targets=getattr(p, 'result_columns', None)
+        )
+
+    # ------------
 
     # ML ENGINE
     # CREATE
