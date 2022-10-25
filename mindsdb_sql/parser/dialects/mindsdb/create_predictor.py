@@ -3,10 +3,10 @@ from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
 
 
-class CreatePredictor(ASTNode):
+class CreatePredictorBase(ASTNode):
     def __init__(self,
                  name,
-                 targets,
+                 targets=None,
                  integration_name=None,
                  query_str=None,
                  datasource_name=None,
@@ -47,8 +47,11 @@ class CreatePredictor(ASTNode):
         if self.datasource_name:
             datasource_name_str = f'\n{ind1}datasource_name={self.datasource_name.to_tree()},'
 
-        target_trees = ',\n'.join([t.to_tree(level=level+2) for t in self.targets])
-        targets_str = f'\n{ind1}targets=[\n{target_trees}\n{ind1}],'
+        if self.targets is not None:
+            target_trees = ',\n'.join([t.to_tree(level=level+2) for t in self.targets])
+            targets_str = f'\n{ind1}targets=[\n{target_trees}\n{ind1}],'
+        else:
+            targets_str = ''
 
         group_by_str = ''
         if self.group_by:
@@ -64,7 +67,7 @@ class CreatePredictor(ASTNode):
         horizon_str = f'\n{ind1}horizon={repr(self.horizon)},'
         using_str = f'\n{ind1}using={repr(self.using)},'
 
-        out_str = f'{ind}CreatePredictor(' \
+        out_str = f'{ind}{self.__class__.__name__}(' \
                   f'{name_str}' \
                   f'{integration_name_str}' \
                   f'{query_str}' \
@@ -79,7 +82,10 @@ class CreatePredictor(ASTNode):
         return out_str
 
     def get_string(self, *args, **kwargs):
-        targets_str = ', '.join([out.to_string() for out in self.targets])
+        if self.targets is not None:
+            targets_str = 'PREDICT ' + ', '.join([out.to_string() for out in self.targets])
+        else:
+            targets_str = ''
         order_by_str = f'ORDER BY {", ".join([out.to_string() for out in self.order_by])} ' if self.order_by else ''
         group_by_str = f'GROUP BY {", ".join([out.to_string() for out in self.group_by])} ' if self.group_by else ''
         window_str = f'WINDOW {self.window} ' if self.window is not None else ''
@@ -95,9 +101,9 @@ class CreatePredictor(ASTNode):
         if self.integration_name is not None:
             integration_name_str = f'FROM {self.integration_name.to_string()} '
 
-        out_str = f'CREATE PREDICTOR {self.name.to_string()} {integration_name_str}{query_str}' \
+        out_str = f'{self._command} {self.name.to_string()} {integration_name_str}{query_str}' \
                   f'{datasource_name_str}' \
-                  f'PREDICT {targets_str} ' \
+                  f'{targets_str} ' \
                   f'{order_by_str}' \
                   f'{group_by_str}' \
                   f'{window_str}' \
@@ -105,3 +111,9 @@ class CreatePredictor(ASTNode):
                   f'{using_str}'
 
         return out_str.strip()
+
+
+class CreatePredictor(CreatePredictorBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._command = 'CREATE PREDICTOR'
