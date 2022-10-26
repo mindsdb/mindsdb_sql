@@ -1,6 +1,8 @@
 import json
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
+from mindsdb_sql.parser.ast.select import Identifier
+from mindsdb_sql.parser.ast.select.operation import Object
 
 
 class CreatePredictorBase(ASTNode):
@@ -90,7 +92,23 @@ class CreatePredictorBase(ASTNode):
         group_by_str = f'GROUP BY {", ".join([out.to_string() for out in self.group_by])} ' if self.group_by else ''
         window_str = f'WINDOW {self.window} ' if self.window is not None else ''
         horizon_str = f'HORIZON {self.horizon} ' if self.horizon is not None else ''
-        using_str = f'USING {str(self.using)}' if self.using is not None else ''
+        using_str = ''
+        if self.using is not None:
+            using_ar = []
+            for key, value in self.using.items():
+                if isinstance(value, Object):
+                    args = [
+                        f'{k}={json.dumps(v)}'
+                        for k, v in value.params.items()
+                    ]
+                    args_str = ', '.join(args)
+                    value = f'{value.type}({args_str})'
+                else:
+                    value = json.dumps(value)
+
+                using_ar.append(f'{Identifier(key).to_string()}={value}')
+
+            using_str = f'USING ' + ', '.join(using_ar)
         datasource_name_str = f'AS {self.datasource_name.to_string()} ' if self.datasource_name is not None else ''
 
         query_str = ''
