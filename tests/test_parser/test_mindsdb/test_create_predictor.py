@@ -47,13 +47,17 @@ class TestCreatePredictor:
                 'q': Object(type='Filter', params={
                     'x': None, 'y': True, 'z': False,
                     'a': 'c',
-                    'b': 1,
+                    'b': 2,
                     'j': {"ar": [1], 'j': {"d": "d"}}
                 })
             },
         )
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()
+
+        # convert to string and parse again
+        ast2 = parse_sql(str(ast), dialect='mindsdb')
+        assert ast.to_tree() == ast2.to_tree()
 
     def test_create_predictor_minimal(self):
         sql = """CREATE PREDICTOR pred
