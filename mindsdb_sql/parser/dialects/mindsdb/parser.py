@@ -326,6 +326,7 @@ class MindsDBParser(Parser):
        'DATASETS',
        'MODELS',
        'ML_ENGINES',
+       'HANDLERS',
        'ALL')
     def show_category(self, p):
         return ' '.join([x for x in p])

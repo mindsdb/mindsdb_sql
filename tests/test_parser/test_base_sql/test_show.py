@@ -410,6 +410,15 @@ class TestMindsdb:
         )
         assert statement2.to_tree() == statement.to_tree()
 
+        # --- handlers ---
+        sql = '''
+            show Handlers
+        '''
+        statement = parse_sql(sql, dialect='mindsdb')
+        statement2 = Show(
+            category='HANDLERS',
+        )
+        assert statement2.to_tree() == statement.to_tree()
 
 
 
