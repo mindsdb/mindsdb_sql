@@ -14,7 +14,6 @@ from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
-                                       get_predictor_namespace_and_name_from_identifier,
                                        disambiguate_integration_column_identifier,
                                        disambiguate_predictor_column_identifier, recursively_disambiguate_identifiers,
                                        get_deepest_select,
@@ -51,15 +50,22 @@ class QueryPlanner():
             # convert to dict
             if predictor_metadata is not None:
                 for predictor in predictor_metadata:
-                    integration_name = predictor.get('integration_name', self.predictor_namespace)
-
+                    if 'integration_name' in predictor:
+                        integration_name = predictor['integration_name']
+                    else:
+                        integration_name = self.predictor_namespace
+                        predictor['integration_name'] = integration_name
                     idx = f'{integration_name}.{predictor["name"]}'.lower()
                     self.predictor_info[idx] = predictor
         elif isinstance(predictor_metadata, dict):
             # legacy behaviour
             for name, predictor in predictor_metadata.items():
                 if '.' not in name:
-                    integration_name = predictor.get('integration_name', self.predictor_namespace)
+                    if 'integration_name' in predictor:
+                        integration_name = predictor['integration_name']
+                    else:
+                        integration_name = self.predictor_namespace
+                        predictor['integration_name'] = integration_name
                     name = f'{integration_name}.{name}'.lower()
 
                 self.predictor_info[name] = predictor
@@ -208,9 +214,22 @@ class QueryPlanner():
         #     last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result, limit=select.limit.value))
         # return last_step
 
+    def get_predictor_namespace_and_name_from_identifier(self, identifier):
+
+        new_identifier = copy.deepcopy(identifier)
+
+        if len(new_identifier.parts) > 1:
+            namespace = new_identifier.parts[0]
+        else:
+            # add namespace if not exists
+            info = self.get_predictor(identifier)
+            namespace = info['integration_name']
+            new_identifier.parts.insert(0, namespace)
+
+        return namespace, new_identifier
 
     def plan_select_from_predictor(self, select):
-        predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(select.from_table, self.default_namespace)
+        predictor_namespace, predictor = self.get_predictor_namespace_and_name_from_identifier(select.from_table)
 
         if select.where == BinaryOperation('=', args=[Constant(1), Constant(0)]):
             # Hardcoded mysql way of getting predictor columns
@@ -637,13 +656,13 @@ class QueryPlanner():
             table = None
             predictor_is_left = False
             if self.is_predictor(join_left):
-                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join_left, self.predictor_namespace)
+                predictor_namespace, predictor = self.get_predictor_namespace_and_name_from_identifier(join_left)
                 predictor_is_left = True
             else:
                 table = join_left
 
             if self.is_predictor(join_right):
-                predictor_namespace, predictor = get_predictor_namespace_and_name_from_identifier(join_right, self.predictor_namespace)
+                predictor_namespace, predictor = self.get_predictor_namespace_and_name_from_identifier(join_right)
             else:
                 table = join_right
 

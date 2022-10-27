@@ -3,7 +3,7 @@ import pytest
 from mindsdb_sql import parse_sql, ParsingException
 from mindsdb_sql.parser.dialects.mindsdb import *
 from mindsdb_sql.parser.ast import *
-
+from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 
 class TestCreateView:
     def test_create_view_lexer(self):
@@ -24,7 +24,7 @@ class TestCreateView:
     def test_create_view_full(self):
         sql = "CREATE VIEW my_view FROM integr AS ( SELECT * FROM pred )"
         ast = parse_sql(sql, dialect='mindsdb')
-        expected_ast = CreateView(name='my_view',
+        expected_ast = CreateView(name=Identifier('my_view'),
                                   from_table=Identifier('integr'),
                                   query_str="SELECT * FROM pred")
 
@@ -35,27 +35,27 @@ class TestCreateView:
     def test_create_view_nofrom(self):
         sql = "CREATE VIEW my_view ( SELECT * FROM pred )"
         ast = parse_sql(sql, dialect='mindsdb')
-        expected_ast = CreateView(name='my_view',
+        expected_ast = CreateView(name=Identifier('my_view'),
                                   query_str="SELECT * FROM pred")
 
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
-    def test_create_dataset_full(self):
-        sql = "CREATE DATASET my_view FROM integr AS ( SELECT * FROM pred )"
-        ast = parse_sql(sql, dialect='mindsdb')
-        expected_ast = CreateView(name='my_view',
-                                  from_table=Identifier('integr'),
-                                  query_str="SELECT * FROM pred")
+    # def test_create_dataset_full(self):
+    #     sql = "CREATE DATASET my_view FROM integr AS ( SELECT * FROM pred )"
+    #     ast = parse_sql(sql, dialect='mindsdb')
+    #     expected_ast = CreateView(name='my_view',
+    #                               from_table=Identifier('integr'),
+    #                               query_str="SELECT * FROM pred")
+    #
+    #     assert str(ast) == str(expected_ast)
+    #     assert ast.to_tree() == expected_ast.to_tree()
 
-        assert str(ast) == str(expected_ast)
-        assert ast.to_tree() == expected_ast.to_tree()
+    # def test_create_dataset_nofrom(self):
+    #     sql = "CREATE DATASET my_view ( SELECT * FROM pred )"
+    #     ast = parse_sql(sql, dialect='mindsdb')
+    #     expected_ast = CreateView(name='my_view',
+    #                               query_str="SELECT * FROM pred")
 
-    def test_create_dataset_nofrom(self):
-        sql = "CREATE DATASET my_view ( SELECT * FROM pred )"
-        ast = parse_sql(sql, dialect='mindsdb')
-        expected_ast = CreateView(name='my_view',
-                                  query_str="SELECT * FROM pred")
-
-        assert str(ast) == str(expected_ast)
-        assert ast.to_tree() == expected_ast.to_tree()
+        # assert str(ast) == str(expected_ast)
+        # assert ast.to_tree() == expected_ast.to_tree()

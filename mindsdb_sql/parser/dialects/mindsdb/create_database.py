@@ -3,7 +3,7 @@ from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
 
 
-class CreateDatasource(ASTNode):
+class CreateDatabase(ASTNode):
     def __init__(self,
                  name,
                  engine,
@@ -27,7 +27,7 @@ class CreateDatasource(ASTNode):
         if self.is_replace:
             replace_str = f'\n{ind1}is_replace=True'
 
-        out_str = f'{ind}CreateDatasource(' \
+        out_str = f'{ind}CreateDatabase(' \
                   f'{name_str}' \
                   f'{engine_str}' \
                   f'{parameters_str}' \
@@ -40,5 +40,5 @@ class CreateDatasource(ASTNode):
         if self.is_replace:
             replace_str = f' OR REPLACE'
 
-        out_str = f'CREATE{replace_str} DATASOURCE {str(self.name)} WITH ENGINE = {repr(self.engine)}, PARAMETERS = {json.dumps(self.parameters)}'
+        out_str = f'CREATE{replace_str} DATABASE {str(self.name)} WITH ENGINE = {repr(self.engine)}, PARAMETERS = {json.dumps(self.parameters)}'
         return out_str

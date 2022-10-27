@@ -2,14 +2,14 @@ import pytest
 
 from mindsdb_sql import parse_sql, ParsingException
 from mindsdb_sql.parser.dialects.mindsdb import *
+from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 
-
-class TestCreateDatasource:
-    def test_create_datasource_lexer(self):
-        sql = "CREATE DATASOURCE db WITH ENGINE = 'mysql', PARAMETERS = {\"user\": \"admin\", \"password\": \"admin\"}"
+class TestCreateDatabase:
+    def test_create_database_lexer(self):
+        sql = "CREATE DATABASE db WITH ENGINE = 'mysql', PARAMETERS = {\"user\": \"admin\", \"password\": \"admin\"}"
         tokens = list(MindsDBLexer().tokenize(sql))
         assert tokens[0].type == 'CREATE'
-        assert tokens[1].type == 'DATASOURCE'
+        assert tokens[1].type == 'DATABASE'
         assert tokens[2].type == 'ID'
         assert tokens[3].type == 'WITH'
         assert tokens[4].type == 'ENGINE'
@@ -21,35 +21,53 @@ class TestCreateDatasource:
         # next tokens come separately, not just single JSON
         # assert tokens[10].type == 'JSON'
 
-    def test_create_datasource_ok(self, ):
+    def test_create_database_ok(self, ):
+        sql = "CREATE DATABASE db"
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreateDatabase(name='db', engine=None, parameters=None)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        sql = "CREATE DATABASE db ENGINE 'eng'"
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreateDatabase(name='db', engine='eng', parameters=None)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
         # variants with or without ',' and '='
-        for comma in (',', ''):
-            for equal in ('=', ''):
-                for keyword in ('DATASOURCE', 'DATABASE'):
+        for with_ in ('WITH', ''):
+            engines = [
+                "ENGINE 'mysql'",
+                "ENGINE = 'mysql'",
+                "ENGINE 'mysql',",
+                "ENGINE = 'mysql',",
+            ]
+            for engine in engines:
+                for equal in ('=', ''):
                     sql = """
-                        CREATE %(keyword)s db
-                        WITH ENGINE %(equal)s 'mysql'%(comma)s
+                        CREATE DATABASE db
+                        %(with)s %(engine)s
                         PARAMETERS %(equal)s {"user": "admin", "password": "admin123_.,';:!@#$%%^&*(){}[]", "host": "127.0.0.1"}
-                    """ % {'comma': comma, 'equal': equal, 'keyword': keyword}
+                    """ % {'equal': equal, 'engine': engine, 'with': with_}
 
                     ast = parse_sql(sql, dialect='mindsdb')
-                    expected_ast = CreateDatasource(name='db',
-                                              engine='mysql',
-                                              parameters=dict(user='admin', password="admin123_.,';:!@#$%^&*(){}[]", host='127.0.0.1'))
+                    expected_ast = CreateDatabase(name='db',
+                                                engine='mysql',
+                                                parameters=dict(user='admin', password="admin123_.,';:!@#$%^&*(){}[]", host='127.0.0.1'))
                     assert str(ast) == str(expected_ast)
                     assert ast.to_tree() == expected_ast.to_tree()
 
         sql = """
-                      CREATE or REPLACE DATABASE db
-                                /*
-                                    multiline comment
-                                */
-                                WITH ENGINE='mysql'
-                                PARAMETERS = {"user": "admin", "password": "admin123_.,';:!@#$%^&*(){}[]", "host": "127.0.0.1"}
-                            """
+            CREATE or REPLACE DATABASE db
+                    /*
+                        multiline comment
+                    */
+                    WITH ENGINE='mysql'
+                    PARAMETERS = {"user": "admin", "password": "admin123_.,';:!@#$%^&*(){}[]", "host": "127.0.0.1"}
+        """
 
         ast = parse_sql(sql, dialect='mindsdb')
-        expected_ast = CreateDatasource(name='db',
+        expected_ast = CreateDatabase(name='db',
                                         engine='mysql',
                                         is_replace=True,
                                         parameters=dict(user='admin', password="admin123_.,';:!@#$%^&*(){}[]",
@@ -57,7 +75,7 @@ class TestCreateDatasource:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
-    def test_create_datasource_invalid_json(self):
-        sql = "CREATE DATASOURCE db WITH ENGINE = 'mysql', PARAMETERS = 'wow'"
+    def test_create_database_invalid_json(self):
+        sql = "CREATE DATABASE db WITH ENGINE = 'mysql', PARAMETERS = 'wow'"
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect='mindsdb')

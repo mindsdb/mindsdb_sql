@@ -6,8 +6,10 @@ from mindsdb_sql.parser.ast.drop import DropDatabase, DropView
 from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
+from mindsdb_sql.parser.dialects.mindsdb.drop_ml_engine import DropMLEngine
 from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
-from mindsdb_sql.parser.dialects.mindsdb.create_datasource import CreateDatasource
+from mindsdb_sql.parser.dialects.mindsdb.create_database import CreateDatabase
+from mindsdb_sql.parser.dialects.mindsdb.create_ml_engine import CreateMLEngine
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
@@ -50,11 +52,9 @@ class MindsDBParser(Parser):
        'use',
        'describe',
        'create_predictor',
-       'datasource_engine',
        'create_integration',
        'create_view',
        'drop_predictor',
-       'retrain_predictor',
        'drop_datasource',
        'drop_dataset',
        'union',
@@ -82,23 +82,23 @@ class MindsDBParser(Parser):
                           arg=' '.join([p.id0, p.id1]))
 
     # DROP VEW
-    @_('DROP VIEW identifier')
-    @_('DROP VIEW IF_EXISTS identifier')
+    @_('DROP VIEW identifier',
+       'DROP VIEW IF_EXISTS identifier')
     def drop_view(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropView([p.identifier], if_exists=if_exists)
 
-    @_('DROP VIEW enumeration')
-    @_('DROP VIEW IF_EXISTS enumeration')
+    @_('DROP VIEW enumeration',
+       'DROP VIEW IF_EXISTS enumeration')
     def drop_view(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropView(p.enumeration, if_exists=if_exists)
 
     # DROP DATABASE
-    @_('DROP DATABASE identifier')
-    @_('DROP DATABASE IF_EXISTS identifier')
-    @_('DROP SCHEMA identifier')
-    @_('DROP SCHEMA IF_EXISTS identifier')
+    @_('DROP DATABASE identifier',
+       'DROP DATABASE IF_EXISTS identifier',
+       'DROP SCHEMA identifier',
+       'DROP SCHEMA IF_EXISTS identifier')
     def drop_database(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropDatabase(name=p.identifier, if_exists=if_exists)
@@ -121,12 +121,12 @@ class MindsDBParser(Parser):
 
     # Set
 
-    @_('SET id identifier')
-    @_('SET id identifier COLLATE constant')
-    @_('SET id identifier COLLATE DEFAULT')
-    @_('SET id constant')
-    @_('SET id constant COLLATE constant')
-    @_('SET id constant COLLATE DEFAULT')
+    @_('SET id identifier',
+       'SET id identifier COLLATE constant',
+       'SET id identifier COLLATE DEFAULT',
+       'SET id constant',
+       'SET id constant COLLATE constant',
+       'SET id constant COLLATE DEFAULT')
     def set(self, p):
         if not p.id.lower() == 'names':
             raise ParsingException(f'Expected "SET names", got "SET {p.id}"')
@@ -147,8 +147,8 @@ class MindsDBParser(Parser):
         return Set(category=p.id.lower(), arg=arg, params=params)
 
     # set charset
-    @_('SET charset constant')
-    @_('SET charset DEFAULT')
+    @_('SET charset constant',
+       'SET charset DEFAULT')
     def set(self, p):
         if hasattr(p, 'DEFAULT'):
             arg = SpecialConstant('DEFAULT')
@@ -163,8 +163,8 @@ class MindsDBParser(Parser):
         return p[0]
 
     # set transaction
-    @_('SET transact_scope TRANSACTION transact_property_list')
-    @_('SET TRANSACTION transact_property_list')
+    @_('SET transact_scope TRANSACTION transact_property_list',
+       'SET TRANSACTION transact_property_list')
     def set(self, p):
         isolation_level = None
         access_mode = None
@@ -214,8 +214,8 @@ class MindsDBParser(Parser):
     def transact_access_mode(self, p):
         return ' '.join([x for x in p])
 
-    @_('SET expr_list')
-    @_('SET set_modifier expr_list')
+    @_('SET expr_list',
+       'SET set_modifier expr_list')
     def set(self, p):
         if len(p.expr_list) == 1:
             arg = p.expr_list[0]
@@ -324,6 +324,9 @@ class MindsDBParser(Parser):
        'DATASOURCES',
        'PUBLICATIONS',
        'DATASETS',
+       'MODELS',
+       'ML_ENGINES',
+       'HANDLERS',
        'ALL')
     def show_category(self, p):
         return ' '.join([x for x in p])
@@ -373,8 +376,8 @@ class MindsDBParser(Parser):
         return p[0]
 
     # DELETE
-    @_('DELETE FROM identifier WHERE expr')
-    @_('DELETE FROM identifier')
+    @_('DELETE FROM identifier WHERE expr',
+       'DELETE FROM identifier')
     def delete(self, p):
         where = getattr(p, 'expr', None)
 
@@ -385,9 +388,9 @@ class MindsDBParser(Parser):
         return Delete(table=p.identifier, where=where)
 
     # UPDATE
-    @_('UPDATE identifier SET update_parameter_list FROM LPAREN select RPAREN AS id WHERE expr')
-    @_('UPDATE identifier SET update_parameter_list WHERE expr')
-    @_('UPDATE identifier SET update_parameter_list')
+    @_('UPDATE identifier SET update_parameter_list FROM LPAREN select RPAREN AS id WHERE expr',
+       'UPDATE identifier SET update_parameter_list WHERE expr',
+       'UPDATE identifier SET update_parameter_list')
     def update(self, p):
         where = getattr(p, 'expr', None)
         from_select = getattr(p, 'select', None)
@@ -401,14 +404,14 @@ class MindsDBParser(Parser):
                       where=where)
 
     # INSERT
-    @_('INSERT INTO identifier LPAREN result_columns RPAREN select')
-    @_('INSERT INTO identifier select')
+    @_('INSERT INTO identifier LPAREN result_columns RPAREN select',
+       'INSERT INTO identifier select')
     def insert(self, p):
         columns = getattr(p, 'result_columns', None)
         return Insert(table=p.identifier, columns=columns, from_select=p.select)
 
-    @_('INSERT INTO identifier LPAREN result_columns RPAREN VALUES expr_list_set')
-    @_('INSERT INTO identifier VALUES expr_list_set')
+    @_('INSERT INTO identifier LPAREN result_columns RPAREN VALUES expr_list_set',
+       'INSERT INTO identifier VALUES expr_list_set')
     def insert(self, p):
         columns = getattr(p, 'result_columns', None)
         return Insert(table=p.identifier, columns=columns, values=p.expr_list_set)
@@ -438,14 +441,12 @@ class MindsDBParser(Parser):
         return Use(value=p.identifier)
 
     # CREATE VIEW
-    @_('CREATE VIEW id create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
-    @_('CREATE DATASET id create_view_from_table_or_nothing AS LPAREN raw_query RPAREN')
-    @_('CREATE VIEW id create_view_from_table_or_nothing LPAREN raw_query RPAREN')
-    @_('CREATE DATASET id create_view_from_table_or_nothing LPAREN raw_query RPAREN')
+    @_('CREATE VIEW identifier create_view_from_table_or_nothing AS LPAREN raw_query RPAREN',
+       'CREATE VIEW identifier create_view_from_table_or_nothing LPAREN raw_query RPAREN')
     def create_view(self, p):
         query_str = tokens_to_string(p.raw_query)
 
-        return CreateView(name=p.id,
+        return CreateView(name=p.identifier,
                           from_table=p.create_view_from_table_or_nothing,
                           query_str=query_str)
 
@@ -457,13 +458,9 @@ class MindsDBParser(Parser):
     def create_view_from_table_or_nothing(self, p):
         pass
 
-    # RETRAIN PREDICTOR
-    @_('RETRAIN identifier')
-    def retrain_predictor(self, p):
-        return RetrainPredictor(p.identifier)
-
     # DROP PREDICTOR
     @_('DROP PREDICTOR identifier',
+       'DROP MODEL identifier',
        'DROP PREDICTOR IF_EXISTS identifier')
     def drop_predictor(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
@@ -480,17 +477,17 @@ class MindsDBParser(Parser):
         return DropDataset(p.identifier)
 
     # DROP TABLE
-    @_('DROP TABLE IF_EXISTS identifier')
-    @_('DROP TABLE identifier')
+    @_('DROP TABLE IF_EXISTS identifier',
+       'DROP TABLE identifier')
     def drop_table(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropTables(tables=[p.identifier], if_exists=if_exists)
 
     # create table
-    @_('CREATE TABLE identifier select')
-    @_('CREATE TABLE identifier LPAREN select RPAREN')
-    @_('CREATE OR REPLACE TABLE identifier select')
-    @_('CREATE OR REPLACE TABLE identifier LPAREN select RPAREN')
+    @_('CREATE TABLE identifier select',
+       'CREATE TABLE identifier LPAREN select RPAREN',
+       'CREATE OR REPLACE TABLE identifier select',
+       'CREATE OR REPLACE TABLE identifier LPAREN select RPAREN')
     def create_table(self, p):
         # TODO create table with columns
         is_replace = False
@@ -506,6 +503,8 @@ class MindsDBParser(Parser):
     def create_table(self, p):
         params = p.kw_parameter_list
         return CreateFile(name=p.identifier, **params)
+
+    # create predictor
 
     @_('create_predictor USING kw_parameter_list')
     def create_predictor(self, p):
@@ -536,17 +535,11 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
-    @_('CREATE TABLE identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
-    @_('CREATE PREDICTOR identifier PREDICT result_columns')
-    @_('CREATE OR REPLACE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
-    @_('CREATE OR REPLACE TABLE identifier FROM identifier LPAREN raw_query RPAREN optional_data_source_name PREDICT result_columns')
-    @_('CREATE OR REPLACE PREDICTOR identifier PREDICT result_columns')
+    @_('CREATE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE PREDICTOR identifier PREDICT result_columns',
+       'CREATE MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE MODEL identifier PREDICT result_columns')
     def create_predictor(self, p):
-        is_replace = False
-        if hasattr(p, 'REPLACE'):
-            is_replace = True
-
         query_str = None
         if hasattr(p, 'raw_query'):
             query_str = tokens_to_string(p.raw_query)
@@ -561,44 +554,82 @@ class MindsDBParser(Parser):
             name=name,
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
-            datasource_name=getattr(p, 'optional_data_source_name', None),
-            targets=p.result_columns,
-            is_replace=is_replace
+            targets=p.result_columns
         )
 
-    @_('AS identifier')
-    def optional_data_source_name(self, p):
-        return p.identifier
+        # RETRAIN PREDICTOR
 
-    @_('empty')
-    def optional_data_source_name(self, p):
-        pass
+    @_('RETRAIN identifier',
+       'RETRAIN identifier PREDICT result_columns',
+       'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN',
+       'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns')
+    def create_predictor(self, p):
+        query_str = None
+        if hasattr(p, 'raw_query'):
+            query_str = tokens_to_string(p.raw_query)
+
+        if hasattr(p, 'identifier'):
+            # single identifier field
+            name = p.identifier
+        else:
+            name = p.identifier0
+
+        return RetrainPredictor(
+            name=name,
+            integration_name=getattr(p, 'identifier1', None),
+            query_str=query_str,
+            targets=getattr(p, 'result_columns', None)
+        )
+
+    # ------------
+
+    # ML ENGINE
+    # CREATE
+    @_('CREATE ML_ENGINE identifier FROM id USING kw_parameter_list')
+    def create_integration(self, p):
+        return CreateMLEngine(name=p.identifier,
+                              handler=p.id,
+                              params=p.kw_parameter_list)
+
+    # DROP
+    @_('DROP ML_ENGINE identifier')
+    def create_integration(self, p):
+        return DropMLEngine(name=p.identifier)
 
     # CREATE INTEGRATION
-    @_('CREATE datasource_engine COMMA PARAMETERS EQUALS json',
-       'CREATE datasource_engine COMMA PARAMETERS json',
-       'CREATE datasource_engine PARAMETERS EQUALS json',
-       'CREATE datasource_engine PARAMETERS json')
-    @_('CREATE OR REPLACE datasource_engine COMMA PARAMETERS EQUALS json',
-       'CREATE OR REPLACE datasource_engine COMMA PARAMETERS json',
-       'CREATE OR REPLACE datasource_engine PARAMETERS EQUALS json',
-       'CREATE OR REPLACE datasource_engine PARAMETERS json')
+    @_('CREATE database_engine',
+       'CREATE database_engine COMMA PARAMETERS EQUALS json',
+       'CREATE database_engine COMMA PARAMETERS json',
+       'CREATE database_engine PARAMETERS EQUALS json',
+       'CREATE database_engine PARAMETERS json',
+       'CREATE OR REPLACE database_engine COMMA PARAMETERS EQUALS json',
+       'CREATE OR REPLACE database_engine COMMA PARAMETERS json',
+       'CREATE OR REPLACE database_engine PARAMETERS EQUALS json',
+       'CREATE OR REPLACE database_engine PARAMETERS json')
     def create_integration(self, p):
         is_replace = False
         if hasattr(p, 'REPLACE'):
             is_replace = True
 
-        return CreateDatasource(name=p.datasource_engine['id'],
-                                engine=p.datasource_engine['engine'],
-                                is_replace=is_replace,
-                                parameters=p.json)
+        parameters = None
+        if hasattr(p, 'json'):
+            parameters = p.json
 
-    @_('DATASOURCE id WITH ENGINE EQUALS string',
-       'DATASOURCE id WITH ENGINE string',
-       'DATABASE id WITH ENGINE EQUALS string',
-       'DATABASE id WITH ENGINE string',)
-    def datasource_engine(self, p):
-        return {'id': p.id, 'engine': p.string}
+        return CreateDatabase(name=p.database_engine['id'],
+                                engine=p.database_engine['engine'],
+                                is_replace=is_replace,
+                                parameters=parameters)
+
+    @_('DATABASE id',
+       'DATABASE id ENGINE string',
+       'DATABASE id ENGINE EQUALS string',
+       'DATABASE id WITH ENGINE string',
+       'DATABASE id WITH ENGINE EQUALS string')
+    def database_engine(self, p):
+        string = None
+        if hasattr(p, 'string'):
+            string = p.string
+        return {'id': p.id, 'engine': string}
 
     # UNION / UNION ALL
     @_('select UNION select')
@@ -824,8 +855,8 @@ class MindsDBParser(Parser):
         return query
 
     # keywords for table
-    @_('PLUGINS')
-    @_('ENGINES')
+    @_('PLUGINS',
+       'ENGINES')
     def from_table(self, p):
         return Identifier.from_path_str(p[0])
 
@@ -974,8 +1005,8 @@ class MindsDBParser(Parser):
     def function(self, p):
         return Function(op=p.id, distinct=True, args=p.expr_list)
 
-    @_('id LPAREN expr_list_or_nothing RPAREN')
-    @_('id LPAREN star RPAREN')
+    @_('id LPAREN expr_list_or_nothing RPAREN',
+       'id LPAREN star RPAREN')
     def function(self, p):
         if hasattr(p, 'star'):
             args = [p.star]
@@ -1006,8 +1037,8 @@ class MindsDBParser(Parser):
     def expr(self, p):
         return TypeCast(arg=p.expr, type_name=str(p.id))
 
-    @_('CONVERT LPAREN expr COMMA id RPAREN')
-    @_('CONVERT LPAREN expr USING id RPAREN')
+    @_('CONVERT LPAREN expr COMMA id RPAREN',
+       'CONVERT LPAREN expr USING id RPAREN')
     def expr(self, p):
         return TypeCast(arg=p.expr, type_name=str(p.id))
 
@@ -1083,11 +1114,11 @@ class MindsDBParser(Parser):
     def enumeration(self, p):
         return [p.expr0, p.expr1]
 
-    @_('identifier')
-    @_('parameter')
-    @_('constant')
-    @_('latest')
-    @_('function')
+    @_('identifier',
+       'parameter',
+       'constant',
+       'latest',
+       'function')
     def expr(self, p):
         return p[0]
 
@@ -1132,22 +1163,22 @@ class MindsDBParser(Parser):
         params.update(p.kw_parameter)
         return params
 
-    @_('identifier EQUALS object')
-    @_('identifier EQUALS json_value')
+    @_('identifier EQUALS object',
+       'identifier EQUALS json_value')
     def kw_parameter(self, p):
         key = '.'.join(p.identifier.parts)
         return {key: p[2]}
 
     # json
 
-    @_('LBRACE json_element_list RBRACE')
-    @_('LBRACE RBRACE')
+    @_('LBRACE json_element_list RBRACE',
+       'LBRACE RBRACE')
     def json(self, p):
         params = getattr(p, 'json_element_list', {})
         return params
 
-    @_('json_element')
-    @_('json_element_list COMMA json_element')
+    @_('json_element',
+       'json_element_list COMMA json_element')
     def json_element_list(self, p):
         params = getattr(p, 'json_element_list', {})
         params.update(p.json_element)
@@ -1159,14 +1190,14 @@ class MindsDBParser(Parser):
 
     # json_array
 
-    @_('LBRACKET json_array_list RBRACKET')
-    @_('LBRACKET RBRACKET')
+    @_('LBRACKET json_array_list RBRACKET',
+       'LBRACKET RBRACKET')
     def json_array(self, p):
         arr = getattr(p, 'json_array_list', [])
         return arr
 
-    @_('json_value')
-    @_('json_array_list COMMA json_value')
+    @_('json_value',
+       'json_array_list COMMA json_value')
     def json_array_list(self, p):
         arr = getattr(p, 'json_array_list', [])
         arr.append(p.json_value)
@@ -1191,8 +1222,8 @@ class MindsDBParser(Parser):
         return p[0]
 
 
-    @_('identifier DOT identifier')
-    @_('identifier DOT star')
+    @_('identifier DOT identifier',
+       'identifier DOT star')
     def identifier(self, p):
         node = p[0]
         if isinstance(p[2], Star):
@@ -1287,6 +1318,7 @@ class MindsDBParser(Parser):
        'VIEW',
        'VIEWS',
        'WARNINGS',
+       'MODEL',
     )
     def id(self, p):
         return p[0]

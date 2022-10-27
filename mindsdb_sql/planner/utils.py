@@ -5,6 +5,7 @@ from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryO
                                     OrderBy, BetweenOperation, NullConstant, TypeCast)
 from mindsdb_sql.parser import ast
 
+
 def get_integration_path_from_identifier(identifier):
     parts = identifier.parts
     integration_name = parts[0]
@@ -26,19 +27,6 @@ def get_predictor_name_identifier(identifier):
     if len(new_identifier.parts) > 1:
         new_identifier.parts.pop(0)
     return new_identifier
-
-
-def get_predictor_namespace_and_name_from_identifier(identifier, default_namespace):
-    new_identifier = copy.deepcopy(identifier)
-    if len(new_identifier.parts) > 1:
-        namespace = new_identifier.parts[0]
-    else:
-        # add namespace if not exists
-        namespace = default_namespace
-        new_identifier.parts.insert(0, namespace)
-
-    return namespace, new_identifier
-
 
 
 def disambiguate_integration_column_identifier(identifier, integration_name, table,

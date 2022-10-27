@@ -307,3 +307,118 @@ class TestShowAdapted:
 
         assert statement2.to_tree() == statement.to_tree()
 
+
+class TestMindsdb:
+
+    def test_show(self):
+        sql = '''
+           show full databases
+        '''
+        statement = parse_sql(sql, dialect='mindsdb')
+        statement2 = Show(
+            category='databases',
+            modes=['full']
+        )
+
+        assert statement2.to_tree() == statement.to_tree()
+
+        # ---  show models ---
+        sql = '''
+           show models
+        '''
+        statement = parse_sql(sql, dialect='mindsdb')
+        statement2 = Show(
+            category='models'
+        )
+        assert statement2.to_tree() == statement.to_tree()
+
+        sql = '''
+           show models FROM db_name
+        '''
+        statement = parse_sql(sql, dialect='mindsdb')
+        statement2 = Show(
+            category='models',
+            from_table=Identifier('db_name')
+        )
+        assert statement2.to_tree() == statement.to_tree()
+
+        sql = '''
+           show models LIKE 'pattern'
+        '''
+        statement = parse_sql(sql, dialect='mindsdb')
+        statement2 = Show(
+            category='models',
+            like='pattern',
+        )
+        assert statement2.to_tree() == statement.to_tree()
+
+        sql = '''
+           show models FROM db_name LIKE 'pattern' WHERE a=1
+        '''
+        statement = parse_sql(sql, dialect='mindsdb')
+        statement2 = Show(
+            category='models',
+            from_table=Identifier('db_name'),
+            like='pattern',
+            where=BinaryOperation(op='=', args=[
+                Identifier('a'),
+                Constant(1)
+            ])
+        )
+        assert statement2.to_tree() == statement.to_tree()
+
+        sql = '''
+           show predictors
+        '''
+        statement = parse_sql(sql, dialect='mindsdb')
+        statement2 = Show(
+            category='predictors'
+        )
+        assert statement2.to_tree() == statement.to_tree()
+
+        # --- ml_engines ---
+        sql = '''
+            show ML_ENGINES
+        '''
+        statement = parse_sql(sql, dialect='mindsdb')
+        statement2 = Show(
+            category='ML_ENGINES',
+        )
+        assert statement2.to_tree() == statement.to_tree()
+
+        sql = '''
+           show ML_ENGINES LIKE 'pattern'
+        '''
+        statement = parse_sql(sql, dialect='mindsdb')
+        statement2 = Show(
+            category='ML_ENGINES',
+            like='pattern',
+        )
+        assert statement2.to_tree() == statement.to_tree()
+
+        sql = '''
+           show ML_ENGINES LIKE 'pattern' WHERE  a=1
+        '''
+        statement = parse_sql(sql, dialect='mindsdb')
+        statement2 = Show(
+            category='ML_ENGINES',
+            like='pattern',
+            where=BinaryOperation(op='=', args=[
+                Identifier('a'),
+                Constant(1)
+            ])
+        )
+        assert statement2.to_tree() == statement.to_tree()
+
+        # --- handlers ---
+        sql = '''
+            show Handlers
+        '''
+        statement = parse_sql(sql, dialect='mindsdb')
+        statement2 = Show(
+            category='HANDLERS',
+        )
+        assert statement2.to_tree() == statement.to_tree()
+
+
+
