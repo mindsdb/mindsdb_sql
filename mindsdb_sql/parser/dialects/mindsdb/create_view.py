@@ -11,7 +11,7 @@ class CreateView(ASTNode):
         super().__init__(*args, **kwargs)
         # todo remove it
         if isinstance(name, Identifier):
-            name = name.parts[-1]
+            name = name.to_string()
         self.name = name
         self.query_str = query_str
         self.from_table = from_table

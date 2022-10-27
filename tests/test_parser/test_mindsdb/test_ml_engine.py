@@ -21,6 +21,18 @@ class TestCreateMLEngine:
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()
 
+        sql = """
+            CREATE ML_ENGINE name FROM ml_handler_name
+        """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreateMLEngine(
+            name=Identifier('name'),
+            handler='ml_handler_name',
+            params=None
+        )
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+
 
 class TestDropMLEngine:
     def test_create_predictor_full(self):

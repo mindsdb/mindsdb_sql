@@ -585,11 +585,12 @@ class MindsDBParser(Parser):
 
     # ML ENGINE
     # CREATE
-    @_('CREATE ML_ENGINE identifier FROM id USING kw_parameter_list')
+    @_('CREATE ML_ENGINE identifier FROM id USING kw_parameter_list',
+       'CREATE ML_ENGINE identifier FROM id')
     def create_integration(self, p):
         return CreateMLEngine(name=p.identifier,
                               handler=p.id,
-                              params=p.kw_parameter_list)
+                              params=getattr(p, 'kw_parameter_list', None))
 
     # DROP
     @_('DROP ML_ENGINE identifier')
