@@ -27,9 +27,11 @@ class CreateMLEngine(ASTNode):
         return out_str
 
     def get_string(self, *args, **kwargs):
-        using_ar = [f'{k}={str(v)}' for k, v in self.params.items()]
+        using_str = ''
+        if self.params is not None:
+            using_ar = [f'{k}={str(v)}' for k, v in self.params.items()]
 
-        using_str = ', '.join(using_ar)
+            using_str = 'USING ' + ', '.join(using_ar)
 
         out_str = f'CREATE ML_ENGINE {self.name.to_string()} FROM {self.handler} {using_str}'
 
