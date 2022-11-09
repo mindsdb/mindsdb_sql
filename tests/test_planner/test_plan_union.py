@@ -49,8 +49,8 @@ class TestPlanUnion:
                                    ),
                 ApplyPredictorStep(namespace='mindsdb', dataframe=Result(1), predictor=Identifier('pred')),
                 JoinStep(left=Result(1), right=Result(2),
-                         query=Join(left=Identifier('result_1', alias=Identifier('tab1')),
-                                    right=Identifier('result_2', alias=Identifier('pred')),
+                         query=Join(left=Identifier('result_1'),
+                                    right=Identifier('result_2'),
                                     join_type=JoinType.INNER_JOIN)),
                 ProjectStep(dataframe=Result(3), columns=[Identifier('tab1.column1'), Identifier('pred.predicted', alias=Identifier('predicted'))]),
 

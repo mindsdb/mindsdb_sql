@@ -44,8 +44,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -94,8 +94,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -147,8 +147,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Identifier('ta.target', alias=Identifier('y_true')), Identifier('tb.target', alias=Identifier('y_pred'))]),
@@ -201,8 +201,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 LimitOffsetStep(dataframe=Result(3), limit=query.limit),
@@ -258,8 +258,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -321,8 +321,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -387,8 +387,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -453,8 +453,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -523,8 +523,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -589,8 +589,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -647,8 +647,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -705,8 +705,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             left=Identifier('result_1', alias=Identifier('ta')),
-                             right=Identifier('result_2', alias=Identifier('tb')),
+                             left=Identifier('result_1'),
+                             right=Identifier('result_2'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -807,8 +807,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
-                             left=Identifier('result_2', alias=Identifier('tb')),
-                             right=Identifier('result_1', alias=Identifier('ta')),
+                             left=Identifier('result_2'),
+                             right=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -862,8 +862,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             left=Identifier('result_1', alias=Identifier('ta')),
-                             right=Identifier('result_2', alias=Identifier('tb')),
+                             left=Identifier('result_1'),
+                             right=Identifier('result_2'),
                              join_type=JoinType.JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -924,8 +924,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(0),
                          right=Result(1),
                          query=Join(
-                             left=Identifier('result_0', alias=Identifier('ta')),
-                             right=Identifier('result_1', alias=Identifier('tb')),
+                             left=Identifier('result_0'),
+                             right=Identifier('result_1'),
                              join_type=JoinType.JOIN)
                          ),
                 ProjectStep(dataframe=Result(2), columns=[Star()]),
@@ -991,8 +991,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -1041,8 +1041,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('ta')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
                 ProjectStep(dataframe=Result(3), columns=[Star()]),
@@ -1095,8 +1095,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(0),
                          right=Result(1),
                          query=Join(
-                             right=Identifier('result_1', alias=Identifier('tb')),
-                             left=Identifier('result_0', alias=Identifier('ta')),
+                             right=Identifier('result_1'),
+                             left=Identifier('result_0'),
                              join_type=JoinType.JOIN)
                          ),
                 ProjectStep(dataframe=Result(2), columns=[Star()]),
@@ -1300,8 +1300,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(
-                             right=Identifier('result_1', alias=Identifier('t')),
-                             left=Identifier('result_2', alias=Identifier('tb')),
+                             right=Identifier('result_1'),
+                             left=Identifier('result_2'),
                              join_type=JoinType.JOIN)
                          ),
                 LimitOffsetStep(step_num=4,
@@ -1370,8 +1370,8 @@ class TestJoinTimeseriesPredictor:
                 JoinStep(left=Result(1),
                          right=Result(2),
                          query=Join(
-                             right=Identifier('result_2', alias=Identifier('tb')),
-                             left=Identifier('result_1', alias=Identifier('t')),
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
                              join_type=JoinType.JOIN)
                          ),
                 ProjectStep(dataframe=Result(3),
