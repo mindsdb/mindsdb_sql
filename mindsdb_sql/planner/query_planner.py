@@ -84,6 +84,9 @@ class QueryPlanner():
         if len(name_parts) == 1:
             if self.default_namespace is not None:
                 name_parts.insert(0, self.default_namespace)
+        if len(name_parts) > 2 and name_parts[-1].isdigit():
+            # last part is version
+            name_parts = name_parts[:-1]
 
         name = '.'.join(name_parts).lower()
         return self.predictor_info.get(name)
@@ -679,13 +682,9 @@ class QueryPlanner():
 
                 # add join
                 # Update reference
-                _, table = self.get_integration_path_from_identifier_or_error(table)
-                table_alias = table.alias or Identifier(table.to_string(alias=False).replace('.', '_'))
 
-                predictor_identifier = utils.get_predictor_name_identifier(predictor)
-                left = Identifier(predictor_steps['predictor'].result.ref_name,
-                                   alias=predictor_identifier.alias or Identifier(predictor_identifier.to_string(alias=False)))
-                right = Identifier(predictor_steps['data'].result.ref_name, alias=table_alias)
+                left = Identifier(predictor_steps['predictor'].result.ref_name)
+                right = Identifier(predictor_steps['data'].result.ref_name)
 
                 if not predictor_is_left:
                     # swap join
