@@ -111,6 +111,10 @@ class QueryPlanner():
         fetch_df_select = copy.deepcopy(select)
         recursively_disambiguate_identifiers(fetch_df_select, integration_name, table)
 
+        # remove predictor params
+        if fetch_df_select.using is not None:
+            fetch_df_select.using = None
+
         return FetchDataframeStep(integration=integration_name, query=fetch_df_select)
 
     def plan_integration_select(self, select):
@@ -263,10 +267,16 @@ class QueryPlanner():
             predictor_identifier = utils.get_predictor_name_identifier(predictor)
             recursively_extract_column_values(where_clause, row_dict, predictor_identifier)
 
+            params = None
+            if select.using is not None:
+                params = select.using
             predictor_step = self.plan.add_step(
-                ApplyPredictorRowStep(namespace=predictor_namespace,
-                                                predictor=predictor_identifier,
-                                                row_dict=row_dict)
+                ApplyPredictorRowStep(
+                    namespace=predictor_namespace,
+                    predictor=predictor_identifier,
+                    row_dict=row_dict,
+                    params=params
+                )
             )
         project_step = self.plan_project(select, predictor_step.result)
         return predictor_step, project_step
@@ -278,9 +288,17 @@ class QueryPlanner():
         integration_select_step = self.plan_integration_select(int_select)
 
         predictor_identifier = utils.get_predictor_name_identifier(predictor)
-        predictor_step = self.plan.add_step(ApplyPredictorStep(namespace=predictor_namespace,
-                                         dataframe=integration_select_step.result,
-                                         predictor=predictor_identifier))
+
+        params = None
+        if query.using is not None:
+            params = query.using
+
+        predictor_step = self.plan.add_step(ApplyPredictorStep(
+            namespace=predictor_namespace,
+            dataframe=integration_select_step.result,
+            predictor=predictor_identifier,
+            params=params
+        ))
 
         return {
             'predictor': predictor_step,

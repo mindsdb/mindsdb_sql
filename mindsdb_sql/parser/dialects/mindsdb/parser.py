@@ -59,6 +59,7 @@ class MindsDBParser(Parser):
        'drop_dataset',
        'union',
        'select',
+       'select_using',
        'insert',
        'update',
        'delete',
@@ -759,6 +760,11 @@ class MindsDBParser(Parser):
     @_('identifier')
     def ordering_term(self, p):
         return OrderBy(field=p.identifier, direction='default')
+
+    @_('select USING kw_parameter_list')
+    def select_using(self, p):
+        p.select.using = p.kw_parameter_list
+        return p.select
 
     @_('select HAVING expr')
     def select(self, p):

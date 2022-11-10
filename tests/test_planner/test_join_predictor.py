@@ -6,7 +6,7 @@ from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
-                                       LimitOffsetStep, GroupByStep, SubSelectStep)
+                                       LimitOffsetStep, GroupByStep, SubSelectStep, ApplyPredictorRowStep)
 from mindsdb_sql.parser.utils import JoinType
 from mindsdb_sql import parse_sql
 
@@ -431,5 +431,52 @@ class TestPlanJoinPredictor:
             assert plan.steps[i] == expected_plan.steps[i]
 
 
+class TestPredictorWithUsing:
+    def test_using_join(self):
+
+        sql = '''
+            select * from int.tab1
+            join mindsdb.pred
+            using a=1
+        '''
+
+        query = parse_sql(sql, dialect='mindsdb')
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=parse_sql('select * from tab1', dialect='mindsdb')),
+                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(0),
+                                   predictor=Identifier('pred'), params={'a': 1}),
+                JoinStep(left=Result(0), right=Result(1),
+                         query=Join(left=Identifier('result_0'),
+                                    right=Identifier('result_1'),
+                                    join_type=JoinType.JOIN)),
+                ProjectStep(dataframe=Result(2), columns=[Star()]),
+            ],
+        )
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
+
+    def test_using_one_line(self):
+
+        sql = '''
+            select * from mindsdb.pred where x=2 using a=1
+        '''
+
+        query = parse_sql(sql, dialect='mindsdb')
+        expected_plan = QueryPlan(
+            steps=[
+                ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('pred'),
+                                      row_dict={'x': 2}, params={'a': 1}),
+                ProjectStep(dataframe=Result(0), columns=[Star()]),
+            ],
+        )
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
 
 
