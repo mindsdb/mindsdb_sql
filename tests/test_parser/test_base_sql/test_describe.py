@@ -25,3 +25,9 @@ class TestDescribeMindsdb:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+        sql = "DESCRIBE MODEL my_identifier"
+        ast = parse_sql(sql, dialect='mindsdb')
+
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+

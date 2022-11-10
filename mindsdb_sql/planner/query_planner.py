@@ -84,6 +84,9 @@ class QueryPlanner():
         if len(name_parts) == 1:
             if self.default_namespace is not None:
                 name_parts.insert(0, self.default_namespace)
+        if len(name_parts) > 2 and name_parts[-1].isdigit():
+            # last part is version
+            name_parts = name_parts[:-1]
 
         name = '.'.join(name_parts).lower()
         return self.predictor_info.get(name)
@@ -107,6 +110,10 @@ class QueryPlanner():
 
         fetch_df_select = copy.deepcopy(select)
         recursively_disambiguate_identifiers(fetch_df_select, integration_name, table)
+
+        # remove predictor params
+        if fetch_df_select.using is not None:
+            fetch_df_select.using = None
 
         return FetchDataframeStep(integration=integration_name, query=fetch_df_select)
 
@@ -260,10 +267,16 @@ class QueryPlanner():
             predictor_identifier = utils.get_predictor_name_identifier(predictor)
             recursively_extract_column_values(where_clause, row_dict, predictor_identifier)
 
+            params = None
+            if select.using is not None:
+                params = select.using
             predictor_step = self.plan.add_step(
-                ApplyPredictorRowStep(namespace=predictor_namespace,
-                                                predictor=predictor_identifier,
-                                                row_dict=row_dict)
+                ApplyPredictorRowStep(
+                    namespace=predictor_namespace,
+                    predictor=predictor_identifier,
+                    row_dict=row_dict,
+                    params=params
+                )
             )
         project_step = self.plan_project(select, predictor_step.result)
         return predictor_step, project_step
@@ -275,9 +288,17 @@ class QueryPlanner():
         integration_select_step = self.plan_integration_select(int_select)
 
         predictor_identifier = utils.get_predictor_name_identifier(predictor)
-        predictor_step = self.plan.add_step(ApplyPredictorStep(namespace=predictor_namespace,
-                                         dataframe=integration_select_step.result,
-                                         predictor=predictor_identifier))
+
+        params = None
+        if query.using is not None:
+            params = query.using
+
+        predictor_step = self.plan.add_step(ApplyPredictorStep(
+            namespace=predictor_namespace,
+            dataframe=integration_select_step.result,
+            predictor=predictor_identifier,
+            params=params
+        ))
 
         return {
             'predictor': predictor_step,
@@ -679,13 +700,9 @@ class QueryPlanner():
 
                 # add join
                 # Update reference
-                _, table = self.get_integration_path_from_identifier_or_error(table)
-                table_alias = table.alias or Identifier(table.to_string(alias=False).replace('.', '_'))
 
-                predictor_identifier = utils.get_predictor_name_identifier(predictor)
-                left = Identifier(predictor_steps['predictor'].result.ref_name,
-                                   alias=predictor_identifier.alias or Identifier(predictor_identifier.to_string(alias=False)))
-                right = Identifier(predictor_steps['data'].result.ref_name, alias=table_alias)
+                left = Identifier(predictor_steps['predictor'].result.ref_name)
+                right = Identifier(predictor_steps['data'].result.ref_name)
 
                 if not predictor_is_left:
                     # swap join

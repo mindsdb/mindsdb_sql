@@ -59,6 +59,7 @@ class MindsDBParser(Parser):
        'drop_dataset',
        'union',
        'select',
+       'select_using',
        'insert',
        'update',
        'delete',
@@ -430,7 +431,8 @@ class MindsDBParser(Parser):
     def describe(self, p):
         return Describe(value=p.identifier)
 
-    @_('DESCRIBE PREDICTOR identifier')
+    @_('DESCRIBE PREDICTOR identifier',
+       'DESCRIBE MODEL identifier')
     def describe(self, p):
         return Describe(value=p.identifier, type='predictor')
 
@@ -758,6 +760,11 @@ class MindsDBParser(Parser):
     @_('identifier')
     def ordering_term(self, p):
         return OrderBy(field=p.identifier, direction='default')
+
+    @_('select USING kw_parameter_list')
+    def select_using(self, p):
+        p.select.using = p.kw_parameter_list
+        return p.select
 
     @_('select HAVING expr')
     def select(self, p):
@@ -1224,11 +1231,14 @@ class MindsDBParser(Parser):
 
 
     @_('identifier DOT identifier',
+       'identifier DOT integer',
        'identifier DOT star')
     def identifier(self, p):
         node = p[0]
         if isinstance(p[2], Star):
             node.parts.append(p[2])
+        elif isinstance(p[2], int):
+            node.parts += str(p[2])
         else:
             node.parts += p[2].parts
         return node

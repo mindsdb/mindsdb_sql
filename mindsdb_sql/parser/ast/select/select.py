@@ -1,6 +1,7 @@
+import json
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
-
+from mindsdb_sql.parser.ast.select.operation import Object
 
 class Select(ASTNode):
 
@@ -17,6 +18,7 @@ class Select(ASTNode):
                  cte=None,
                  mode=None,
                  modifiers=None,
+                 using=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.targets = targets
@@ -33,6 +35,7 @@ class Select(ASTNode):
         if modifiers is None:
             modifiers = []
         self.modifiers = modifiers
+        self.using = using
 
         if self.alias:
             self.parentheses = True
@@ -71,6 +74,10 @@ class Select(ASTNode):
         offset_str = f'\n{ind1}offset={self.offset.to_tree(level=0)},' if self.offset else ''
         mode_str = f'\n{ind1}mode={self.mode},' if self.mode else ''
 
+        using_str = ''
+        if self.using is not None:
+            using_str = f'\n{ind1}using={repr(self.using)},'
+
         out_str = f'{ind}Select(' \
                   f'{cte_str}' \
                   f'{alias_str}' \
@@ -85,6 +92,7 @@ class Select(ASTNode):
                   f'{limit_str}' \
                   f'{offset_str}' \
                   f'{mode_str}' \
+                  f'{using_str}' \
                   f'\n{ind})'
         return out_str
 
@@ -130,5 +138,25 @@ class Select(ASTNode):
 
         if self.mode is not None:
             out_str += f' {self.mode}'
+
+        if self.using is not None:
+            from mindsdb_sql.parser.ast.select.identifier import Identifier
+
+            using_ar = []
+            for key, value in self.using.items():
+                if isinstance(value, Object):
+                    args = [
+                        f'{k}={json.dumps(v)}'
+                        for k, v in value.params.items()
+                    ]
+                    args_str = ', '.join(args)
+                    value = f'{value.type}({args_str})'
+                else:
+                    value = json.dumps(value)
+
+                using_ar.append(f'{Identifier(key).to_string()}={value}')
+
+            out_str += f' USING ' + ', '.join(using_ar)
+
         return out_str
 

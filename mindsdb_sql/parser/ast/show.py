@@ -63,7 +63,7 @@ class Show(ASTNode):
         if self.in_table:
             ar = [
                 f'IN {i}'
-                for i in self.from_table.parts
+                for i in self.in_table.parts
             ]
             ar.reverse()
             in_str = ' ' + ' '.join(ar)
