@@ -14,7 +14,7 @@ class MindsDBLexer(Lexer):
     ignore_line_comment = r'--[^\n]*'
 
     tokens = {
-        USE, DROP, CREATE, DESCRIBE, RETRAIN, REPLACE,
+        USE, DROP, CREATE, DESCRIBE, RETRAIN,REPLACE,
 
         # Misc
         SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
@@ -26,7 +26,7 @@ class MindsDBLexer(Lexer):
         PREDICTOR, PREDICTORS, DATASOURCE, INTEGRATION, INTEGRATIONS,DATASOURCES,
         STREAM, STREAMS, PUBLICATION, PUBLICATIONS, VIEW, VIEWS, DATASETS, DATASET,
         MODEL, MODELS, ML_ENGINE, ML_ENGINES, HANDLERS,
-
+        ADJUST,
         LATEST, HORIZON, USING,
         ENGINE, TRAIN, PREDICT, PARAMETERS,
 
@@ -73,6 +73,7 @@ class MindsDBLexer(Lexer):
     }
 
     RETRAIN = r'\bRETRAIN\b'
+    ADJUST = r'\bADJUST\b'
     # Custom commands
 
     USE = r'\bUSE\b'
