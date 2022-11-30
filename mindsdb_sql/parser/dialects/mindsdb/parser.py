@@ -16,6 +16,7 @@ from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.parser.dialects.mindsdb.retrain_predictor import RetrainPredictor
+from mindsdb_sql.parser.dialects.mindsdb.adjust_predictor import AdjustPredictor
 from mindsdb_sql.parser.logger import ParserLogger
 from mindsdb_sql.parser.utils import ensure_select_keyword_order, JoinType, tokens_to_string
 
@@ -559,7 +560,7 @@ class MindsDBParser(Parser):
             targets=p.result_columns
         )
 
-        # RETRAIN PREDICTOR
+    # RETRAIN PREDICTOR
 
     @_('RETRAIN identifier',
        'RETRAIN identifier PREDICT result_columns',
@@ -581,6 +582,24 @@ class MindsDBParser(Parser):
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
             targets=getattr(p, 'result_columns', None)
+        )
+
+    @_('ADJUST identifier FROM identifier LPAREN raw_query RPAREN')
+    def create_predictor(self, p):
+        query_str = None
+        if hasattr(p, 'raw_query'):
+            query_str = tokens_to_string(p.raw_query)
+
+        if hasattr(p, 'identifier'):
+            # single identifier field
+            name = p.identifier
+        else:
+            name = p.identifier0
+
+        return AdjustPredictor(
+            name=name,
+            integration_name=getattr(p, 'identifier1', None),
+            query_str=query_str,
         )
 
     # ------------
