@@ -81,15 +81,32 @@ class QueryPlanner():
 
     def get_predictor(self, identifier):
         name_parts = list(identifier.parts)
-        if len(name_parts) == 1:
-            if self.default_namespace is not None:
-                name_parts.insert(0, self.default_namespace)
-        if len(name_parts) > 2 and name_parts[-1].isdigit():
+
+        version = None
+        if len(name_parts) > 1 and name_parts[-1].isdigit():
             # last part is version
+            version = name_parts[-1]
             name_parts = name_parts[:-1]
 
-        name = '.'.join(name_parts).lower()
-        return self.predictor_info.get(name)
+        name = name_parts[-1]
+
+        namespace = None
+        if len(name_parts) > 1:
+            namespace = name_parts[-2]
+        else:
+            if self.default_namespace is not None:
+                namespace = self.default_namespace
+
+        idx_ar = [name]
+        if namespace is not None:
+            idx_ar.insert(0, namespace)
+
+        idx = '.'.join(idx_ar).lower()
+        info = self.predictor_info.get(idx)
+        if info is not None:
+            info['version'] = version
+            info['name'] = name
+        return info
 
     def get_integration_path_from_identifier_or_error(self, identifier, recurse=True):
         try:
@@ -222,16 +239,15 @@ class QueryPlanner():
         # return last_step
 
     def get_predictor_namespace_and_name_from_identifier(self, identifier):
-
         new_identifier = copy.deepcopy(identifier)
 
-        if len(new_identifier.parts) > 1:
-            namespace = new_identifier.parts[0]
-        else:
-            # add namespace if not exists
-            info = self.get_predictor(identifier)
-            namespace = info['integration_name']
-            new_identifier.parts.insert(0, namespace)
+        info = self.get_predictor(identifier)
+        namespace = info['integration_name']
+
+        parts = [namespace, info['name']]
+        if info['version'] is not None:
+            parts.append(info['version'])
+        new_identifier.parts = parts
 
         return namespace, new_identifier
 

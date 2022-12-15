@@ -35,7 +35,7 @@ class FakeExecutor:
                 {'id': 2, 'name': 'jkl;'}
             ]
         if isinstance(step, steps.GetTableColumns):
-            if step.table in ('tab', 'tab1', 'data.ny_output', 'data', 'yyy.zzz', 'sweat', 'schem.sweat', 'predictors'):
+            if step.table in ('tab', 'tab1', 'data.ny_output', 'data', 'yyy.zzz', 'sweat', 'schem.sweat', 'predictors', ):
                 cols = [
                     {'name': 'id', 'type': 'int'},
                     {'name': 'name', 'type': 'str'},
@@ -50,7 +50,11 @@ class FakeExecutor:
                 return self.list_cols_return(step.table, cols)
             return None
         if isinstance(step, steps.GetPredictorColumns):
-            if step.predictor.parts[-1] in ('pred', 'tp3', 'pr'):
+            name = step.predictor.parts[-1]
+            if name.isdigit():
+                name = step.predictor.parts[-2]
+
+            if name in ('pred', 'tp3', 'pr'):
                 cols = [
                     {'name': 'id', 'type': 'int'},
                     {'name': 'value', 'type': 'str'},
