@@ -439,13 +439,7 @@ class QueryPlanner():
                                           order_by=order_by,
                                           limit=Constant(predictor_window))
 
-            integration_select_2 = Select(targets=[Star()],
-                                          from_table=table,
-                                          where=preparation_where,
-                                          modifiers=query_modifiers,
-                                          order_by=order_by)
-
-            integration_selects = [integration_select_1, integration_select_2]
+            integration_selects = [integration_select_1]
         else:
             integration_select = Select(targets=[Star()],
                                         from_table=table,
