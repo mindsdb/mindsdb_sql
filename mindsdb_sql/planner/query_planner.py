@@ -770,7 +770,7 @@ class QueryPlanner():
         join_left = join.left
         join_right = join.right
 
-        if isinstance(join_left, Select):
+        if isinstance(join_left, Select) and isinstance(join_left.from_table, Identifier):
             # dbt query.
 
             # move latest into subquery
@@ -790,8 +790,8 @@ class QueryPlanner():
             # TODO make project step from query.target
 
             # TODO support complex query. Only one table is supported at the moment.
-            if not isinstance(join_left.from_table, Identifier):
-                raise PlanningException(f'Statement not supported: {query.to_string()}')
+            # if not isinstance(join_left.from_table, Identifier):
+            #     raise PlanningException(f'Statement not supported: {query.to_string()}')
 
             # move properties to upper query
             query = join_left
