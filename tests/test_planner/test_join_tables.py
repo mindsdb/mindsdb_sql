@@ -5,9 +5,10 @@ from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, GroupByStep, LimitOffsetStep, OrderByStep)
+from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, GroupByStep,
+                                       LimitOffsetStep, OrderByStep, ApplyPredictorStep, SubSelectStep)
 from mindsdb_sql.parser.utils import JoinType
-
+from mindsdb_sql import parse_sql
 
 class TestPlanJoinTables:
     def test_join_tables_plan(self):
@@ -47,48 +48,22 @@ class TestPlanJoinTables:
         
 
     def test_join_tables_where_plan(self):
-        query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
-                       from_table=Join(left=Identifier('int.tab1'),
-                                       right=Identifier('int.tab2'),
-                                       condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'),
-                                                                               Identifier('tab2.column1')]),
-                                       join_type=JoinType.INNER_JOIN
-                                       ),
-                       where=BinaryOperation('and',
-                                             args=[
-                                                 BinaryOperation('and',
-                                                                 args=[
-                                                                     BinaryOperation('=',
-                                                                                     args=[Identifier('tab1.column1'),
-                                                                                           Constant(1)]),
-                                                                     BinaryOperation('=',
-                                                                                     args=[Identifier('tab2.column1'),
-                                                                                           Constant(0)]),
-
-                                                                 ]
-                                                                 ),
-                                                 BinaryOperation('=',
-                                                                 args=[Identifier('tab1.column3'),
-                                                                       Identifier('tab2.column3')]),
-                                             ]
-                                             )
-                       )
+        query = parse_sql('''
+          SELECT tab1.column1, tab2.column1, tab2.column2 
+          FROM int.tab1 
+          INNER JOIN int.tab2 ON tab1.column1 = tab2.column1 
+          WHERE ((tab1.column1 = 1) 
+            AND (tab2.column1 = 0))
+            AND (tab1.column3 = tab2.column3)
+        ''')
 
         plan = plan_query(query, integrations=['int'])
         expected_plan = QueryPlan(integrations=['int'],
                                   steps=[
                                       FetchDataframeStep(integration='int',
-                                                         query=Select(
-                                                             targets=[Star()],
-                                                             from_table=Identifier('tab1'),
-                                                         ),
-
-                                                         ),
+                                                         query=parse_sql('SELECT * FROM tab1 WHERE (column1 = 1)')),
                                       FetchDataframeStep(integration='int',
-                                                         query=Select(targets=[Star()],
-                                                                      from_table=Identifier('tab2'),
-                                                                      ),
-                                                         ),
+                                                         query=parse_sql('SELECT * FROM tab2 WHERE (column1 = 0)')),
                                       JoinStep(left=Result(0), right=Result(1),
                                                query=Join(left=Identifier('tab1'),
                                                           right=Identifier('tab2'),
@@ -100,15 +75,15 @@ class TestPlanJoinTables:
                                       FilterStep(dataframe=Result(2),
                                                  query=BinaryOperation('and',
                                                                        args=[
-                                                                           BinaryOperation('and',
+                                                                           BinaryOperation('and', parentheses=True,
                                                                                            args=[
-                                                                                               BinaryOperation('=',
+                                                                                               BinaryOperation('=', parentheses=True,
                                                                                                                args=[
                                                                                                                    Identifier(
                                                                                                                        'tab1.column1'),
                                                                                                                    Constant(
                                                                                                                        1)]),
-                                                                                               BinaryOperation('=',
+                                                                                               BinaryOperation('=', parentheses=True,
                                                                                                                args=[
                                                                                                                    Identifier(
                                                                                                                        'tab2.column1'),
@@ -117,7 +92,7 @@ class TestPlanJoinTables:
 
                                                                                            ]
                                                                                            ),
-                                                                           BinaryOperation('=',
+                                                                           BinaryOperation('=', parentheses=True,
                                                                                            args=[Identifier(
                                                                                                'tab1.column3'),
                                                                                                  Identifier(
@@ -129,8 +104,9 @@ class TestPlanJoinTables:
                                   ],
                                   )
 
-        assert plan.steps == expected_plan.steps
-        
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
 
     def test_join_tables_plan_groupby(self):
         query = Select(targets=[
@@ -326,10 +302,12 @@ class TestPlanJoinTables:
                                   ],
                                   )
 
-        assert plan.steps == expected_plan.steps
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
         
 
-    def test_join_tables_error_on_unspecified_table_in_condition(self):
+    def _disabled_test_join_tables_error_on_unspecified_table_in_condition(self):
+        # disabled: identifier can be environment of system variable
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
                        from_table=Join(left=Identifier('int.tab1'),
                                        right=Identifier('int.tab2'),
@@ -386,3 +364,124 @@ class TestPlanJoinTables:
         plan = plan_query(query, integrations=['int'], default_namespace='int')
 
         assert plan.steps == expected_plan.steps
+
+    def test_complex_join_tables(self):
+        query = parse_sql('''
+            select * from int1.tbl1 t1 
+            right join int2.tbl2 t2 on t1.id=t2.id
+            join pred m
+            left join tbl3 on tbl3.id=t1.id
+            where t1.a=1 and t2.b=2 and 1=1
+        ''', dialect='mindsdb')
+
+        plan = plan_query(query, integrations=['int1', 'int2', 'proj'],  default_namespace='proj',
+                          predictor_metadata=[{'name': 'pred', 'integration_name': 'proj'}])
+
+        expected_plan = QueryPlan(
+            steps=[
+              FetchDataframeStep(integration='int1', query=parse_sql('select * from tbl1 as t1 where a=1')),
+              FetchDataframeStep(integration='int2', query=parse_sql('select * from tbl2 as t2 where b=2')),
+              JoinStep(left=Result(0),
+                       right=Result(1),
+                       query=Join(left=Identifier('tab1'),
+                                  right=Identifier('tab2'),
+                                  condition=BinaryOperation(
+                                      op='=',
+                                      args=[Identifier('t1.id'),
+                                            Identifier('t2.id')]),
+                                  join_type=JoinType.RIGHT_JOIN)),
+              ApplyPredictorStep(namespace='proj', dataframe=Result(2), predictor=Identifier('pred', alias=Identifier('m'))),
+              JoinStep(left=Result(2),
+                       right=Result(3),
+                       query=Join(left=Identifier('tab1'),
+                                    right=Identifier('tab2'),
+                                    join_type=JoinType.JOIN)),
+              FetchDataframeStep(integration='proj', query=parse_sql('select * from tbl3')),
+              JoinStep(left=Result(4),
+                         right=Result(5),
+                         query=Join(left=Identifier('tab1'),
+                                    right=Identifier('tab2'),
+                                    condition=BinaryOperation(
+                                        op='=',
+                                        args=[Identifier('tbl3.id'),
+                                              Identifier('t1.id')]),
+                                    join_type=JoinType.LEFT_JOIN)),
+              FilterStep(dataframe=Result(6),
+                         query=BinaryOperation(op='and',
+                              args=(
+                                BinaryOperation(op='and',
+                                  args=(
+                                    BinaryOperation(op='=',
+                                      args=(
+                                        Identifier(parts=['t1', 'a']),
+                                        Constant(value=1)
+                                      )
+                                    ),
+                                    BinaryOperation(op='=',
+                                      args=(
+                                        Identifier(parts=['t2', 'b']),
+                                        Constant(value=2)
+                                      )
+                                    )
+                                  )
+                                ),
+                                BinaryOperation(op='=',
+                                  args=(
+                                    Constant(value=1),
+                                    Constant(value=1)
+                                  )
+                                )
+                              )
+                            )
+              ),
+              ProjectStep(dataframe=Result(7), columns=[Star()])
+            ]
+        )
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_complex_join_tables_subselect(self):
+        query = parse_sql('''
+            select * from int1.tbl1 t1 
+            join (
+                select * from int2.tbl3
+                join pred m
+            ) t2 on t1.id = t2.id
+        ''', dialect='mindsdb')
+
+        plan = plan_query(query, integrations=['int1', 'int2', 'proj'],  default_namespace='proj',
+                          predictor_metadata=[{'name': 'pred', 'integration_name': 'proj'}])
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int1', query=parse_sql('select * from tbl1 as t1')),
+                FetchDataframeStep(integration='int2', query=parse_sql('select * from tbl3')),
+                ApplyPredictorStep(namespace='proj', dataframe=Result(1),
+                                   predictor=Identifier('pred', alias=Identifier('m'))),
+                JoinStep(left=Result(1),
+                         right=Result(2),
+                         query=Join(left=Identifier('result_1'),
+                                    right=Identifier('result_2'),
+                                    join_type=JoinType.JOIN)),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
+                SubSelectStep(dataframe=Result(4), query=Select(targets=[Star()]), table_name='t2'),
+                JoinStep(
+                     left=Result(0),
+                     right=Result(5),
+                     query=Join(
+                        left=Identifier('tab1'),
+                        right=Identifier('tab2'),
+                        join_type=JoinType.JOIN,
+                        condition=BinaryOperation(
+                             op='=',
+                             args=[Identifier('t1.id'),
+                                   Identifier('t2.id')])
+                     )
+                ),
+                ProjectStep(dataframe=Result(6), columns=[Star()]),
+            ]
+        )
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]

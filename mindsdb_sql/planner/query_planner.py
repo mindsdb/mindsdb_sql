@@ -81,15 +81,32 @@ class QueryPlanner():
 
     def get_predictor(self, identifier):
         name_parts = list(identifier.parts)
-        if len(name_parts) == 1:
-            if self.default_namespace is not None:
-                name_parts.insert(0, self.default_namespace)
-        if len(name_parts) > 2 and name_parts[-1].isdigit():
+
+        version = None
+        if len(name_parts) > 1 and name_parts[-1].isdigit():
             # last part is version
+            version = name_parts[-1]
             name_parts = name_parts[:-1]
 
-        name = '.'.join(name_parts).lower()
-        return self.predictor_info.get(name)
+        name = name_parts[-1]
+
+        namespace = None
+        if len(name_parts) > 1:
+            namespace = name_parts[-2]
+        else:
+            if self.default_namespace is not None:
+                namespace = self.default_namespace
+
+        idx_ar = [name]
+        if namespace is not None:
+            idx_ar.insert(0, namespace)
+
+        idx = '.'.join(idx_ar).lower()
+        info = self.predictor_info.get(idx)
+        if info is not None:
+            info['version'] = version
+            info['name'] = name
+        return info
 
     def get_integration_path_from_identifier_or_error(self, identifier, recurse=True):
         try:
@@ -222,16 +239,15 @@ class QueryPlanner():
         # return last_step
 
     def get_predictor_namespace_and_name_from_identifier(self, identifier):
-
         new_identifier = copy.deepcopy(identifier)
 
-        if len(new_identifier.parts) > 1:
-            namespace = new_identifier.parts[0]
-        else:
-            # add namespace if not exists
-            info = self.get_predictor(identifier)
-            namespace = info['integration_name']
-            new_identifier.parts.insert(0, namespace)
+        info = self.get_predictor(identifier)
+        namespace = info['integration_name']
+
+        parts = [namespace, info['name']]
+        if info['version'] is not None:
+            parts.append(info['version'])
+        new_identifier.parts = parts
 
         return namespace, new_identifier
 
@@ -497,55 +513,209 @@ class QueryPlanner():
             'saved_limit': saved_limit,
         }
 
+    def plan_join_tables(self, query):
+        query = copy.deepcopy(query)
 
-    def plan_join_two_tables(self, join):
-        select_left = join.left
-        if isinstance(select_left, Identifier):
-            select_left = Select(targets=[Star()], from_table=select_left)
+        # replace sub selects
+        def replace_subselects(node, **args):
+            if isinstance(node, Select):
+                name = f't_{id(node)}'
+                node2 = Identifier(name, alias=node.alias)
 
-        select_right = join.right
-        if isinstance(select_right, Identifier):
-            select_right = Select(targets=[Star()], from_table=select_right)
+                # save in attribute
+                node2.sub_select = node
+                return node2
 
-        select_left_step = self.plan_integration_select(select_left)
-        select_right_step = self.plan_integration_select(select_right)
+        query_traversal(query.from_table, replace_subselects)
 
-        if isinstance(join.left, Select) or isinstance(join.right, Select):
-            raise PlanningException('Join table in select using integration is not supported yet')
-        left_integration_name, left_table = self.get_integration_path_from_identifier_or_error(join.left)
-        right_integration_name, right_table = self.get_integration_path_from_identifier_or_error(join.right)
-
-        left_table_path = left_table.to_string(alias=False)
-        right_table_path = right_table.to_string(alias=False)
-
-        new_condition_args = []
-
-        if join.condition is None:
-            raise PlanningException('Join between two tables must have ON clause')
-        for arg in join.condition.args:
-            if isinstance(arg, Identifier):
-                if left_table_path in arg.parts:
-                    new_condition_args.append(
-                        disambiguate_integration_column_identifier(arg, left_integration_name, left_table))
-                elif right_table_path in arg.parts:
-                    new_condition_args.append(
-                        disambiguate_integration_column_identifier(arg, right_integration_name, right_table))
-                else:
-                    raise PlanningException(
-                        f'Wrong table or no source table in join condition for column: {str(arg)}')
+        def resolve_table(table):
+            # gets integration for table and name to access to it
+            table = copy.deepcopy(table)
+            # get possible table aliases
+            aliases = []
+            if table.alias is not None:
+                # to lowercase
+                parts = tuple(map(str.lower, table.alias.parts))
+                aliases.append(parts)
             else:
-                new_condition_args.append(arg)
-        new_join = copy.deepcopy(join)
-        new_join.condition.args = new_condition_args
-        new_join.left = Identifier(left_table_path, alias=left_table.alias)
-        new_join.right = Identifier(right_table_path, alias=right_table.alias)
+                for i in range(0, len(table.parts)):
+                    parts = table.parts[i:]
+                    parts = tuple(map(str.lower, parts))
+                    aliases.append(parts)
 
-        # FIXME: INFORMATION_SCHEMA with condition
-        # clear join condition for INFORMATION_SCHEMA
-        if right_integration_name == 'INFORMATION_SCHEMA':
-            new_join.condition = None
+            # try to use default namespace
+            integration = self.default_namespace
+            if len(table.parts) > 0:
+                if table.parts[0] in self.integrations:
+                    integration = table.parts.pop(0)
+                else:
+                    integration = self.default_namespace
 
-        return self.plan.add_step(JoinStep(left=select_left_step.result, right=select_right_step.result, query=new_join))
+            if integration is None:
+                raise PlanningException(f'Integration not found for: {table}')
+
+            sub_select = getattr(table, 'sub_select', None)
+
+            return dict(
+                integration=integration,
+                table=table,
+                aliases=aliases,
+                conditions=[],
+                sub_select=sub_select,
+            )
+
+            # return integration, table_name
+
+        # get all join tables
+        # join_sequence = []
+        tables_idx = {}
+
+        def get_join_sequence(node):
+            sequence = []
+            if isinstance(node, Identifier):
+                # resolve identifier
+
+                table_info = resolve_table(node)
+                for alias in table_info['aliases']:
+                    tables_idx[alias] = table_info
+
+                table_info['predictor_info'] = self.get_predictor(node)
+
+                sequence.append(table_info)
+
+            elif isinstance(node, Join):
+                # create sequence: 1)table1, 2)table2, 3)join 1 2, 4)table 3, 5)join 3 4
+
+                # put all tables before
+                sequence2 = get_join_sequence(node.left)
+                for item in sequence2:
+                    sequence.append(item)
+
+                sequence2 = get_join_sequence(node.right)
+                if len(sequence2) != 1:
+                    raise PlanningException('Unexpected join nesting behavior')
+
+                # put next table
+                sequence.append(sequence2[0])
+
+                # put join
+                sequence.append(node)
+
+            else:
+                raise NotImplementedError()
+            return sequence
+
+        join_sequence = get_join_sequence(query.from_table)
+
+        # get conditions for tables
+        binary_ops = []
+
+        def _check_identifiers(node, is_table, **kwargs):
+            if not is_table and isinstance(node, Identifier):
+                if len(node.parts) > 1:
+                    parts = tuple(map(str.lower, node.parts[:-1]))
+                    if parts not in tables_idx:
+                        raise PlanningException(f'Table not found for identifier: {node.to_string()}')
+
+                    # # replace identifies name
+                    col_parts = list(tables_idx[parts]['aliases'][-1])
+                    col_parts.append(node.parts[-1])
+                    node.parts = col_parts
+
+        query_traversal(query, _check_identifiers)
+
+        def _check_condition(node, **kwargs):
+            if isinstance(node, BinaryOperation):
+                binary_ops.append(node.op)
+
+                node2 = copy.deepcopy(node)
+                arg1, arg2 = node2.args
+                if not isinstance(arg1, Identifier):
+                    arg1, arg2 = arg2, arg1
+
+                if isinstance(arg1, Identifier) and isinstance(arg2, Constant):
+                    if len(arg1.parts) < 2:
+                        return
+
+                    # to lowercase
+                    parts = tuple(map(str.lower, arg1.parts[:-1]))
+                    if parts not in tables_idx:
+                        raise PlanningException(f'Table not found for identifier: {arg1.to_string()}')
+
+                    # keep only column name
+                    arg1.parts = [arg1.parts[-1]]
+
+                    tables_idx[parts]['conditions'].append(node2)
+
+        query_traversal(query.where, _check_condition)
+
+        # create plan
+        # TODO add optimization: one integration without predictor
+        step_stack = []
+        for item in join_sequence:
+            if isinstance(item, dict):
+                table_name = item['table']
+                predictor_info = item['predictor_info']
+
+                if item['sub_select'] is not None:
+                    # is sub select
+                    item['sub_select'].alias = None
+                    item['sub_select'].parentheses = False
+                    step = self.plan_select(item['sub_select'])
+
+                    # apply table alias
+                    query2 = Select(targets=[Star()])
+                    table_name = item['table'].alias.parts[-1]
+                    step2 = SubSelectStep(query2, step.result, table_name=table_name)
+                    step2 = self.plan.add_step(step2)
+                    step_stack.append(step2)
+                elif predictor_info is not None:
+                    if len(step_stack) == 0:
+                        raise NotImplementedError("Predictor can't be first element of join syntax")
+                    if predictor_info.get('timeseries'):
+                        raise NotImplementedError("TS predictor is not supported here yet")
+                    data_step = step_stack[-1]
+                    predictor_step = self.plan.add_step(ApplyPredictorStep(
+                        namespace=item['integration'],
+                        dataframe=data_step.result,
+                        predictor=table_name,
+                    ))
+                    step_stack.append(predictor_step)
+                else:
+                    # is table
+
+                    query2 = Select(from_table=table_name, targets=[Star()])
+                    # parts = tuple(map(str.lower, table_name.parts))
+                    conditions = item['conditions']
+                    if 'or' in binary_ops:
+                        # not use conditions
+                        conditions = []
+
+                    for cond in conditions:
+                        if query2.where is not None:
+                            query2.where = BinaryOperation('and', args=[query2.where, cond])
+                        else:
+                            query2.where = cond
+
+                    step = FetchDataframeStep(integration=item['integration'], query=query2)
+                    self.plan.add_step(step)
+                    step_stack.append(step)
+            elif isinstance(item, Join):
+                step_right = step_stack.pop()
+                step_left = step_stack.pop()
+
+                new_join = copy.deepcopy(item)
+
+                # TODO
+                new_join.left = Identifier('tab1')
+                new_join.right = Identifier('tab2')
+
+                step = self.plan.add_step(JoinStep(left=step_left.result, right=step_right.result, query=new_join))
+
+                step_stack.append(step)
+
+
+        return step_stack.pop()
 
     def plan_group(self, query, last_step):
         # ! is not using yet
@@ -600,7 +770,7 @@ class QueryPlanner():
         join_left = join.left
         join_right = join.right
 
-        if isinstance(join_left, Select):
+        if isinstance(join_left, Select) and isinstance(join_left.from_table, Identifier):
             # dbt query.
 
             # move latest into subquery
@@ -620,8 +790,8 @@ class QueryPlanner():
             # TODO make project step from query.target
 
             # TODO support complex query. Only one table is supported at the moment.
-            if not isinstance(join_left.from_table, Identifier):
-                raise PlanningException(f'Statement not supported: {query.to_string()}')
+            # if not isinstance(join_left.from_table, Identifier):
+            #     raise PlanningException(f'Statement not supported: {query.to_string()}')
 
             # move properties to upper query
             query = join_left
@@ -668,12 +838,12 @@ class QueryPlanner():
         recursively_check_join_identifiers_for_ambiguity(query.having)
         recursively_check_join_identifiers_for_ambiguity(query.order_by, aliased_fields=aliased_fields)
 
+        predictor = None
         if isinstance(join_left, Identifier) and isinstance(join_right, Identifier):
             if self.is_predictor(join_left) and self.is_predictor(join_right):
                 raise PlanningException(f'Can\'t join two predictors {str(join_left.parts[0])} and {str(join_left.parts[1])}')
 
             predictor_namespace = None
-            predictor = None
             table = None
             predictor_is_left = False
             if self.is_predictor(join_left):
@@ -722,40 +892,39 @@ class QueryPlanner():
                     last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result,
                                                               limit=predictor_steps['saved_limit']))
 
-            else:
-                # Both arguments are tables, join results of 2 dataframe fetches
+        if predictor is None:
 
-                join_step = self.plan_join_two_tables(join)
-                last_step = join_step
-                if query.where:
-                    # FIXME: INFORMATION_SCHEMA with Where
-                    right_integration_name, _ = self.get_integration_path_from_identifier_or_error(join.right)
-                    if right_integration_name == 'INFORMATION_SCHEMA':
-                        ...
-                    else:
-                        last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.where))
+            # Both arguments are tables, join results of 2 dataframe fetches
 
-                if query.group_by:
-                    group_by_targets = []
-                    for t in query.targets:
-                        target_copy = copy.deepcopy(t)
-                        target_copy.alias = None
-                        group_by_targets.append(target_copy)
-                    last_step = self.plan.add_step(GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets))
+            join_step = self.plan_join_tables(query)
+            last_step = join_step
+            if query.where:
+                # FIXME: Tableau workaround, INFORMATION_SCHEMA with Where
+                if isinstance(join.right, Identifier) \
+                   and self.get_integration_path_from_identifier_or_error(join.right)[0] == 'INFORMATION_SCHEMA':
+                    pass
+                else:
+                    last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.where))
 
-                if query.having:
-                    last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.having))
+            if query.group_by:
+                group_by_targets = []
+                for t in query.targets:
+                    target_copy = copy.deepcopy(t)
+                    target_copy.alias = None
+                    group_by_targets.append(target_copy)
+                last_step = self.plan.add_step(GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets))
 
-                if query.order_by:
-                    last_step = self.plan.add_step(OrderByStep(dataframe=last_step.result, order_by=query.order_by))
+            if query.having:
+                last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.having))
 
-                if query.limit is not None or query.offset is not None:
-                    limit = query.limit.value if query.limit is not None else None
-                    offset = query.offset.value if query.offset is not None else None
-                    last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result, limit=limit, offset=offset))
+            if query.order_by:
+                last_step = self.plan.add_step(OrderByStep(dataframe=last_step.result, order_by=query.order_by))
 
-        else:
-            raise PlanningException(f'Join of unsupported objects, currently only tables and predictors can be joined.')
+            if query.limit is not None or query.offset is not None:
+                limit = query.limit.value if query.limit is not None else None
+                offset = query.offset.value if query.offset is not None else None
+                last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result, limit=limit, offset=offset))
+
         return self.plan_project(orig_query, last_step.result)
 
     def plan_create_table(self, query):

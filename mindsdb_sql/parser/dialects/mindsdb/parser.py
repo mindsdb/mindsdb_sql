@@ -826,32 +826,38 @@ class MindsDBParser(Parser):
         select.from_table = Identifier(p.TABLES)
         return select
 
-    @_('select FROM from_table_aliased')
+    @_('select FROM from_table_aliased',
+       'select FROM join_tables_implicit',
+       'select FROM join_tables')
     def select(self, p):
         select = p.select
         ensure_select_keyword_order(select, 'FROM')
-        select.from_table = p.from_table_aliased
+        select.from_table = p[2]
         return select
 
-    @_('from_table_aliased join_clause from_table_aliased')
-    def from_table_aliased(self, p):
-        return Join(left=p.from_table_aliased0,
-                    right=p.from_table_aliased1,
+    # --- join ---
+    @_('from_table_aliased join_clause from_table_aliased',
+       'join_tables join_clause from_table_aliased')
+    def join_tables(self, p):
+        return Join(left=p[0],
+                    right=p[2],
                     join_type=p.join_clause)
 
-    @_('from_table_aliased COMMA from_table_aliased')
-    def from_table_aliased(self, p):
-        return Join(left=p.from_table_aliased0,
-                    right=p.from_table_aliased1,
-                    join_type=JoinType.INNER_JOIN,
-                    implicit=True)
-
-    @_('from_table_aliased join_clause from_table_aliased ON expr')
-    def from_table_aliased(self, p):
-        return Join(left=p.from_table_aliased0,
-                    right=p.from_table_aliased1,
+    @_('from_table_aliased join_clause from_table_aliased ON expr',
+       'join_tables join_clause from_table_aliased ON expr')
+    def join_tables(self, p):
+        return Join(left=p[0],
+                    right=p[2],
                     join_type=p.join_clause,
                     condition=p.expr)
+
+    @_('from_table_aliased COMMA from_table_aliased',
+       'join_tables_implicit COMMA from_table_aliased')
+    def join_tables_implicit (self, p):
+        return Join(left=p[0],
+                    right=p[2],
+                    join_type=JoinType.INNER_JOIN,
+                    implicit=True)
 
     @_('from_table AS identifier',
        'from_table identifier',
