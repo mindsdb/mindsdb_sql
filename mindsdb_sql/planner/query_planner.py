@@ -513,7 +513,20 @@ class QueryPlanner():
             'saved_limit': saved_limit,
         }
 
-    def plan_join_two_tables(self, query):
+    def plan_join_tables(self, query):
+        query = copy.deepcopy(query)
+
+        # replace sub selects
+        def replace_subselects(node, **args):
+            if isinstance(node, Select):
+                name = f't_{id(node)}'
+                node2 = Identifier(name, alias=node.alias)
+
+                # save in attribute
+                node2.sub_select = node
+                return node2
+
+        query_traversal(query.from_table, replace_subselects)
 
         def resolve_table(table):
             # gets integration for table and name to access to it
@@ -540,10 +553,15 @@ class QueryPlanner():
 
             if integration is None:
                 raise PlanningException(f'Integration not found for: {table}')
+
+            sub_select = getattr(table, 'sub_select', None)
+
             return dict(
                 integration=integration,
                 table=table,
-                aliases=aliases
+                aliases=aliases,
+                conditions=[],
+                sub_select=sub_select,
             )
 
             # return integration, table_name
@@ -583,9 +601,7 @@ class QueryPlanner():
                 # put join
                 sequence.append(node)
 
-            elif isinstance(node, Select):
-                # subselect
-                # todo self.plan_nested_select(query)
+            else:
                 raise NotImplementedError()
             return sequence
 
@@ -593,7 +609,6 @@ class QueryPlanner():
 
         # get conditions for tables
         binary_ops = []
-        table_conditions = defaultdict(list)
 
         def _check_identifiers(node, is_table, **kwargs):
             if not is_table and isinstance(node, Identifier):
@@ -626,18 +641,13 @@ class QueryPlanner():
                     parts = tuple(map(str.lower, arg1.parts[:-1]))
                     if parts not in tables_idx:
                         raise PlanningException(f'Table not found for identifier: {arg1.to_string()}')
-                    table_name = tables_idx[parts]['table']
 
                     # keep only column name
                     arg1.parts = [arg1.parts[-1]]
 
-                    table_conditions[tuple(table_name.parts)].append(node2)
+                    tables_idx[parts]['conditions'].append(node2)
 
         query_traversal(query.where, _check_condition)
-
-        if 'or' in binary_ops:
-            # not supported
-            table_conditions = defaultdict(list)
 
         # create plan
         # TODO add optimization: one integration without predictor
@@ -646,7 +656,20 @@ class QueryPlanner():
             if isinstance(item, dict):
                 table_name = item['table']
                 predictor_info = item['predictor_info']
-                if predictor_info is not None:
+
+                if item['sub_select'] is not None:
+                    # is sub select
+                    item['sub_select'].alias = None
+                    item['sub_select'].parentheses = False
+                    step = self.plan_select(item['sub_select'])
+
+                    # apply table alias
+                    query2 = Select(targets=[Star()])
+                    table_name = item['table'].alias.parts[-1]
+                    step2 = SubSelectStep(query2, step.result, table_name=table_name)
+                    step2 = self.plan.add_step(step2)
+                    step_stack.append(step2)
+                elif predictor_info is not None:
                     if len(step_stack) == 0:
                         raise NotImplementedError("Predictor can't be first element of join syntax")
                     if predictor_info.get('timeseries'):
@@ -662,8 +685,11 @@ class QueryPlanner():
                     # is table
 
                     query2 = Select(from_table=table_name, targets=[Star()])
-                    parts = tuple(map(str.lower, table_name.parts))
-                    conditions = table_conditions[parts]
+                    # parts = tuple(map(str.lower, table_name.parts))
+                    conditions = item['conditions']
+                    if 'or' in binary_ops:
+                        # not use conditions
+                        conditions = []
 
                     for cond in conditions:
                         if query2.where is not None:
@@ -687,6 +713,7 @@ class QueryPlanner():
                 step = self.plan.add_step(JoinStep(left=step_left.result, right=step_right.result, query=new_join))
 
                 step_stack.append(step)
+
 
         return step_stack.pop()
 
@@ -869,7 +896,7 @@ class QueryPlanner():
 
             # Both arguments are tables, join results of 2 dataframe fetches
 
-            join_step = self.plan_join_two_tables(query)
+            join_step = self.plan_join_tables(query)
             last_step = join_step
             if query.where:
                 # FIXME: Tableau workaround, INFORMATION_SCHEMA with Where

@@ -6,7 +6,7 @@ from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, GroupByStep,
-                                       LimitOffsetStep, OrderByStep, ApplyPredictorStep)
+                                       LimitOffsetStep, OrderByStep, ApplyPredictorStep, SubSelectStep)
 from mindsdb_sql.parser.utils import JoinType
 from mindsdb_sql import parse_sql
 
@@ -435,6 +435,51 @@ class TestPlanJoinTables:
                             )
               ),
               ProjectStep(dataframe=Result(7), columns=[Star()])
+            ]
+        )
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_complex_join_tables_subselect(self):
+        query = parse_sql('''
+            select * from int1.tbl1 t1 
+            join (
+                select * from int2.tbl3
+                join pred m
+            ) t2 on t1.id = t2.id
+        ''', dialect='mindsdb')
+
+        plan = plan_query(query, integrations=['int1', 'int2', 'proj'],  default_namespace='proj',
+                          predictor_metadata=[{'name': 'pred', 'integration_name': 'proj'}])
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int1', query=parse_sql('select * from tbl1 as t1')),
+                FetchDataframeStep(integration='int2', query=parse_sql('select * from tbl3')),
+                ApplyPredictorStep(namespace='proj', dataframe=Result(1),
+                                   predictor=Identifier('pred', alias=Identifier('m'))),
+                JoinStep(left=Result(1),
+                         right=Result(2),
+                         query=Join(left=Identifier('result_1'),
+                                    right=Identifier('result_2'),
+                                    join_type=JoinType.JOIN)),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
+                SubSelectStep(dataframe=Result(4), query=Select(targets=[Star()]), table_name='t2'),
+                JoinStep(
+                     left=Result(0),
+                     right=Result(5),
+                     query=Join(
+                        left=Identifier('tab1'),
+                        right=Identifier('tab2'),
+                        join_type=JoinType.JOIN,
+                        condition=BinaryOperation(
+                             op='=',
+                             args=[Identifier('t1.id'),
+                                   Identifier('t2.id')])
+                     )
+                ),
+                ProjectStep(dataframe=Result(6), columns=[Star()]),
             ]
         )
 
