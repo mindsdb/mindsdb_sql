@@ -992,10 +992,11 @@ class QueryPlanner():
         elif isinstance(from_table, NativeQuery):
             integration = from_table.integration.parts[0].lower()
             step = FetchDataframeStep(integration=integration, raw_query=from_table.query)
-            self.plan.add_step(step)
+            last_step = self.plan.add_step(step)
             sup_select = self.sub_select_step(query, step)
             if sup_select is not None:
-                self.plan.add_step(sup_select)
+                last_step = self.plan.add_step(sup_select)
+            return last_step
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 
