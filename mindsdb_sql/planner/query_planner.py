@@ -518,11 +518,14 @@ class QueryPlanner():
 
         # replace sub selects
         def replace_subselects(node, **args):
-            if isinstance(node, Select):
+            if isinstance(node, Select) or isinstance(node, NativeQuery):
                 name = f't_{id(node)}'
                 node2 = Identifier(name, alias=node.alias)
 
                 # save in attribute
+                if isinstance(node, NativeQuery):
+                    # wrap to select
+                    node = Select(targets=[Star()], from_table=node)
                 node2.sub_select = node
                 return node2
 

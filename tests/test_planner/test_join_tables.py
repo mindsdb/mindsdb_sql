@@ -517,12 +517,18 @@ class TestPlanJoinTables:
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
 
+        # select from native query
+        # has the same plan
 
-    def _todo_test_join_with_native_query(self):
-        # TODO
         query = parse_sql('''
             select * from int1 (
                 select raw query
             ) t1 
             join pred m          
         ''', dialect='mindsdb')
+
+        plan = plan_query(query, integrations=['int1', 'int2', 'proj'], default_namespace='proj',
+                          predictor_metadata=[{'name': 'pred', 'integration_name': 'proj'}])
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
