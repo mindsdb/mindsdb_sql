@@ -1263,7 +1263,7 @@ class MindsDBParser(Parser):
         if isinstance(p[2], Star):
             node.parts.append(p[2])
         elif isinstance(p[2], int):
-            node.parts += str(p[2])
+            node.parts.append(str(p[2]))
         else:
             node.parts += p[2].parts
         return node
