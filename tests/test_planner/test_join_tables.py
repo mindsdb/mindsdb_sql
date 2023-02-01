@@ -485,3 +485,50 @@ class TestPlanJoinTables:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_join_with_select_from_native_query(self):
+        query = parse_sql('''
+            select * from (
+                select * from int1 (
+                    select raw query
+                )
+            ) t1 
+            join pred m          
+        ''', dialect='mindsdb')
+
+        plan = plan_query(query, integrations=['int1', 'int2', 'proj'],  default_namespace='proj',
+                          predictor_metadata=[{'name': 'pred', 'integration_name': 'proj'}])
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int1', raw_query='select raw query'),
+                SubSelectStep(step_num=1, references=[], query=Select(targets=[Star()]), dataframe=Result(0), table_name='t1'),
+                ApplyPredictorStep(namespace='proj', dataframe=Result(1),
+                                   predictor=Identifier('pred', alias=Identifier('m'))),
+                JoinStep(left=Result(1),
+                         right=Result(2),
+                         query=Join(left=Identifier('tab1'),
+                                    right=Identifier('tab2'),
+                                    join_type=JoinType.JOIN)),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
+            ]
+        )
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
+        # select from native query
+        # has the same plan
+
+        query = parse_sql('''
+            select * from int1 (
+                select raw query
+            ) t1 
+            join pred m          
+        ''', dialect='mindsdb')
+
+        plan = plan_query(query, integrations=['int1', 'int2', 'proj'], default_namespace='proj',
+                          predictor_metadata=[{'name': 'pred', 'integration_name': 'proj'}])
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]

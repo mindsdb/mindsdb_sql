@@ -1,5 +1,3 @@
-import json
-
 from sly import Parser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.ast.drop import DropDatabase, DropView
@@ -11,6 +9,8 @@ from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
 from mindsdb_sql.parser.dialects.mindsdb.create_database import CreateDatabase
 from mindsdb_sql.parser.dialects.mindsdb.create_ml_engine import CreateMLEngine
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
+from mindsdb_sql.parser.dialects.mindsdb.create_job import CreateJob
+from mindsdb_sql.parser.dialects.mindsdb.drop_job import DropJob
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
 from mindsdb_sql.exceptions import ParsingException
@@ -68,9 +68,79 @@ class MindsDBParser(Parser):
        'drop_view',
        'drop_table',
        'create_table',
+       'create_job',
+       'drop_job',
        )
     def query(self, p):
         return p[0]
+
+
+    # -- Jobs --
+    @_('CREATE JOB identifier LPAREN raw_query RPAREN job_schedule',
+       'CREATE JOB identifier AS LPAREN raw_query RPAREN job_schedule',
+       'CREATE JOB identifier LPAREN raw_query RPAREN',
+       'CREATE JOB identifier AS LPAREN raw_query RPAREN')
+    def create_job(self, p):
+        query_str = tokens_to_string(p.raw_query)
+
+        job_schedule = getattr(p, 'job_schedule', {})
+
+        start_str = None
+        if 'START' in job_schedule:
+            start_str = job_schedule.pop('START')
+
+        end_str = None
+        if 'END' in job_schedule:
+            end_str = job_schedule.pop('END')
+
+        repeat_str = None
+        if 'EVERY' in job_schedule:
+            repeat_str = job_schedule.pop('EVERY')
+
+        if len(job_schedule) > 0:
+            raise ParsingException(f'Unexpected params: {list(job_schedule.keys())}')
+
+        return CreateJob(
+            name=p.identifier,
+            query_str=query_str,
+            start_str=start_str,
+            end_str=end_str,
+            repeat_str=repeat_str
+        )
+
+    @_('START string',
+       'START id',
+       'END string',
+       'EVERY string',
+       'EVERY id',
+       'EVERY integer id',
+       'job_schedule job_schedule')
+    def job_schedule(self, p):
+
+
+        if isinstance(p[0], dict):
+            schedule = p[0]
+            for k in p[1].keys():
+                if k in p[0]:
+                    raise ParsingException(f'Duplicated param: {k}')
+
+            schedule.update(p[1])
+            return schedule
+
+        param = p[0].upper()
+        value = p[1]
+        if param == 'EVERY':
+            # 'integer + id' mode
+            if hasattr(p, 'integer'):
+                value = f'{p[1]} {p[2]}'
+
+        schedule = {param: value}
+        return schedule
+
+    @_('DROP JOB identifier')
+    def drop_job(self, p):
+        return DropJob(name=p.identifier)
+
 
     # Explain
     @_('EXPLAIN identifier')
@@ -1263,7 +1333,7 @@ class MindsDBParser(Parser):
         if isinstance(p[2], Star):
             node.parts.append(p[2])
         elif isinstance(p[2], int):
-            node.parts += str(p[2])
+            node.parts.append(str(p[2]))
         else:
             node.parts += p[2].parts
         return node
@@ -1355,6 +1425,7 @@ class MindsDBParser(Parser):
        'VIEWS',
        'WARNINGS',
        'MODEL',
+       'MODELS',
     )
     def id(self, p):
         return p[0]

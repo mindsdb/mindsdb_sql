@@ -206,6 +206,23 @@ class TestPlanSelectFromPredictor:
 
         assert plan.steps == expected_plan.steps
 
+    def test_using_predictor_version(self):
+        query = parse_sql('''
+            select * from mindsdb.pred.21
+            where x1 = 1
+        ''', dialect='mindsdb')
+
+        expected_plan = QueryPlan(predictor_namespace='mindsdb',
+                                  steps=[
+                                      ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier(parts=['pred', '21']),
+                                                            row_dict={'x1': 1}),
+                                      ProjectStep(dataframe=Result(0), columns=[Star()]),
+                                  ],
+                                  )
+
+        plan = plan_query(query, predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}])
+
+        assert plan.steps == expected_plan.steps
 
 class TestMLSelect:
 
