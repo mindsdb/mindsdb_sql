@@ -28,7 +28,7 @@ class MindsDBLexer(Lexer):
         MODEL, MODELS, ML_ENGINE, ML_ENGINES, HANDLERS,
         ADJUST,
         LATEST, HORIZON, USING,
-        ENGINE, TRAIN, PREDICT, PARAMETERS,
+        ENGINE, TRAIN, PREDICT, PARAMETERS, JOB, EVERY,
 
         # SHOW/DDL Keywords
 
@@ -59,7 +59,7 @@ class MindsDBLexer(Lexer):
         # Special
         DOT, COMMA, LPAREN, RPAREN, PARAMETER,
         # json
-        LBRACE, RBRACE, LBRACKET, RBRACKET, COLON,
+        LBRACE, RBRACE, LBRACKET, RBRACKET, COLON, SEMICOLON,
 
         # Operators
         PLUS, MINUS, DIVIDE, MODULO,
@@ -104,6 +104,8 @@ class MindsDBLexer(Lexer):
     ML_ENGINE = r'\bML_ENGINE\b'
     ML_ENGINES = r'\bML_ENGINES\b'
     HANDLERS = r'\bHANDLERS\b'
+    JOB = r'\bJOB\b'
+    EVERY = r'\bEVERY\b'
 
     # Misc
     SET = r'\bSET\b'
@@ -236,6 +238,7 @@ class MindsDBLexer(Lexer):
     LBRACKET = r'\['
     RBRACKET = r'\]'
     COLON = r'\:'
+    SEMICOLON = r'\;'
 
     # Operators
     PLUS = r'\+'
