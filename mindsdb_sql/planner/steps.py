@@ -218,11 +218,12 @@ class SaveToTable(PlanStep):
 
 
 class InsertToTable(PlanStep):
-    def __init__(self, table, dataframe, *args, **kwargs):
+    def __init__(self, table, dataframe=None, query=None, *args, **kwargs):
         """Fills table with content of dataframe"""
         super().__init__(*args, **kwargs)
         self.table = table
         self.dataframe = dataframe
+        self.query = query
 
 
 class UpdateToTable(PlanStep):
