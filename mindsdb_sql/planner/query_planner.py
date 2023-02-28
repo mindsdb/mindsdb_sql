@@ -946,19 +946,24 @@ class QueryPlanner():
         ))
 
     def plan_insert(self, query):
-        if query.from_select is None:
-            raise PlanningException(f'Support only insert from select')
-
-        integration_name = query.table.parts[0]
-
-        # plan sub-select first
-        last_step = self.plan_select(query.from_select, integration=integration_name)
-
         table = query.table
-        self.plan.add_step(InsertToTable(
-            table=table,
-            dataframe=last_step,
-        ))
+        if query.from_select is not None:
+            integration_name = query.table.parts[0]
+
+            # plan sub-select first
+            last_step = self.plan_select(query.from_select, integration=integration_name)
+
+            self.plan.add_step(InsertToTable(
+                table=table,
+                dataframe=last_step,
+            ))
+        else:
+            self.plan.add_step(InsertToTable(
+                table=table,
+                query=query,
+            ))
+
+
 
     def plan_update(self, query):
         if query.from_select is None:
