@@ -802,7 +802,7 @@ class QueryPlanner():
             if query.from_table.alias is not None:
                 table_alias = [query.from_table.alias.parts[0]]
             else:
-                table_alias = [query.from_table.parts[-1]]
+                table_alias = query.from_table.parts
 
             # add latest to query.where
             for cond in moved_conditions:
