@@ -301,14 +301,67 @@ class QueryPlanner():
         int_select = copy.deepcopy(query)
         int_select.targets = [Star()]  # TODO why not query.targets?
         int_select.from_table = table
+
+        predictor_alias = None
+        if predictor.alias is not None:
+            predictor_alias = predictor.alias.parts[0]
+
+        params = {}
+        if query.using is not None:
+            params = query.using
+
+        binary_ops = []
+        filters = []
+
+        def extract_predictor_params(node, **kwargs):
+            if isinstance(node, BinaryOperation):
+                op = node.op.lower()
+
+                binary_ops.append(op)
+
+                if op != '=':
+                    return
+
+                arg1, arg2 = node.args
+                if not isinstance(arg1, Identifier):
+                    arg1, arg2 = arg2, arg1
+
+                if isinstance(arg1, Identifier) and isinstance(arg2, Constant) and len(arg1.parts) > 1:
+                    col = arg1.parts[-1]
+                    model = Identifier(parts=arg1.parts[:-1])
+
+                    if (
+                        self.is_predictor(model)
+                        or (
+                            len(model.parts) == 1 and model.parts[0] == predictor_alias
+                        )
+                    ):
+                        params[col] = arg2.value
+                        return
+                filters.append(node)
+
+        query_traversal(int_select.where, extract_predictor_params)
+
+        if len(params) > 0:
+            if 'or' in binary_ops:
+                # rollback
+                params = {}
+            else:
+                # make a new where clause without params
+                where = None
+                for flt in filters:
+                    if where is None:
+                        where = flt
+                    else:
+                        where = BinaryOperation(op='and', args=[where, flt])
+                int_select.where = where
+
         integration_select_step = self.plan_integration_select(int_select)
 
         predictor_identifier = utils.get_predictor_name_identifier(predictor)
 
-        params = None
-        if query.using is not None:
-            params = query.using
-
+        if len(params) == 0:
+            params = None
         predictor_step = self.plan.add_step(ApplyPredictorStep(
             namespace=predictor_namespace,
             dataframe=integration_select_step.result,
