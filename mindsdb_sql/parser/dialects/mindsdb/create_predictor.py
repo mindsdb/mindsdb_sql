@@ -93,7 +93,7 @@ class CreatePredictorBase(ASTNode):
         window_str = f'WINDOW {self.window} ' if self.window is not None else ''
         horizon_str = f'HORIZON {self.horizon} ' if self.horizon is not None else ''
         using_str = ''
-        if self.using is not None:
+        if self.using:
             using_ar = []
             for key, value in self.using.items():
                 if isinstance(value, Object):
