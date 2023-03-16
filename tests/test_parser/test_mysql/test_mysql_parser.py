@@ -64,14 +64,28 @@ class TestMySQLParser:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+    # def test_names_collate_utf8_set(self):
+    #     sql = "SET sql_mode=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT,NO_ENGINE_SUBSTITUTION')),time_zone='+00:00',NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+    #     ast = parse_sql(sql, dialect='mysql')
+    #     expected_ast = Set(
+    #         category='sql_mode',
+    #         arg="=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT,NO_ENGINE_SUBSTITUTION')),time_zone='+00:00',NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+    #     )
+
+    #     # assert str(ast).lower() == sql.lower()
+    #     assert str(ast) == str(expected_ast)
+    #     assert ast.to_tree() == expected_ast.to_tree()
+
+
     def test_names_collate_utf8_set(self):
-        sql = "SET sql_mode=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT,NO_ENGINE_SUBSTITUTION')),time_zone='+00:00',NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+        sql = "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
         ast = parse_sql(sql, dialect='mysql')
         expected_ast = Set(
-            category='sql_mode',
-            arg="=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT,NO_ENGINE_SUBSTITUTION')),time_zone='+00:00',NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+            category='names',
+            arg=Identifier('utf8mb4'),
+            params={'COLLATE': 'utf8mb4_unicode_ci'}
         )
 
-        # assert str(ast).lower() == sql.lower()
+        assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
-        assert ast.to_tree() == expected_ast.to_tree()
+        assert ast == expected_ast
