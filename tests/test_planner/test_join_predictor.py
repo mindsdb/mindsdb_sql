@@ -525,6 +525,34 @@ class TestPredictorVersion:
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
 
+    def test_where_using(self):
+
+        sql = '''
+            select * from int.tab1 a
+            join proj.pred.1 p
+            where a.x=1 and p.x=1 and a.y=3 and p.y=''
+        '''
+
+        query = parse_sql(sql, dialect='mindsdb')
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=parse_sql('select * from tab1 as a where a.x=1 and a.y=3', dialect='mindsdb')),
+                ApplyPredictorStep(namespace='proj', dataframe=Result(0),
+                                   predictor=Identifier('pred.1', alias=Identifier('p')), params={'x': 1, 'y': ''}),
+                JoinStep(left=Result(0), right=Result(1),
+                         query=Join(left=Identifier('result_0'),
+                                    right=Identifier('result_1'),
+                                    join_type=JoinType.JOIN)),
+                ProjectStep(dataframe=Result(2), columns=[Star()]),
+            ],
+        )
+
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb',
+                          predictor_metadata=[{'name': 'pred', 'integration_name': 'proj'}])
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
 
     def test_using_one_line(self):
 
