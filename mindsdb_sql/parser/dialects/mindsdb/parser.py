@@ -16,7 +16,7 @@ from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.parser.dialects.mindsdb.retrain_predictor import RetrainPredictor
-from mindsdb_sql.parser.dialects.mindsdb.finetune_predictor import FinetunePredictor
+from mindsdb_sql.parser.dialects.mindsdb.adjust_predictor import AdjustPredictor
 from mindsdb_sql.parser.logger import ParserLogger
 from mindsdb_sql.parser.utils import ensure_select_keyword_order, JoinType, tokens_to_string
 
@@ -654,7 +654,7 @@ class MindsDBParser(Parser):
             targets=getattr(p, 'result_columns', None)
         )
 
-    @_('FINETUNE identifier FROM identifier LPAREN raw_query RPAREN')
+    @_('ADJUST identifier FROM identifier LPAREN raw_query RPAREN')
     def create_predictor(self, p):
         query_str = None
         if hasattr(p, 'raw_query'):
@@ -666,7 +666,7 @@ class MindsDBParser(Parser):
         else:
             name = p.identifier0
 
-        return FinetunePredictor(
+        return AdjustPredictor(
             name=name,
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
