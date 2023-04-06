@@ -28,7 +28,7 @@ class MindsDBLexer(Lexer):
         MODEL, MODELS, ML_ENGINE, ML_ENGINES, HANDLERS,
         FINETUNE,
         LATEST, HORIZON, USING,
-        ENGINE, TRAIN, PREDICT, PARAMETERS, JOB, EVERY,
+        ENGINE, TRAIN, PREDICT, PARAMETERS, JOB, EVERY,PROJECT,
 
         # SHOW/DDL Keywords
 
@@ -106,6 +106,7 @@ class MindsDBLexer(Lexer):
     HANDLERS = r'\bHANDLERS\b'
     JOB = r'\bJOB\b'
     EVERY = r'\bEVERY\b'
+    PROJECT = r'\bPROJECT\b'
 
     # Misc
     SET = r'\bSET\b'
