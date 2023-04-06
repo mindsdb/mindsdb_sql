@@ -259,8 +259,8 @@ class TestPlanSelectFromPredictor:
 
     def test_select_from_table_subselect(self):
         query = parse_sql('''
-            select * from int2.t2
-            where x1 in (select id from int1.t1)
+            select * from int2.tab1
+            where x1 in (select id from int1.tab1)
         ''', dialect='mindsdb')
 
         expected_plan = QueryPlan(
@@ -268,17 +268,17 @@ class TestPlanSelectFromPredictor:
             steps=[
                 FetchDataframeStep(
                     integration='int1',
-                    query=parse_sql('select t1.id as id from t1'),
+                    query=parse_sql('select tab1.id as id from tab1'),
                 ),
                 FetchDataframeStep(
                     integration='int2',
                     query=Select(
                         targets=[Star()],
-                        from_table=Identifier('t2'),
+                        from_table=Identifier('tab1'),
                         where=BinaryOperation(
                             op='in',
                             args=[
-                                Identifier(parts=['t2', 'x1']),
+                                Identifier(parts=['tab1', 'x1']),
                                 Parameter(Result(0))
                             ]
                         )
