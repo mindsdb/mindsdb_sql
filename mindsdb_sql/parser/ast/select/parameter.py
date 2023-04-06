@@ -6,8 +6,11 @@ class Parameter(ASTNode):
         super().__init__(*args, **kwargs)
         self.value = value
 
+    def __repr__(self):
+        return f'Parameter({self.value})'
+
     def to_tree(self, *args, level=0, **kwargs):
         return '\t' * level + f'Parameter({repr(self.value)})'
 
     def get_string(self, *args, **kwargs):
-        return self.value
+        return str(self.value)
