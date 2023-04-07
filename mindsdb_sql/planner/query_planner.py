@@ -4,7 +4,7 @@ from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
                                     BetweenOperation, Union, NullConstant, CreateTable, Function, Insert,
-                                    Update, NativeQuery)
+                                    Update, NativeQuery, Parameter)
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
@@ -139,11 +139,15 @@ class QueryPlanner():
 
         return self.plan.add_step(self.get_integration_select_step(select))
 
-    def plan_nested_select(self, select):
+    def get_integration_name(self, node: Identifier):
+        if len(node.parts) > 1 and node.parts[0] in self.integrations:
+            return node.parts[0]
 
+    def get_query_info(self, query):
         # get all predictors
         mdb_entities = []
-        used_integrations = set()
+        projects = []
+        integrations = set()
 
         def find_predictors(node, is_table, **kwargs):
             if isinstance(node, ast.NativeQuery):
@@ -151,19 +155,64 @@ class QueryPlanner():
                 mdb_entities.append(node)
 
             if is_table and isinstance(node, ast.Identifier):
-                if len(node.parts) > 1 and node.parts[0] in self.integrations:
-                    used_integrations.add(node.parts[0])
+                integration = self.get_integration_name(node)
 
                 if self.is_predictor(node):
                     mdb_entities.append(node)
+                    if integration is not None:
+                        projects.append(integration)
+                    return
 
-        utils.query_traversal(select, find_predictors)
+                if integration is not None and not integration in projects:
+                    integrations.add(integration)
+
+        utils.query_traversal(query, find_predictors)
+        return {'mdb_entities': mdb_entities, 'integrations': integrations}
+
+    def plan_select_identifier(self, query):
+        query_info = self.get_query_info(query)
+
+        if len(query_info['integrations']) == 0 and len(query_info['mdb_entities']) >= 1:
+            # select from predictor
+            return self.plan_select_from_predictor(query)
+        elif len(query_info['integrations']) <= 1 and len(query_info['mdb_entities']) == 0:
+            # one integration without predictors
+            return self.plan_integration_select(query)
+
+        # find subselects
+        main_integration = self.get_integration_name(query.from_table)
+
+        def find_selects(node, **kwargs):
+            if isinstance(node, Select):
+                query_info2 = self.get_query_info(node)
+                if (
+                        len(query_info2['integrations']) > 1 or
+                        main_integration not in query_info2['integrations'] or
+                        len(query_info2['mdb_entities']) > 0
+                ):
+                    # need to execute in planner
+
+                    node.parentheses = False
+                    last_step = self.plan_select(node)
+                    node2 = Parameter(last_step.result)
+
+                    return node2
+
+        query.targets = utils.query_traversal(query.targets, find_selects)
+        utils.query_traversal(query.where, find_selects)
+
+        self.plan_select_identifier(query)
+
+    def plan_nested_select(self, select):
+
+        query_info = self.get_query_info(select)
+        # get all predictors
 
         if (
-            len(mdb_entities) == 0
-            and len(used_integrations) < 2
-            and not 'files' in used_integrations
-            and not 'views' in used_integrations
+            len(query_info['mdb_entities']) == 0
+            and len(query_info['integrations']) < 2
+            and not 'files' in query_info['integrations']
+            and not 'views' in query_info['integrations']
         ):
             # if no predictor inside = run as is
             return self.plan_integration_nested_select(select)
@@ -1016,8 +1065,6 @@ class QueryPlanner():
                 query=query,
             ))
 
-
-
     def plan_update(self, query):
         if query.from_select is None:
             raise PlanningException(f'Support only insert from select')
@@ -1042,10 +1089,7 @@ class QueryPlanner():
         from_table = query.from_table
 
         if isinstance(from_table, Identifier):
-            if self.is_predictor(from_table):
-                return self.plan_select_from_predictor(query)
-            else:
-                return self.plan_integration_select(query)
+            return self.plan_select_identifier(query)
         elif isinstance(from_table, Select):
             return self.plan_nested_select(query)
         elif isinstance(from_table, Join):
@@ -1107,7 +1151,6 @@ class QueryPlanner():
             raise PlanningException(f'Unsupported query type {type(query)}')
 
         return self.plan
-
 
     def prepare_steps(self, query):
         statement_planner = PreparedStatementPlanner(self)

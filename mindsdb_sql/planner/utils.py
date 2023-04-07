@@ -2,7 +2,7 @@ import copy
 
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryOperation, Constant,
-                                    OrderBy, BetweenOperation, NullConstant, TypeCast)
+                                    OrderBy, BetweenOperation, NullConstant, TypeCast, Parameter)
 from mindsdb_sql.parser import ast
 
 
@@ -105,6 +105,8 @@ def disambiguate_select_targets(targets, integration_name, table):
             if isinstance(target.arg, Identifier):
                 disambiguate_integration_column_identifier(new_op.arg, integration_name, table)
             new_query_targets.append(new_op)
+        elif isinstance(target, Parameter):
+            new_query_targets.append(target)
         else:
             raise PlanningException(f'Unknown select target {type(target)}')
     return new_query_targets
@@ -167,7 +169,11 @@ def recursively_extract_column_values(op, row_dict, predictor):
         id = op.args[0]
         value = op.args[1]
 
-        if not (isinstance(id, Identifier) and isinstance(value, Constant)):
+        if not (
+                isinstance(id, Identifier)
+                and
+                (isinstance(value, Constant) or isinstance(value, Parameter))
+        ):
             raise PlanningException(f'The WHERE clause for selecting from a predictor'
                                     f' must contain pairs \'Identifier(...) = Constant(...)\','
                                     f' found instead: {id.to_tree()}, {value.to_tree()}')
@@ -176,7 +182,9 @@ def recursively_extract_column_values(op, row_dict, predictor):
 
         if str(id) in row_dict:
             raise PlanningException(f'Multiple values provided for {str(id)}')
-        row_dict[str(id)] = value.value
+        if isinstance(value, Constant):
+            value = value.value
+        row_dict[str(id)] = value
     elif isinstance(op, BinaryOperation) and op.op == 'and':
         recursively_extract_column_values(op.args[0], row_dict, predictor)
         recursively_extract_column_values(op.args[1], row_dict, predictor)
@@ -387,7 +395,12 @@ def query_traversal(node, callback, is_table=False):
             node_out = query_traversal(node.field, callback)
             if node_out is not None:
                 node.field = node_out
-    # TODO update statement
+    elif isinstance(node, list):
+        array = []
+        for node2 in node:
+            node_out = query_traversal(node2, callback) or node2
+            array.append(node_out)
+        return array
 
 
 def convert_join_to_list(join):

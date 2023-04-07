@@ -169,6 +169,7 @@ class MindsDBParser(Parser):
     # DROP DATABASE
     @_('DROP DATABASE identifier',
        'DROP DATABASE IF_EXISTS identifier',
+       'DROP PROJECT identifier',
        'DROP SCHEMA identifier',
        'DROP SCHEMA IF_EXISTS identifier')
     def drop_database(self, p):
@@ -713,6 +714,7 @@ class MindsDBParser(Parser):
                                 parameters=parameters)
 
     @_('DATABASE id',
+       'PROJECT id',
        'DATABASE id ENGINE string',
        'DATABASE id ENGINE EQUALS string',
        'DATABASE id WITH ENGINE string',

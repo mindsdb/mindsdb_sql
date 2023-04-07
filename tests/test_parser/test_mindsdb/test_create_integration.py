@@ -79,3 +79,14 @@ class TestCreateDatabase:
         sql = "CREATE DATABASE db WITH ENGINE = 'mysql', PARAMETERS = 'wow'"
         with pytest.raises(ParsingException):
             ast = parse_sql(sql, dialect='mindsdb')
+
+    def test_create_project(self):
+
+        sql = "create PROJECT dbname"
+        ast = parse_sql(sql, dialect='mindsdb')
+
+        expected_ast = CreateDatabase(name='dbname', engine=None, parameters=None)
+
+        assert str(ast).lower() == str(expected_ast).lower()
+        assert ast.to_tree() == expected_ast.to_tree()
+
