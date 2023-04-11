@@ -934,7 +934,10 @@ class QueryPlanner():
             join_left = join_left.from_table
 
             if orig_query.limit is not None:
-                query.limit = orig_query.limit
+                if query.limit is None or query.limit.value > orig_query.limit.value:
+                    query.limit = orig_query.limit
+            query.parentheses = False
+            query.alias = None
 
         aliased_fields = self.get_aliased_fields(query.targets)
 
