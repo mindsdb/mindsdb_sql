@@ -300,6 +300,7 @@ class MySQLParser(SQLParser):
        'PROFILES',
        'REPLICAS',
        'SLAVE HOSTS',
+       'SEARCH_PATH',
        )
     def show_category(self, p):
         return ' '.join([x for x in p])
@@ -993,6 +994,7 @@ class MySQLParser(SQLParser):
        'REPLICA',
        'REPLICAS',
        'ROLLBACK',
+       'SEARCH_PATH',
        'SERIALIZABLE',
        'SESSION',
        'SLAVE',

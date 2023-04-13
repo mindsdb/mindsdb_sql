@@ -171,6 +171,7 @@ class SQLParser(Parser):
        'PROFILES',
        'REPLICAS',
        'SLAVE HOSTS',
+       'SEARCH_PATH',
        )
     def show_category(self, p):
         return ' '.join([x for x in p])
@@ -734,6 +735,7 @@ class SQLParser(Parser):
        'STORAGE',
        'LOGS',
        'MASTER',
+       'SEARCH_PATH',
        'KEYS',
        'PRIVILEGES',
        'PROFILES',
