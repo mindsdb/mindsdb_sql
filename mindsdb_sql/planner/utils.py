@@ -4,6 +4,7 @@ from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryOperation, Constant,
                                     OrderBy, BetweenOperation, NullConstant, TypeCast, Parameter)
 from mindsdb_sql.parser import ast
+from mindsdb_sql.parser.dialects.mindsdb import Evaluate
 
 
 def get_integration_path_from_identifier(identifier):
@@ -395,6 +396,8 @@ def query_traversal(node, callback, is_table=False):
             node_out = query_traversal(node.field, callback)
             if node_out is not None:
                 node.field = node_out
+    elif isinstance(node, Evaluate):
+        return query_traversal(node.data, callback, is_table=True)
     elif isinstance(node, list):
         array = []
         for node2 in node:

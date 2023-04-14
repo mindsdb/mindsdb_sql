@@ -1,6 +1,7 @@
 import copy
 from collections import defaultdict
 from mindsdb_sql.exceptions import PlanningException
+from mindsdb_sql import parse_sql
 from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
                                     BetweenOperation, Union, NullConstant, CreateTable, Function, Insert,
@@ -1138,8 +1139,9 @@ class QueryPlanner():
         return self.plan.add_step(UnionStep(left=query1.result, right=query2.result, unique=query.unique))
 
     def plan_evaluate(self, query):
-        if isinstance(query.data, Select):
-            select = self.plan_select(query.data)
+        parsed_query_str = parse_sql(query.query_str, dialect='mindsdb')
+        if isinstance(parsed_query_str, Select):
+            select = self.plan_select(parsed_query_str)
             return self.plan.add_step(EvaluateStep(dataframe=select.result, metric=query.name))
         else:
             raise PlanningException(f'Unsupported from_table {type(query.data)}')

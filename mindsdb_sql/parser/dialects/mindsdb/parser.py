@@ -691,7 +691,7 @@ class MindsDBParser(Parser):
 
         return Evaluate(
             name=name,
-            data=p.raw_query,
+            query_str=tokens_to_string(p.raw_query),
             using=using
         )
 

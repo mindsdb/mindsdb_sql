@@ -20,7 +20,7 @@ class TestEvaluate:
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = Evaluate(
             name=Identifier('balanced_accuracy_score'),
-            data=Select(targets=[Identifier('ground_truth'), Identifier('pred')], from_table=Identifier('table_1')),
+            query_str="SELECT ground_truth, pred FROM table_1",
             using={'adjusted': 1, 'param2': 2},
         )
         assert ' '.join(str(ast).split()).lower() == sql.lower()
@@ -33,12 +33,7 @@ class TestEvaluate:
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = Evaluate(
             name=Identifier('r2_score'),
-            data=Select(targets=[Identifier('t.rental_price', alias=Identifier('ground_truth')),
-                                 Identifier('m.rental_price', alias=Identifier('prediction'))],
-                        from_table=Join(left=Identifier('example_db.demo_data.home_rentals', alias=Identifier('t')),
-                                        right=Identifier('mindsdb.home_rentals_model', alias=Identifier('m')),
-                                        join_type=JoinType.JOIN),
-                        limit=Constant(100))
+            query_str=query_str,
         )
         assert ' '.join(str(ast).split()).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()

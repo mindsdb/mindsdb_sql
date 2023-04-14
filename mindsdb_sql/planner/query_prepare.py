@@ -481,6 +481,8 @@ class PreparedStatementPlanner():
             return []
         if isinstance(query, ast.Show):
             return self.prepare_show(query)
+        elif isinstance(query, mindsdb_sql.parser.mindsdb.evaluate.Evaluate):
+            return self.prepare_select(query.data)
         else:
 
             # do nothing
