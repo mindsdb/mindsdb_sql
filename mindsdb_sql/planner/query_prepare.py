@@ -3,6 +3,7 @@ from mindsdb_sql.parser import ast
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.planner import steps
 from mindsdb_sql.planner import utils
+from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
 
 
 def to_string(identifier):
@@ -481,7 +482,7 @@ class PreparedStatementPlanner():
             return []
         if isinstance(query, ast.Show):
             return self.prepare_show(query)
-        elif isinstance(query, mindsdb_sql.parser.mindsdb.evaluate.Evaluate):
+        elif isinstance(query, Evaluate):
             return self.prepare_select(query.data)
         else:
 
