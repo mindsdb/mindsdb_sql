@@ -7,7 +7,9 @@ from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperat
                                     Update, NativeQuery, Parameter)
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
-from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
+from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
+
+from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep, EvaluateStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep,
                                        GetPredictorColumns, SaveToTable, InsertToTable, UpdateToTable, SubSelectStep)
@@ -1135,6 +1137,13 @@ class QueryPlanner():
 
         return self.plan.add_step(UnionStep(left=query1.result, right=query2.result, unique=query.unique))
 
+    def plan_evaluate(self, query):
+        if isinstance(query.data, Select):
+            select = self.plan_select(query.data)
+            return self.plan.add_step(EvaluateStep(dataframe=select.result, metric=query.name))
+        else:
+            raise PlanningException(f'Unsupported from_table {type(query.data)}')
+
     # method for compatibility
     def from_query(self, query=None):
         if query is None:
@@ -1150,6 +1159,8 @@ class QueryPlanner():
             self.plan_insert(query)
         elif isinstance(query, Update):
             self.plan_update(query)
+        elif isinstance(query, Evaluate):
+            self.plan_evaluate(query)
         else:
             raise PlanningException(f'Unsupported query type {type(query)}')
 
