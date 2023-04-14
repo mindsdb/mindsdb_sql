@@ -678,10 +678,6 @@ class MindsDBParser(Parser):
     @_('EVALUATE identifier FROM LPAREN raw_query RPAREN',
        'EVALUATE identifier FROM LPAREN raw_query RPAREN USING kw_parameter_list',)
     def evaluate(self, p):
-        query_str = None
-        if hasattr(p, 'raw_query'):
-            query_str = tokens_to_string(p.raw_query)
-
         if hasattr(p, 'identifier'):
             # single identifier field
             name = p.identifier
@@ -695,7 +691,7 @@ class MindsDBParser(Parser):
 
         return Evaluate(
             name=name,
-            query_str=query_str,
+            data=p.raw_query,
             using=using
         )
 
