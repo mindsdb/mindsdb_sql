@@ -15,7 +15,7 @@ class TestEvaluate:
         assert tokens[1].value == 'balanced_accuracy_score'
 
     def test_evaluate_full_1(self):
-        sql = "EVALUATE balanced_accuracy_score FROM (SELECT true, pred FROM table_1) USING adjusted=1, param2=2"
+        sql = "EVALUATE balanced_accuracy_score FROM (SELECT true, pred FROM table_1) USING adjusted=1, param2=2;"
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = Evaluate(
             name=Identifier('balanced_accuracy_score'),
