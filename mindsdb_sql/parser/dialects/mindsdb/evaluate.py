@@ -14,6 +14,9 @@ class Evaluate(ASTNode):
         self.query_str = query_str
 
     def get_string(self, *args, **kwargs):
-        using_str = ", ".join([f"{k}={v}" for k, v in self.using.items()])
-        out_str = f'EVALUATE {self.name.to_string()} from ({self.query_str}) using {using_str}'
+        out_str = f'EVALUATE {self.name.to_string()} from ({self.query_str})'
+        if self.using is not None:
+            using_str = ", ".join([f"{k}={v}" for k, v in self.using.items()])
+            out_str = f'{out_str} USING {using_str}'
+        out_str += ';'
         return out_str
