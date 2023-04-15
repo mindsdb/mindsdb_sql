@@ -242,11 +242,3 @@ class SubSelectStep(PlanStep):
         self.query = query
         self.dataframe = dataframe
         self.table_name = table_name
-
-
-class EvaluateStep(PlanStep):
-    def __init__(self, metric, dataframe, *args, **kwargs):
-        """Computes an evaluation metric given some model output and reference ground truth"""
-        super().__init__(*args, **kwargs)
-        self.metric = metric
-        self.dataframe = dataframe
