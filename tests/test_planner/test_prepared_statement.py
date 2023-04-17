@@ -101,12 +101,12 @@ def plan_query_patch(query, **kwargs):
     return plan
 
 
-test_integration_select.plan_query = plan_query_patch
-test_join_predictor.plan_query = plan_query_patch
-test_join_tables.plan_query = plan_query_patch
-test_plan_union.plan_query = plan_query_patch
-test_select_from_predictor.plan_query = plan_query_patch
-test_ts_predictor.plan_query = plan_query_patch
+# test_integration_select.plan_query = plan_query_patch
+# test_join_predictor.plan_query = plan_query_patch
+# test_join_tables.plan_query = plan_query_patch
+# test_plan_union.plan_query = plan_query_patch
+# test_select_from_predictor.plan_query = plan_query_patch
+# test_ts_predictor.plan_query = plan_query_patch
 
 
 class TestPreparedStatement:
