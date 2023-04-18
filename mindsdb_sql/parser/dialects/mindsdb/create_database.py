@@ -19,7 +19,7 @@ class CreateDatabase(ASTNode):
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
         ind1 = indent(level+1)
-        name_str = f'\n{ind1}name={repr(self.name)},'
+        name_str = f'\n{ind1}name={self.name.to_string()},'
         engine_str = f'\n{ind1}engine={repr(self.engine)},'
         parameters_str = f'\n{ind1}parameters={str(self.parameters)},'
 
@@ -43,5 +43,5 @@ class CreateDatabase(ASTNode):
         parameters_str = ''
         if self.parameters:
             parameters_str = f', PARAMETERS = {json.dumps(self.parameters)}'
-        out_str = f'CREATE{replace_str} DATABASE {str(self.name)} WITH ENGINE = {repr(self.engine)}{parameters_str}'
+        out_str = f'CREATE{replace_str} DATABASE {self.name.to_string()} WITH ENGINE = {repr(self.engine)}{parameters_str}'
         return out_str

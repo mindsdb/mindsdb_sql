@@ -1,6 +1,7 @@
 import pytest
 
 from mindsdb_sql import parse_sql, ParsingException
+from mindsdb_sql.parser.ast import Identifier
 from mindsdb_sql.parser.dialects.mindsdb import *
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 
@@ -24,13 +25,13 @@ class TestCreateDatabase:
     def test_create_database_ok(self, ):
         sql = "CREATE DATABASE db"
         ast = parse_sql(sql, dialect='mindsdb')
-        expected_ast = CreateDatabase(name='db', engine=None, parameters=None)
+        expected_ast = CreateDatabase(name=Identifier('db'), engine=None, parameters=None)
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
         sql = "CREATE DATABASE db ENGINE 'eng'"
         ast = parse_sql(sql, dialect='mindsdb')
-        expected_ast = CreateDatabase(name='db', engine='eng', parameters=None)
+        expected_ast = CreateDatabase(name=Identifier('db'), engine='eng', parameters=None)
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
@@ -51,7 +52,7 @@ class TestCreateDatabase:
                     """ % {'equal': equal, 'engine': engine, 'with': with_}
 
                     ast = parse_sql(sql, dialect='mindsdb')
-                    expected_ast = CreateDatabase(name='db',
+                    expected_ast = CreateDatabase(name=Identifier('db'),
                                                 engine='mysql',
                                                 parameters=dict(user='admin', password="admin123_.,';:!@#$%^&*(){}[]", host='127.0.0.1'))
                     assert str(ast) == str(expected_ast)
@@ -67,7 +68,7 @@ class TestCreateDatabase:
         """
 
         ast = parse_sql(sql, dialect='mindsdb')
-        expected_ast = CreateDatabase(name='db',
+        expected_ast = CreateDatabase(name=Identifier('db'),
                                         engine='mysql',
                                         is_replace=True,
                                         parameters=dict(user='admin', password="admin123_.,';:!@#$%^&*(){}[]",
@@ -85,7 +86,7 @@ class TestCreateDatabase:
         sql = "create PROJECT dbname"
         ast = parse_sql(sql, dialect='mindsdb')
 
-        expected_ast = CreateDatabase(name='dbname', engine=None, parameters=None)
+        expected_ast = CreateDatabase(name=Identifier('dbname'), engine=None, parameters=None)
 
         assert str(ast).lower() == str(expected_ast).lower()
         assert ast.to_tree() == expected_ast.to_tree()

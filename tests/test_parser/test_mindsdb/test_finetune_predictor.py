@@ -12,7 +12,10 @@ class TestFinetunePredictor:
         tokens = list(MindsDBLexer().tokenize(sql))
         assert tokens[0].type == 'FINETUNE'
         assert tokens[1].type == 'ID'
-        assert tokens[1].value == 'mindsdb.pred'
+        assert tokens[1].value == 'mindsdb'
+        assert tokens[2].type == 'DOT'
+        assert tokens[3].type == 'ID'
+        assert tokens[3].value == 'pred'
 
     def test_finetune_predictor_full(self):
         sql = "FINETUNE mindsdb.pred FROM integration_name (SELECT * FROM table_1) USING a=1, b=null"

@@ -63,7 +63,7 @@ class TestLexer:
         assert tokens[1].value == 'a'
 
     def test_select_identifiers(self, lexer):
-        sql = 'SELECT abcd123, 123abcd, __whatisthi123s__, idwith$sign, `spaces in id`, multiple.parts.__whoa, `multiple`.`parts`.`with brackets` '
+        sql = 'SELECT abcd123, 123abcd, __whatisthi123s__, idwith$sign, `spaces in id`, multipleparts__whoa, `multiple_parts with brackets` '
         tokens = list(lexer.tokenize(sql))
         assert tokens[0].type == 'SELECT'
 
@@ -202,7 +202,18 @@ class TestLexer:
         assert tokens[4].value == 'FROM'
 
         assert tokens[5].type == 'ID'
-        assert tokens[5].value == 'db.schema.tab'
+        assert tokens[5].value == 'db'
+
+        assert tokens[6].type == 'DOT'
+        assert tokens[6].value == '.'
+
+        assert tokens[7].type == 'SCHEMA'
+
+        assert tokens[8].type == 'DOT'
+        assert tokens[8].value == '.'
+
+        assert tokens[9].type == 'ID'
+        assert tokens[9].value == 'tab'
 
     def test_select_star(self, lexer):
         sql = f'SELECT * FROM tab'
