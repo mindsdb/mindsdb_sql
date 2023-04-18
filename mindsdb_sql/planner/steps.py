@@ -242,4 +242,3 @@ class SubSelectStep(PlanStep):
         self.query = query
         self.dataframe = dataframe
         self.table_name = table_name
-
