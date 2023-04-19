@@ -12,7 +12,11 @@ class TestRetrainPredictor:
         tokens = list(MindsDBLexer().tokenize(sql))
         assert tokens[0].type == 'RETRAIN'
         assert tokens[1].type == 'ID'
-        assert tokens[1].value == 'mindsdb.pred'
+        assert tokens[1].value == 'mindsdb'
+        assert tokens[2].type == 'DOT'
+        assert tokens[2].value == '.'
+        assert tokens[3].type == 'ID'
+        assert tokens[3].value == 'pred'
 
     def test_retrain_predictor_ok(self):
         sql = "RETRAIN mindsdb.pred"
