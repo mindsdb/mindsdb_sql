@@ -7,6 +7,7 @@ from .finetune_predictor import FinetunePredictor
 from .drop_integration import DropIntegration
 from .drop_datasource import DropDatasource
 from .drop_dataset import DropDataset
+from .evaluate import Evaluate
 from .latest import Latest
 from .create_file import CreateFile
 from .create_ml_engine import CreateMLEngine

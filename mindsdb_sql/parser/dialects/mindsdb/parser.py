@@ -12,6 +12,7 @@ from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.create_job import CreateJob
 from mindsdb_sql.parser.dialects.mindsdb.drop_job import DropJob
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
+from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
 from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
@@ -64,6 +65,7 @@ class MindsDBParser(Parser):
        'insert',
        'update',
        'delete',
+       'evaluate',
        'drop_database',
        'drop_view',
        'drop_table',
@@ -671,6 +673,26 @@ class MindsDBParser(Parser):
             name=name,
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
+        )
+
+    @_('EVALUATE identifier FROM LPAREN raw_query RPAREN',
+       'EVALUATE identifier FROM LPAREN raw_query RPAREN USING kw_parameter_list',)
+    def evaluate(self, p):
+        if hasattr(p, 'identifier'):
+            # single identifier field
+            name = p.identifier
+        else:
+            name = p.identifier0
+
+        if hasattr(p, 'USING'):
+            using = p.kw_parameter_list
+        else:
+            using = None
+
+        return Evaluate(
+            name=name,
+            query_str=tokens_to_string(p.raw_query),
+            using=using
         )
 
     # ------------
