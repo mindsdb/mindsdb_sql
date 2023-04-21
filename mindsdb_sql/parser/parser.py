@@ -721,6 +721,7 @@ class SQLParser(Parser):
        'TABLES',
        'STATUS',
        'VIEW',
+       'DATABASES',
        'DATABASE',
        'SCHEMA',
        'FIELDS',

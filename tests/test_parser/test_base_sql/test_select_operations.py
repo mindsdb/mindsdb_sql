@@ -486,6 +486,18 @@ class TestOperations:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_select_databases(self, dialect):
+        sql = f'SELECT name FROM information_schema.databases'
+        ast = parse_sql(sql, dialect=dialect)
+
+        expected_ast = Select(
+            targets=[Identifier('name')],
+            from_table=Identifier('information_schema.databases'),
+        )
+
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
 
 # it doesn't work in sqlite
 @pytest.mark.parametrize('dialect', ['mysql', 'mindsdb'])
