@@ -1,8 +1,10 @@
+import re
+from copy import copy, deepcopy
+
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
 from mindsdb_sql.parser.ast.select import Star
 
-import re
 
 no_wrap_identifier_regex = re.compile(r'[a-zA-Z_][a-zA-Z_0-9]*')
 path_str_parts_regex = re.compile(r'(?:(?:(`[^`]+`))|([^.]+))')
@@ -68,7 +70,17 @@ class Identifier(ASTNode):
         return self.parts_to_str()
 
     def __copy__(self):
-        return Identifier(parts=self.parts)
+        identifier = Identifier(parts=copy(self.parts))
+        identifier.alias = deepcopy(self.alias)
+        identifier.parentheses = self.parentheses
+        if hasattr(self, 'sub_select'):
+            identifier.sub_select = deepcopy(self.sub_select)
+        return identifier
 
     def __deepcopy__(self, memo):
-        return Identifier(parts=self.parts)
+        identifier = Identifier(parts=copy(self.parts))
+        identifier.alias = deepcopy(self.alias)
+        identifier.parentheses = self.parentheses
+        if hasattr(self, 'sub_select'):
+            identifier.sub_select = deepcopy(self.sub_select)
+        return identifier
