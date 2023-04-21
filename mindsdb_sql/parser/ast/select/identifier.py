@@ -52,7 +52,7 @@ class Identifier(ASTNode):
             else:
                 if (
                     not no_wrap_identifier_regex.fullmatch(part)
-                  or
+                    or
                     part.upper() in self.reserved
                 ):
                     part = f'`{part}`'
@@ -67,4 +67,8 @@ class Identifier(ASTNode):
     def get_string(self, *args, **kwargs):
         return self.parts_to_str()
 
+    def __copy__(self):
+        return Identifier(parts=self.parts)
 
+    def __deepcopy__(self, memo):
+        return Identifier(parts=self.parts)
