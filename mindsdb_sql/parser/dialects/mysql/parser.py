@@ -966,6 +966,7 @@ class MySQLParser(SQLParser):
        'COMMIT',
        'COMMITTED',
        'CONCAT',
+       'DATABASES',
        'DATABASE',
        'ENGINE',
        'ENGINES',

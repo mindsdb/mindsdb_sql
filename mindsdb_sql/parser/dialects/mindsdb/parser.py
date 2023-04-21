@@ -1395,6 +1395,7 @@ class MindsDBParser(Parser):
        'DATASET',
        'DATASETS',
        'DATABASE',
+       'DATABASES',
        'DATASOURCE',
        'DATASOURCES',
        'ENGINE',
