@@ -1,5 +1,5 @@
 import re
-from copy import copy
+from copy import copy, deepcopy
 
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
@@ -71,12 +71,16 @@ class Identifier(ASTNode):
 
     def __copy__(self):
         identifier = Identifier(parts=copy(self.parts))
-        identifier.alias = copy(self.alias)
+        identifier.alias = deepcopy(self.alias)
         identifier.parentheses = self.parentheses
+        if hasattr(self, 'sub_select'):
+            identifier.sub_select = deepcopy(self.sub_select)
         return identifier
 
     def __deepcopy__(self, memo):
         identifier = Identifier(parts=copy(self.parts))
-        identifier.alias = copy(self.alias)
+        identifier.alias = deepcopy(self.alias)
         identifier.parentheses = self.parentheses
+        if hasattr(self, 'sub_select'):
+            identifier.sub_select = deepcopy(self.sub_select)
         return identifier
