@@ -26,7 +26,7 @@ class MindsDBLexer(Lexer):
         PREDICTOR, PREDICTORS, DATASOURCE, INTEGRATION, INTEGRATIONS,DATASOURCES,
         STREAM, STREAMS, PUBLICATION, PUBLICATIONS, VIEW, VIEWS, DATASETS, DATASET,
         MODEL, MODELS, ML_ENGINE, ML_ENGINES, HANDLERS,
-        FINETUNE,
+        FINETUNE, EVALUATE,
         LATEST, HORIZON, USING,
         ENGINE, TRAIN, PREDICT, PARAMETERS, JOB, EVERY,PROJECT,
 
@@ -107,6 +107,7 @@ class MindsDBLexer(Lexer):
     JOB = r'\bJOB\b'
     EVERY = r'\bEVERY\b'
     PROJECT = r'\bPROJECT\b'
+    EVALUATE = r'\bEVALUATE\b'
 
     # Misc
     SET = r'\bSET\b'
@@ -272,7 +273,7 @@ class MindsDBLexer(Lexer):
     TRUE = r'\bTRUE\b'
     FALSE = r'\bFALSE\b'
 
-    @_(r'(?:([a-zA-Z_$0-9]*[a-zA-Z_$]+[a-zA-Z_$0-9]*)|(?:`([^`]+)`))(?:\.(?:([a-zA-Z_$0-9]*[a-zA-Z_$]+[a-zA-Z_$0-9]*)|(?:`([^`]+)`)))*')
+    @_(r'(?:([a-zA-Z_$0-9]*[a-zA-Z_$]+[a-zA-Z_$0-9]*)|(?:`([^`]+)`))')
     def ID(self, t):
         return t
 

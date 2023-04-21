@@ -113,7 +113,7 @@ class TestSelectStructure:
             targets=[Constant(1)],
             from_table=Identifier(parts=['integration', 'database', 'schema', 'tab'])
         )
-        ast = parse_sql(query)
+        ast = parse_sql(query, dialect=dialect)
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 

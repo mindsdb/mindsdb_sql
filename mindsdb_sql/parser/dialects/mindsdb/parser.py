@@ -12,6 +12,7 @@ from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.create_job import CreateJob
 from mindsdb_sql.parser.dialects.mindsdb.drop_job import DropJob
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
+from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
 from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
@@ -64,6 +65,7 @@ class MindsDBParser(Parser):
        'insert',
        'update',
        'delete',
+       'evaluate',
        'drop_database',
        'drop_view',
        'drop_table',
@@ -673,6 +675,26 @@ class MindsDBParser(Parser):
             query_str=query_str,
         )
 
+    @_('EVALUATE identifier FROM LPAREN raw_query RPAREN',
+       'EVALUATE identifier FROM LPAREN raw_query RPAREN USING kw_parameter_list',)
+    def evaluate(self, p):
+        if hasattr(p, 'identifier'):
+            # single identifier field
+            name = p.identifier
+        else:
+            name = p.identifier0
+
+        if hasattr(p, 'USING'):
+            using = p.kw_parameter_list
+        else:
+            using = None
+
+        return Evaluate(
+            name=name,
+            query_str=tokens_to_string(p.raw_query),
+            using=using
+        )
+
     # ------------
 
     # ML ENGINE
@@ -708,22 +730,22 @@ class MindsDBParser(Parser):
         if hasattr(p, 'json'):
             parameters = p.json
 
-        return CreateDatabase(name=p.database_engine['id'],
+        return CreateDatabase(name=p.database_engine['identifier'],
                                 engine=p.database_engine['engine'],
                                 is_replace=is_replace,
                                 parameters=parameters)
 
-    @_('DATABASE id',
-       'PROJECT id',
-       'DATABASE id ENGINE string',
-       'DATABASE id ENGINE EQUALS string',
-       'DATABASE id WITH ENGINE string',
-       'DATABASE id WITH ENGINE EQUALS string')
+    @_('DATABASE identifier',
+       'PROJECT identifier',
+       'DATABASE identifier ENGINE string',
+       'DATABASE identifier ENGINE EQUALS string',
+       'DATABASE identifier WITH ENGINE string',
+       'DATABASE identifier WITH ENGINE EQUALS string')
     def database_engine(self, p):
-        string = None
+        engine = None
         if hasattr(p, 'string'):
-            string = p.string
-        return {'id': p.id, 'engine': string}
+            engine = p.string
+        return {'identifier': p.identifier, 'engine': engine}
 
     # UNION / UNION ALL
     @_('select UNION select')
@@ -1372,6 +1394,7 @@ class MindsDBParser(Parser):
        'CONCAT',
        'DATASET',
        'DATASETS',
+       'DATABASE',
        'DATASOURCE',
        'DATASOURCES',
        'ENGINE',
@@ -1415,6 +1438,7 @@ class MindsDBParser(Parser):
        'ROLLBACK',
        'SERIALIZABLE',
        'SESSION',
+       'SCHEMA',
        'SLAVE',
        'START',
        'STATUS',
