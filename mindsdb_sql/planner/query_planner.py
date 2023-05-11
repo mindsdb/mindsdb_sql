@@ -316,7 +316,7 @@ class QueryPlanner():
                 if isinstance(target, Identifier):
                     new_query_targets.append(
                         disambiguate_predictor_column_identifier(target, predictor))
-                elif type(target) in (Star, Constant):
+                elif type(target) in (Star, Constant, Function):
                     new_query_targets.append(target)
                 else:
                     raise PlanningException(f'Unknown select target {type(target)}')
