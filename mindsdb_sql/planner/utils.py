@@ -53,7 +53,7 @@ def disambiguate_integration_column_identifier(identifier, integration_name, tab
     new_identifier = Identifier(parts=parts)
     if identifier.alias:
         new_identifier.alias = identifier.alias
-    elif initial_name_as_alias:
+    elif initial_name_as_alias and not isinstance(parts[-1], Star):
         new_identifier.alias = Identifier(parts[-1])
 
     return new_identifier
