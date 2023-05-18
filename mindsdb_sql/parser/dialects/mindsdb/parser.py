@@ -10,6 +10,7 @@ from mindsdb_sql.parser.dialects.mindsdb.create_database import CreateDatabase
 from mindsdb_sql.parser.dialects.mindsdb.create_ml_engine import CreateMLEngine
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.create_job import CreateJob
+from mindsdb_sql.parser.dialects.mindsdb.chatbot import CreateChatBot, DropChatBot
 from mindsdb_sql.parser.dialects.mindsdb.drop_job import DropJob
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
@@ -76,6 +77,23 @@ class MindsDBParser(Parser):
     def query(self, p):
         return p[0]
 
+    # -- ChatBot --
+    @_('CREATE CHATBOT identifier USING kw_parameter_list')
+    def create_job(self, p):
+        params = p.kw_parameter_list
+
+        database = Identifier(params.pop('database'))
+        model = Identifier(params.pop('model'))
+        return CreateChatBot(
+            name=p.identifier,
+            database=database,
+            model=model,
+            params=params
+        )
+
+    @_('DROP CHATBOT identifier')
+    def drop_job(self, p):
+        return DropChatBot(name=p.identifier)
 
     # -- Jobs --
     @_('CREATE JOB identifier LPAREN raw_query RPAREN job_schedule',
