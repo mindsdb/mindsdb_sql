@@ -1,14 +1,16 @@
+import re
+from copy import copy, deepcopy
+
 from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
 from mindsdb_sql.parser.ast.select import Star
 
-import re
 
 no_wrap_identifier_regex = re.compile(r'[a-zA-Z_][a-zA-Z_0-9]*')
 path_str_parts_regex = re.compile(r'(?:(?:(`[^`]+`))|([^.]+))')
 
 
-def path_str_to_parts(path_str):
+def path_str_to_parts(path_str: str):
     match = re.finditer(path_str_parts_regex, path_str)
     parts = [x[0].strip('`') for x in match]
     return parts
@@ -25,6 +27,9 @@ class Identifier(ASTNode):
         super().__init__(*args, **kwargs)
         assert path_str or parts, "Either path_str or parts must be provided for an Identifier"
         assert not (path_str and parts), "Provide either path_str or parts, but not both"
+        if isinstance(path_str, Star) and not parts:
+            parts = [Star()]
+
         if path_str and not parts:
             parts = path_str_to_parts(path_str)
         assert isinstance(parts, list)
@@ -52,7 +57,7 @@ class Identifier(ASTNode):
             else:
                 if (
                     not no_wrap_identifier_regex.fullmatch(part)
-                  or
+                    or
                     part.upper() in self.reserved
                 ):
                     part = f'`{part}`'
@@ -67,4 +72,18 @@ class Identifier(ASTNode):
     def get_string(self, *args, **kwargs):
         return self.parts_to_str()
 
+    def __copy__(self):
+        identifier = Identifier(parts=copy(self.parts))
+        identifier.alias = deepcopy(self.alias)
+        identifier.parentheses = self.parentheses
+        if hasattr(self, 'sub_select'):
+            identifier.sub_select = deepcopy(self.sub_select)
+        return identifier
 
+    def __deepcopy__(self, memo):
+        identifier = Identifier(parts=copy(self.parts))
+        identifier.alias = deepcopy(self.alias)
+        identifier.parentheses = self.parentheses
+        if hasattr(self, 'sub_select'):
+            identifier.sub_select = deepcopy(self.sub_select)
+        return identifier

@@ -1,5 +1,3 @@
-import pytest
-
 from mindsdb_sql import parse_sql
 from mindsdb_sql.parser.dialects.mindsdb import *
 from mindsdb_sql.parser.ast import *

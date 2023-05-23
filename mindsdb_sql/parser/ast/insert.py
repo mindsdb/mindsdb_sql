@@ -2,7 +2,7 @@ from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
 from mindsdb_sql.parser.ast.create import TableColumn
 from mindsdb_sql.parser.ast.select.identifier import Identifier
-
+from mindsdb_sql.parser.ast.select.constant import Constant
 
 class Insert(ASTNode):
 
@@ -32,7 +32,9 @@ class Insert(ASTNode):
             return TableColumn(col)
         elif isinstance(col, Identifier):
             return TableColumn(col.parts[0])
-        return col
+        elif isinstance(col, Constant):
+            return TableColumn(col.value)
+        return TableColumn(str(col))
 
     def to_value(self, val):
         if isinstance(val, ASTNode) :
