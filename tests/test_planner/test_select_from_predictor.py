@@ -295,6 +295,84 @@ class TestPlanSelectFromPredictor:
 
         assert plan.steps == expected_plan.steps
 
+    def test_select_from_view_subselect(self):
+        query = parse_sql('''
+            select * from v1
+            where x1 in (select id from int1.tab1)
+        ''', dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(
+                    integration='int1',
+                    query=parse_sql('select tab1.id as id from tab1'),
+                ),
+                FetchDataframeStep(
+                    integration='mindsdb',
+                    query=Select(
+                        targets=[Star()],
+                        from_table=Identifier('v1'),
+                        where=BinaryOperation(
+                            op='in',
+                            args=[
+                                Identifier(parts=['v1', 'x1']),
+                                Parameter(Result(0))
+                            ]
+                        )
+                    ),
+                ),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=['int1'],
+            default_namespace='mindsdb',
+            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}]
+        )
+
+        assert plan.steps == expected_plan.steps
+
+
+    def test_select_from_view_subselect_view(self):
+        query = parse_sql('''
+            select * from v1
+            where x1 in (select id from v2)
+        ''', dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(
+                    integration='mindsdb',
+                    query=parse_sql('select v2.id as id from v2'),
+                ),
+                FetchDataframeStep(
+                    integration='mindsdb',
+                    query=Select(
+                        targets=[Star()],
+                        from_table=Identifier('v1'),
+                        where=BinaryOperation(
+                            op='in',
+                            args=[
+                                Identifier(parts=['v1', 'x1']),
+                                Parameter(Result(0))
+                            ]
+                        )
+                    ),
+                ),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=[],
+            default_namespace='mindsdb',
+            predictor_metadata=[]
+        )
+
+        assert plan.steps == expected_plan.steps
 
 class TestMLSelect:
 

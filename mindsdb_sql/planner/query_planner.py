@@ -13,9 +13,7 @@ from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep
                                        GetPredictorColumns, SaveToTable, InsertToTable, UpdateToTable, SubSelectStep)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
-from mindsdb_sql.planner.utils import (get_integration_path_from_identifier,
-                                       disambiguate_integration_column_identifier,
-                                       disambiguate_predictor_column_identifier, recursively_disambiguate_identifiers,
+from mindsdb_sql.planner.utils import (disambiguate_predictor_column_identifier,
                                        get_deepest_select,
                                        recursively_extract_column_values,
                                        recursively_check_join_identifiers_for_ambiguity,
@@ -37,7 +35,23 @@ class QueryPlanner():
         self.query = query
         self.plan = QueryPlan()
 
-        self.integrations = [int.lower() for int in integrations] if integrations else []
+        _projects = set()
+        self.integrations = []
+        if integrations is not None:
+            for integration in integrations:
+                if isinstance(integration, dict):
+                    integration_name = integration['name'].lower()
+                    # it is project of system database
+                    if integration['type'] != 'data':
+                        _projects.add(integration_name)
+                        continue
+                else:
+                    integration_name = integration.lower()
+                self.integrations.append(integration_name)
+
+        # allow to select from mindsdb namespace
+        _projects.add('mindsdb')
+
         self.default_namespace = default_namespace
 
         # legacy parameter
@@ -48,15 +62,15 @@ class QueryPlanner():
         self.predictor_info = {}
         if isinstance(predictor_metadata, list):
             # convert to dict
-            if predictor_metadata is not None:
-                for predictor in predictor_metadata:
-                    if 'integration_name' in predictor:
-                        integration_name = predictor['integration_name']
-                    else:
-                        integration_name = self.predictor_namespace
-                        predictor['integration_name'] = integration_name
-                    idx = f'{integration_name}.{predictor["name"]}'.lower()
-                    self.predictor_info[idx] = predictor
+            for predictor in predictor_metadata:
+                if 'integration_name' in predictor:
+                    integration_name = predictor['integration_name']
+                else:
+                    integration_name = self.predictor_namespace
+                    predictor['integration_name'] = integration_name
+                idx = f'{integration_name}.{predictor["name"]}'.lower()
+                self.predictor_info[idx] = predictor
+                _projects.add(integration_name)
         elif isinstance(predictor_metadata, dict):
             # legacy behaviour
             for name, predictor in predictor_metadata.items():
@@ -67,12 +81,12 @@ class QueryPlanner():
                         integration_name = self.predictor_namespace
                         predictor['integration_name'] = integration_name
                     name = f'{integration_name}.{name}'.lower()
+                    _projects.add(integration_name)
 
                 self.predictor_info[name] = predictor
 
-        # allow to select from mindsdb namespace
-        if 'mindsdb' not in self.integrations:
-            self.integrations.append('mindsdb')
+        self.projects = list(_projects)
+        self.databases = self.integrations + self.projects
 
         self.statement = None
 
@@ -108,25 +122,50 @@ class QueryPlanner():
             info['name'] = name
         return info
 
-    def get_integration_path_from_identifier_or_error(self, identifier, recurse=True):
-        try:
-            integration_name, table = get_integration_path_from_identifier(identifier)
-            if not integration_name.lower() in self.integrations:
-                raise PlanningException(f'Unknown integration {integration_name} for table {str(identifier)}. Available integrations: {", ".join(self.integrations)}')
-        except PlanningException:
-            if not recurse or not self.default_namespace:
-                raise
-            else:
-                new_identifier = copy.deepcopy(identifier)
-                new_identifier.parts = [self.default_namespace, *identifier.parts]
-                return self.get_integration_path_from_identifier_or_error(new_identifier, recurse=False)
-        return integration_name, table
+    def prepare_integration_select(self, database, query):
+        # replacement for 'utils.recursively_disambiguate_*' functions from utils
+        #   main purpose: make tests working (don't change planner outputs)
+        # can be removed in future (with adapting the tests) except 'cut integration part' block
+
+        def _prepare_integration_select(node, is_table, is_target, parent_query, **kwargs):
+            if not isinstance(node, Identifier):
+                return
+
+            # cut integration part
+            if len(node.parts) > 1 and node.parts[0] == database:
+                node.parts.pop(0)
+
+            if not hasattr(parent_query, 'from_table'):
+                return
+
+            table = parent_query.from_table
+            if not is_table:
+                # add table name or alias for identifiers
+
+                if table.alias is not None:
+                    prefix = table.alias.parts
+                else:
+                    prefix = table.parts
+
+                if len(node.parts) > 1:
+                    if node.parts[:len(prefix)] != prefix:
+                        raise PlanningException(f'Tried to query column {node.to_string()} from table'
+                                                f' {table.to_string()}, but a different table name has been specified.')
+                else:
+                    node.parts = prefix + node.parts
+
+                # keep column name for target
+                if is_target:
+                    if node.alias is None:
+                        node.alias = Identifier(parts=[node.parts[-1]])
+
+        utils.query_traversal(query, _prepare_integration_select)
 
     def get_integration_select_step(self, select):
-        integration_name, table = self.get_integration_path_from_identifier_or_error(select.from_table)
+        integration_name, table = self.resolve_database_table(select.from_table)
 
         fetch_df_select = copy.deepcopy(select)
-        recursively_disambiguate_identifiers(fetch_df_select, integration_name, table)
+        self.prepare_integration_select(integration_name, fetch_df_select)
 
         # remove predictor params
         if fetch_df_select.using is not None:
@@ -139,40 +178,51 @@ class QueryPlanner():
 
         return self.plan.add_step(self.get_integration_select_step(select))
 
-    def get_integration_name(self, node: Identifier):
-        if len(node.parts) > 1 and node.parts[0] in self.integrations:
-            return node.parts[0]
+    def resolve_database_table(self, node: Identifier):
+        # resolves integration name and table name
+
+        parts = node.parts.copy()
+        alias = None
+        if node.alias is not None:
+            alias = node.alias.copy()
+
+        database = self.default_namespace
+
+        if len(parts) > 1:
+            if parts[0] in self.databases:
+                database = parts.pop(0)
+
+        return database, Identifier(parts=parts, alias=alias)
 
     def get_query_info(self, query):
         # get all predictors
         mdb_entities = []
-        projects = []
+        predictors = []
+        # projects = set()
         integrations = set()
 
         def find_predictors(node, is_table, **kwargs):
-            if isinstance(node, ast.NativeQuery):
-                # has NativeQuery syntax
-                mdb_entities.append(node)
 
             if is_table and isinstance(node, ast.Identifier):
-                integration = self.get_integration_name(node)
+                integration, _ = self.resolve_database_table(node)
 
                 if self.is_predictor(node):
-                    mdb_entities.append(node)
-                    if integration is not None:
-                        projects.append(integration)
-                    return
+                    predictors.append(node)
 
-                if integration is not None and not integration in projects:
+                if integration in self.projects:
+                    # it is project
+                    mdb_entities.append(node)
+
+                elif integration is not None:
                     integrations.add(integration)
 
         utils.query_traversal(query, find_predictors)
-        return {'mdb_entities': mdb_entities, 'integrations': integrations}
+        return {'mdb_entities': mdb_entities, 'integrations': integrations, 'predictors': predictors}
 
     def plan_select_identifier(self, query):
         query_info = self.get_query_info(query)
 
-        if len(query_info['integrations']) == 0 and len(query_info['mdb_entities']) >= 1:
+        if len(query_info['integrations']) == 0 and len(query_info['predictors']) >= 1:
             # select from predictor
             return self.plan_select_from_predictor(query)
         elif len(query_info['integrations']) <= 1 and len(query_info['mdb_entities']) == 0:
@@ -180,7 +230,7 @@ class QueryPlanner():
             return self.plan_integration_select(query)
 
         # find subselects
-        main_integration = self.get_integration_name(query.from_table)
+        main_integration, _ = self.resolve_database_table(query.from_table)
 
         def find_selects(node, **kwargs):
             if isinstance(node, Select):
@@ -201,7 +251,11 @@ class QueryPlanner():
         query.targets = utils.query_traversal(query.targets, find_selects)
         utils.query_traversal(query.where, find_selects)
 
-        self.plan_select_identifier(query)
+        if len(query_info['predictors']) >= 1:
+            # select from predictor
+            return self.plan_select_from_predictor(query)
+        else:
+            return self.plan_integration_select(query)
 
     def plan_nested_select(self, select):
 
@@ -211,8 +265,8 @@ class QueryPlanner():
         if (
             len(query_info['mdb_entities']) == 0
             and len(query_info['integrations']) < 2
-            and not 'files' in query_info['integrations']
-            and not 'views' in query_info['integrations']
+            and 'files' not in query_info['integrations']
+            and 'views' not in query_info['integrations']
         ):
             # if no predictor inside = run as is
             return self.plan_integration_nested_select(select)
@@ -222,8 +276,8 @@ class QueryPlanner():
     def plan_integration_nested_select(self, select):
         fetch_df_select = copy.deepcopy(select)
         deepest_select = get_deepest_select(fetch_df_select)
-        integration_name, table = self.get_integration_path_from_identifier_or_error(deepest_select.from_table)
-        recursively_disambiguate_identifiers(deepest_select, integration_name, table)
+        integration_name, table = self.resolve_database_table(deepest_select.from_table)
+        self.prepare_integration_select(integration_name, deepest_select)
         return self.plan.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
     def plan_mdb_nested_select(self, select):
@@ -249,43 +303,6 @@ class QueryPlanner():
             last_step = sup_select
 
         return last_step
-
-        # if select.where is not None:
-        #     # remove subselect alias
-        #     where_query = select.where
-        #     if subselect_alias is not None:
-        #         def remove_aliases(node, **kwargs):
-        #             if isinstance(node, Identifier):
-        #
-        #                 if len(node.parts) > 1:
-        #                     if node.parts[0] == subselect_alias:
-        #                         node.parts = node.parts[1:]
-        #
-        #         query_traversal(where_query, remove_aliases)
-        #
-        #     last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=where_query))
-        #
-        # group_step = self.plan_group(select, last_step)
-        # if group_step is not None:
-        #     self.plan.add_step(group_step)
-        #     # don't do project step
-        #
-        # else:
-        #     # do we need projection?
-        #     if len(select.targets) != 1 or not isinstance(select.targets[0], Star):
-        #         # remove prefix alias
-        #         if subselect_alias is not None:
-        #             for t in select.targets:
-        #                 if isinstance(t, Identifier) and t.parts[0] == subselect_alias:
-        #                     t.parts.pop(0)
-        #
-        #         self.plan_project(select, last_step.result, ignore_doubles=True)
-
-        # do we need limit?
-        # last_step = self.plan.steps[-1]
-        # if select.limit is not None:
-        #     last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result, limit=select.limit.value))
-        # return last_step
 
     def get_predictor_namespace_and_name_from_identifier(self, identifier):
         new_identifier = copy.deepcopy(identifier)
@@ -651,7 +668,7 @@ class QueryPlanner():
             # try to use default namespace
             integration = self.default_namespace
             if len(table.parts) > 0:
-                if table.parts[0] in self.integrations:
+                if table.parts[0] in self.databases:
                     integration = table.parts.pop(0)
                 else:
                     integration = self.default_namespace
@@ -926,7 +943,7 @@ class QueryPlanner():
                 #   if table.part[0] not in integration - take integration name from create table command
                 if (
                     integration is not None
-                    and query.from_table.parts[0] not in self.integrations
+                    and query.from_table.parts[0] not in self.databases
                 ):
                     # add integration name to table
                     query.from_table.parts.insert(0, integration)
@@ -1009,7 +1026,7 @@ class QueryPlanner():
             if query.where:
                 # FIXME: Tableau workaround, INFORMATION_SCHEMA with Where
                 if isinstance(join.right, Identifier) \
-                   and self.get_integration_path_from_identifier_or_error(join.right)[0] == 'INFORMATION_SCHEMA':
+                   and self.resolve_database_table(join.right)[0] == 'INFORMATION_SCHEMA':
                     pass
                 else:
                     last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.where))
