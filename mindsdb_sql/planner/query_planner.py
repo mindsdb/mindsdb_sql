@@ -36,7 +36,7 @@ class QueryPlanner():
         self.plan = QueryPlan()
 
         _projects = set()
-        self.integrations = []
+        self.integrations = {}
         if integrations is not None:
             for integration in integrations:
                 if isinstance(integration, dict):
@@ -47,7 +47,8 @@ class QueryPlanner():
                         continue
                 else:
                     integration_name = integration.lower()
-                self.integrations.append(integration_name)
+                    integration = {'name': integration}
+                self.integrations[integration_name] = integration
 
         # allow to select from mindsdb namespace
         _projects.add('mindsdb')
@@ -86,7 +87,7 @@ class QueryPlanner():
                 self.predictor_info[name] = predictor
 
         self.projects = list(_projects)
-        self.databases = self.integrations + self.projects
+        self.databases = list(self.integrations.keys()) + self.projects
 
         self.statement = None
 
@@ -225,9 +226,12 @@ class QueryPlanner():
         if len(query_info['integrations']) == 0 and len(query_info['predictors']) >= 1:
             # select from predictor
             return self.plan_select_from_predictor(query)
-        elif len(query_info['integrations']) <= 1 and len(query_info['mdb_entities']) == 0:
-            # one integration without predictors
-            return self.plan_integration_select(query)
+        elif len(query_info['integrations']) == 1 and len(query_info['mdb_entities']) == 0:
+
+            int_name = list(query_info['integrations'])[0]
+            if self.integrations.get(int_name, {}).get('class') != 'api':
+                # one integration without predictors
+                return self.plan_integration_select(query)
 
         # find subselects
         main_integration, _ = self.resolve_database_table(query.from_table)
@@ -264,14 +268,17 @@ class QueryPlanner():
 
         if (
             len(query_info['mdb_entities']) == 0
-            and len(query_info['integrations']) < 2
+            and len(query_info['integrations']) == 1
             and 'files' not in query_info['integrations']
             and 'views' not in query_info['integrations']
         ):
-            # if no predictor inside = run as is
-            return self.plan_integration_nested_select(select)
-        else:
-            return self.plan_mdb_nested_select(select)
+            int_name = list(query_info['integrations'])[0]
+            if self.integrations.get(int_name, {}).get('class') != 'api':
+
+                # if no predictor inside = run as is
+                return self.plan_integration_nested_select(select)
+
+        return self.plan_mdb_nested_select(select)
 
     def plan_integration_nested_select(self, select):
         fetch_df_select = copy.deepcopy(select)
