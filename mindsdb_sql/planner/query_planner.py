@@ -229,8 +229,8 @@ class QueryPlanner():
         elif len(query_info['integrations']) == 1 and len(query_info['mdb_entities']) == 0:
 
             int_name = list(query_info['integrations'])[0]
-            if self.integrations.get(int_name, {}).get('class') != 'api':
-                # one integration without predictors
+            if self.integrations.get(int_name, {}).get('class_type') != 'api':
+                # one integration without predictors, send all query to integration
                 return self.plan_integration_select(query)
 
         # find subselects
@@ -273,7 +273,7 @@ class QueryPlanner():
             and 'views' not in query_info['integrations']
         ):
             int_name = list(query_info['integrations'])[0]
-            if self.integrations.get(int_name, {}).get('class') != 'api':
+            if self.integrations.get(int_name, {}).get('class_type') != 'api':
 
                 # if no predictor inside = run as is
                 return self.plan_integration_nested_select(select)
