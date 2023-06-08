@@ -71,7 +71,7 @@ class QueryPlanner():
                     predictor['integration_name'] = integration_name
                 idx = f'{integration_name}.{predictor["name"]}'.lower()
                 self.predictor_info[idx] = predictor
-                _projects.add(integration_name)
+                _projects.add(integration_name.lower())
         elif isinstance(predictor_metadata, dict):
             # legacy behaviour
             for name, predictor in predictor_metadata.items():
@@ -82,7 +82,7 @@ class QueryPlanner():
                         integration_name = self.predictor_namespace
                         predictor['integration_name'] = integration_name
                     name = f'{integration_name}.{name}'.lower()
-                    _projects.add(integration_name)
+                    _projects.add(integration_name.lower())
 
                 self.predictor_info[name] = predictor
 
@@ -133,7 +133,7 @@ class QueryPlanner():
                 return
 
             # cut integration part
-            if len(node.parts) > 1 and node.parts[0] == database:
+            if len(node.parts) > 1 and node.parts[0].lower() == database:
                 node.parts.pop(0)
 
             if not hasattr(parent_query, 'from_table'):
@@ -190,8 +190,8 @@ class QueryPlanner():
         database = self.default_namespace
 
         if len(parts) > 1:
-            if parts[0] in self.databases:
-                database = parts.pop(0)
+            if parts[0].lower() in self.databases:
+                database = parts.pop(0).lower()
 
         return database, Identifier(parts=parts, alias=alias)
 

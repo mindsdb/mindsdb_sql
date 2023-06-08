@@ -13,7 +13,7 @@ from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterSt
 class TestPlanIntegrationSelect:
     def test_integration_select_plan(self):
         query = Select(targets=[Identifier('column1'), Constant(1), NullConstant(), Function('database', args=[])],
-                       from_table=Identifier('int.tab'),
+                       from_table=Identifier('INT.tab'),
                        where=BinaryOperation('and', args=[
                            BinaryOperation('=', args=[Identifier('column1'), Identifier('column2')]),
                            BinaryOperation('>', args=[Identifier('column3'), Constant(0)]),
