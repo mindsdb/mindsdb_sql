@@ -144,7 +144,7 @@ class PreparedStatementPlanner():
             is_predictor = True
 
         else:
-            ds, table = self.planner.get_integration_path_from_identifier_or_error(table)
+            ds, table = self.planner.resolve_database_table(table)
             is_predictor = False
 
         if table.alias is not None:

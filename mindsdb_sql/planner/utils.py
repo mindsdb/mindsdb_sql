@@ -29,36 +29,6 @@ def get_predictor_name_identifier(identifier):
     return new_identifier
 
 
-def disambiguate_integration_column_identifier(identifier, integration_name, table,
-                                               initial_name_as_alias=False):
-    """Removes integration name from column if it's present, adds table path if it's absent"""
-    column_table_ref = [table.alias.to_string(alias=False)] if table.alias else table.parts
-    parts = list(identifier.parts)
-
-    if len(parts) > 1:
-        if parts[0] == integration_name:
-            parts = parts[1:]
-
-    if len(parts) > 1:
-        if (len(parts) <= len(column_table_ref)
-            or
-            parts[:len(column_table_ref)] != column_table_ref
-        ):
-            raise PlanningException(
-                f'Tried to query column {identifier.to_tree()} from integration {integration_name} table {column_table_ref}, but a different table name has been specified.')
-    elif len(parts) == 1:
-        # if parts[0] != column_table_ref:
-        parts = column_table_ref + parts
-
-    new_identifier = Identifier(parts=parts)
-    if identifier.alias:
-        new_identifier.alias = identifier.alias
-    elif initial_name_as_alias and not isinstance(parts[-1], Star):
-        new_identifier.alias = Identifier(parts[-1])
-
-    return new_identifier
-
-
 def disambiguate_predictor_column_identifier(identifier, predictor):
     """Removes integration name from column if it's present, adds table path if it's absent"""
     table_ref = predictor.alias.parts_to_str() if predictor.alias else predictor.parts_to_str()
@@ -68,101 +38,6 @@ def disambiguate_predictor_column_identifier(identifier, predictor):
 
     new_identifier = Identifier(parts=parts)
     return new_identifier
-
-
-def recursively_disambiguate_identifiers_in_op(op, integration_name, table):
-    for arg in op.args:
-        if isinstance(arg, Identifier):
-            new_identifier = disambiguate_integration_column_identifier(arg, integration_name, table)
-            arg.parts = new_identifier.parts
-            arg.alias = new_identifier.alias
-        elif isinstance(arg, Operation):
-            recursively_disambiguate_identifiers_in_op(arg, integration_name, table)
-        elif isinstance(arg, Select):
-            arg_select_integration_name, arg_table = get_integration_path_from_identifier(arg.from_table)
-
-            recursively_disambiguate_identifiers_in_select(arg, arg_select_integration_name, arg_table)
-
-
-def disambiguate_select_targets(targets, integration_name, table):
-    new_query_targets = []
-    for target in targets:
-        if isinstance(target, Identifier):
-            new_query_targets.append(
-                disambiguate_integration_column_identifier(target,
-                                                           integration_name,
-                                                           table,
-                                                           initial_name_as_alias=True)
-            )
-        elif type(target) in (Star, Constant, NullConstant):
-            new_query_targets.append(target)
-        elif isinstance(target, Operation) or isinstance(target, Select):
-            new_op = copy.deepcopy(target)
-            recursively_disambiguate_identifiers(new_op, integration_name, table)
-            new_query_targets.append(new_op)
-        elif isinstance(target, TypeCast):
-            new_op = copy.deepcopy(target)
-            if isinstance(target.arg, Identifier):
-                disambiguate_integration_column_identifier(new_op.arg, integration_name, table)
-            new_query_targets.append(new_op)
-        elif isinstance(target, Parameter):
-            new_query_targets.append(target)
-        else:
-            raise PlanningException(f'Unknown select target {type(target)}')
-    return new_query_targets
-
-
-def recursively_disambiguate_identifiers_in_select(select, integration_name, table):
-    select.targets = disambiguate_select_targets(select.targets, integration_name, table)
-
-    if select.from_table:
-        if isinstance(select.from_table, Identifier):
-            select.from_table = table
-    if select.where:
-        if not isinstance(select.where, BinaryOperation) and not isinstance(select.where, BetweenOperation):
-            raise PlanningException(
-                f'Unsupported where clause {type(select.where)}, only BinaryOperation is supported now.')
-
-        where = copy.deepcopy(select.where)
-        recursively_disambiguate_identifiers_in_op(where, integration_name, table)
-        select.where = where
-
-    if select.group_by:
-        group_by = copy.deepcopy(select.group_by)
-        group_by2 = []
-        for field in group_by:
-            if isinstance(field, Identifier):
-                field = disambiguate_integration_column_identifier(field, integration_name, table)
-            group_by2.append(field)
-        select.group_by = group_by2
-
-    if select.having:
-        if not isinstance(select.having, BinaryOperation):
-            raise PlanningException(
-                f'Unsupported having clause {type(select.having)}, only BinaryOperation is supported now.')
-
-        having = copy.deepcopy(select.having)
-        recursively_disambiguate_identifiers_in_op(having, integration_name, table)
-        select.having = having
-
-    if select.order_by:
-        order_by = []
-        for order_by_item in select.order_by:
-            new_order_item = copy.deepcopy(order_by_item)
-            new_order_item.field = disambiguate_integration_column_identifier(new_order_item.field,
-                                                                              integration_name, table)
-            order_by.append(new_order_item)
-        select.order_by = order_by
-
-
-def recursively_disambiguate_identifiers(obj, integration_name, table):
-    if isinstance(obj, Operation):
-        recursively_disambiguate_identifiers_in_op(obj, integration_name, table)
-    elif isinstance(obj, Select):
-        recursively_disambiguate_identifiers_in_select(obj, integration_name, table)
-    else:
-        raise PlanningException(f'Unsupported object for disambiguation {type(obj)}')
-
 
 def recursively_extract_column_values(op, row_dict, predictor):
     if isinstance(op, BinaryOperation) and op.op == '=':
@@ -216,117 +91,127 @@ def get_deepest_select(select):
     return get_deepest_select(select.from_table)
 
 
-def query_traversal(node, callback, is_table=False):
+def query_traversal(node, callback, is_table=False, is_target=False, parent_query=None):
+    '''
+    :param node: element
+    :param callback: function applied to every element
+    :param is_table: it is table in query
+    :param is_target: it is the target in select
+    :param parent_query: current query (select/update/create/...) where we are now
+    :return:
+       new element if it is needed to be replaced
+       or None to keep element and traverse over it
+    '''
     # traversal query tree to find and replace nodes
 
-    res = callback(node, is_table=is_table)
+    res = callback(node, is_table=is_table, is_target=is_target, parent_query=parent_query)
     if res is not None:
         # node is going to be replaced
         return res
 
     if isinstance(node, ast.Select):
+        if node.from_table is not None:
+            node_out = query_traversal(node.from_table, callback, is_table=True, parent_query=node)
+            if node_out is not None:
+                node.from_table = node_out
+
         array = []
         for node2 in node.targets:
-            node_out = query_traversal(node2, callback) or node2
+            node_out = query_traversal(node2, callback, parent_query=node, is_target=True) or node2
             array.append(node_out)
         node.targets = array
 
         if node.cte is not None:
             array = []
             for cte in node.cte:
-                node_out = query_traversal(cte.query, callback) or cte
+                node_out = query_traversal(cte.query, callback, parent_query=node) or cte
                 array.append(node_out)
             node.cte = array
 
-        if node.from_table is not None:
-            node_out = query_traversal(node.from_table, callback, is_table=True)
-            if node_out is not None:
-                node.from_table = node_out
-
         if node.where is not None:
-            node_out = query_traversal(node.where, callback)
+            node_out = query_traversal(node.where, callback, parent_query=node)
             if node_out is not None:
                 node.where = node_out
 
         if node.group_by is not None:
             array = []
             for node2 in node.group_by:
-                node_out = query_traversal(node2, callback) or node2
+                node_out = query_traversal(node2, callback, parent_query=node) or node2
                 array.append(node_out)
             node.group_by = array
 
         if node.having is not None:
-            node_out = query_traversal(node.having, callback)
+            node_out = query_traversal(node.having, callback, parent_query=node)
             if node_out is not None:
                 node.having = node_out
 
         if node.order_by is not None:
             array = []
             for node2 in node.order_by:
-                node_out = query_traversal(node2, callback) or node2
+                node_out = query_traversal(node2, callback, parent_query=node) or node2
                 array.append(node_out)
             node.order_by = array
 
     elif isinstance(node, ast.Union):
-        node_out = query_traversal(node.left, callback)
+        node_out = query_traversal(node.left, callback, parent_query=node)
         if node_out is not None:
             node.left = node_out
-        node_out= query_traversal(node.right, callback)
+        node_out = query_traversal(node.right, callback, parent_query=node)
         if node_out is not None:
             node.right = node_out
-    # elif isinstance(node, ast.Update):
-    #     TODO
-    # elif isinstance(node, ast.Insert):
-    #     TODO
-    # elif isinstance(node, ast.Delete):
-    #     TODO
+
     elif isinstance(node, ast.Join):
-        node_out = query_traversal(node.right, callback, is_table=True)
+        node_out = query_traversal(node.right, callback, is_table=True, parent_query=parent_query)
         if node_out is not None:
             node.right = node_out
-        node_out = query_traversal(node.left, callback, is_table=True)
+        node_out = query_traversal(node.left, callback, is_table=True, parent_query=parent_query)
         if node_out is not None:
             node.left = node_out
         if node.condition is not None:
-            node_out = query_traversal(node.condition, callback)
+            node_out = query_traversal(node.condition, callback, parent_query=parent_query)
             if node_out is not None:
                 node.condition = node_out
+
     elif isinstance(node, ast.Function) \
             or isinstance(node, ast.BinaryOperation)\
             or isinstance(node, ast.UnaryOperation) \
             or isinstance(node, ast.BetweenOperation):
         array = []
         for arg in node.args:
-            node_out = query_traversal(arg, callback) or arg
+            node_out = query_traversal(arg, callback, parent_query=parent_query) or arg
             array.append(node_out)
         node.args = array
+
     elif isinstance(node, ast.WindowFunction):
-        query_traversal(node.function, callback)
+        query_traversal(node.function, callback, parent_query=parent_query)
         if node.partition is not None:
             array = []
             for node2 in node.partition:
-                node_out = query_traversal(node2, callback) or node2
+                node_out = query_traversal(node2, callback, parent_query=parent_query) or node2
                 array.append(node_out)
             node.partition = array
         if node.order_by is not None:
             array = []
             for node2 in node.order_by:
-                node_out = query_traversal(node2, callback) or node2
+                node_out = query_traversal(node2, callback, parent_query=parent_query) or node2
                 array.append(node_out)
             node.partition = array
+
     elif isinstance(node, ast.TypeCast):
-        node_out = query_traversal(node.arg, callback)
+        node_out = query_traversal(node.arg, callback, parent_query=parent_query)
         if node_out is not None:
             node.arg = node_out
+
     elif isinstance(node, ast.Tuple):
         array = []
         for node2 in node.items:
-            node_out = query_traversal(node2, callback) or node2
+            node_out = query_traversal(node2, callback, parent_query=parent_query) or node2
             array.append(node_out)
         node.items = array
+
     elif isinstance(node, ast.Insert):
         if node.table is not None:
-            node_out = query_traversal(node.table, callback, is_table=True)
+            node_out = query_traversal(node.table, callback, is_table=True, parent_query=node)
             if node_out is not None:
                 node.table = node_out
 
@@ -335,70 +220,75 @@ def query_traversal(node, callback, is_table=False):
             for row in node.values:
                 items = []
                 for item in row:
-                    item2 = query_traversal(item, callback) or item
+                    item2 = query_traversal(item, callback, parent_query=node) or item
                     items.append(item2)
                 rows.append(items)
             node.values = rows
 
         if node.from_select is not None:
-            node_out = query_traversal(node.from_select, callback)
+            node_out = query_traversal(node.from_select, callback, parent_query=node)
             if node_out is not None:
                 node.from_select = node_out
+
     elif isinstance(node, ast.Update):
         if node.table is not None:
-            node_out = query_traversal(node.table, callback, is_table=True)
+            node_out = query_traversal(node.table, callback, is_table=True, parent_query=node)
             if node_out is not None:
                 node.table = node_out
 
         if node.where is not None:
-            node_out = query_traversal(node.where, callback)
+            node_out = query_traversal(node.where, callback, parent_query=node)
             if node_out is not None:
                 node.where = node_out
 
         if node.update_columns is not None:
             changes = {}
             for k, v in node.update_columns.items():
-                v2 = query_traversal(v, callback)
+                v2 = query_traversal(v, callback, parent_query=node)
                 if v2 is not None:
                     changes[k] = v2
             if changes:
                 node.update_columns.update(changes)
 
         if node.from_select is not None:
-            node_out = query_traversal(node.from_select, callback)
+            node_out = query_traversal(node.from_select, callback, parent_query=node)
             if node_out is not None:
                 node.from_select = node_out
+
     elif isinstance(node, ast.CreateTable):
         array = []
         if node.columns is not None:
             for node2 in node.columns:
-                node_out = query_traversal(node2, callback) or node2
+                node_out = query_traversal(node2, callback, parent_query=node) or node2
                 array.append(node_out)
             node.columns = array
 
         if node.name is not None:
-            node_out = query_traversal(node.name, callback, is_table=True)
+            node_out = query_traversal(node.name, callback, is_table=True, parent_query=node)
             if node_out is not None:
                 node.name = node_out
 
         if node.from_select is not None:
-            node_out = query_traversal(node.from_select, callback)
+            node_out = query_traversal(node.from_select, callback, parent_query=node)
             if node_out is not None:
                 node.from_select = node_out
+
     elif isinstance(node, ast.Delete):
         if node.where is not None:
-            node_out = query_traversal(node.where, callback)
+            node_out = query_traversal(node.where, callback, parent_query=node)
             if node_out is not None:
                 node.where = node_out
+
     elif isinstance(node, ast.OrderBy):
         if node.field is not None:
-            node_out = query_traversal(node.field, callback)
+            node_out = query_traversal(node.field, callback, parent_query=parent_query)
             if node_out is not None:
                 node.field = node_out
+
     elif isinstance(node, list):
         array = []
         for node2 in node:
-            node_out = query_traversal(node2, callback) or node2
+            node_out = query_traversal(node2, callback, parent_query=parent_query) or node2
             array.append(node_out)
         return array
 
