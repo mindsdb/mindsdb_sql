@@ -7,7 +7,8 @@ from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, ApplyPredictorStep,
-                                       ApplyPredictorRowStep, GroupByStep, SubSelectStep, UpdateToTable)
+                                       ApplyPredictorRowStep, GroupByStep, SubSelectStep, UpdateToTable,
+                                       DeleteStep)
 
 
 class TestPlanIntegrationSelect:
@@ -473,3 +474,202 @@ class TestPlanIntegrationSelect:
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
 
+    def test_select_from_table_subselect(self):
+        query = parse_sql('''
+            select * from int2.tab1
+            where x1 in (select id from int1.tab1)
+        ''', dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(
+                    integration='int1',
+                    query=parse_sql('select tab1.id as id from tab1'),
+                ),
+                FetchDataframeStep(
+                    integration='int2',
+                    query=Select(
+                        targets=[Star()],
+                        from_table=Identifier('tab1'),
+                        where=BinaryOperation(
+                            op='in',
+                            args=[
+                                Identifier(parts=['tab1', 'x1']),
+                                Parameter(Result(0))
+                            ]
+                        )
+                    ),
+                ),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=['int1', 'int2'],
+            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}]
+        )
+
+        assert plan.steps == expected_plan.steps
+
+    def test_select_from_table_subselect_api_integration(self):
+        query = parse_sql('''
+            select * from int1.tab1
+            where x1 in (select id from int1.tab1)
+        ''', dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(
+                    integration='int1',
+                    query=parse_sql('select tab1.id as id from tab1'),
+                ),
+                FetchDataframeStep(
+                    integration='int1',
+                    query=Select(
+                        targets=[Star()],
+                        from_table=Identifier('tab1'),
+                        where=BinaryOperation(
+                            op='in',
+                            args=[
+                                Identifier(parts=['tab1', 'x1']),
+                                Parameter(Result(0))
+                            ]
+                        )
+                    ),
+                ),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=[{'name': 'int1', 'class_type': 'api', 'type': 'data'}],
+            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}]
+        )
+
+        assert plan.steps == expected_plan.steps
+
+    def test_select_from_table_subselect_sql_integration(self):
+        query = parse_sql('''
+            select * from int1.tab1
+            where x1 in (select id from int1.tab1)
+        ''', dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(
+                    integration='int1',
+                    query=parse_sql('select * from tab1 where tab1.x1 in (select tab1.id as id from tab1)'),
+                ),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=[{'name': 'int1', 'class_type': 'sql', 'type': 'data'}],
+            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}]
+        )
+
+        assert plan.steps == expected_plan.steps
+
+    def test_delete_from_table_subselect_api_integration(self):
+        query = parse_sql('''
+            delete from int1.tab1
+            where x1 in (select id from int1.tab1)
+        ''', dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(
+                    integration='int1',
+                    query=parse_sql('select tab1.id as id from tab1'),
+                ),
+                DeleteStep(
+                    table=Identifier('int1.tab1'),
+                    where=BinaryOperation(
+                        op='in',
+                        args=[
+                            Identifier(parts=['x1']),
+                            Parameter(Result(0))
+                        ]
+                    )
+                ),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=[{'name': 'int1', 'class_type': 'api', 'type': 'data'}],
+            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}]
+        )
+
+        assert plan.steps == expected_plan.steps
+
+    def test_delete_from_table_subselect_sql_integration(self):
+        query = parse_sql('''
+            delete from int1.tab1
+            where x1 in (select id from int1.tab1)
+        ''', dialect='mindsdb')
+
+        subselect = parse_sql('select tab1.id as id from tab1')
+        subselect.parentheses = True
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                DeleteStep(
+                    table=Identifier('int1.tab1'),
+                    where=BinaryOperation(
+                        op='in',
+                        args=[
+                            Identifier(parts=['x1']),
+                            subselect
+                        ]
+                    )
+                ),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=[{'name': 'int1', 'class_type': 'sql', 'type': 'data'}],
+            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}]
+        )
+
+        assert plan.steps == expected_plan.steps
+
+    def test_delete_from_table_subselect_sql_different_integration(self):
+        query = parse_sql('''
+            delete from int1.tab1
+            where x1 in (select id from int2.tab1)
+        ''', dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(
+                    integration='int2',
+                    query=parse_sql('select tab1.id as id from tab1'),
+                ),
+                DeleteStep(
+                    table=Identifier('int1.tab1'),
+                    where=BinaryOperation(
+                        op='in',
+                        args=[
+                            Identifier(parts=['x1']),
+                            Parameter(Result(0))
+                        ]
+                    )
+                ),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=[{'name': 'int1', 'class_type': 'api', 'type': 'data'}, 'int2'],
+            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}]
+        )
+
+        assert plan.steps == expected_plan.steps
