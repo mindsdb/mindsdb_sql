@@ -7,7 +7,7 @@ from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, ApplyPredictorStep,
-                                       ApplyPredictorRowStep, GroupByStep, SubSelectStep)
+                                       ApplyPredictorRowStep, GroupByStep, SubSelectStep, UpdateToTable)
 
 
 class TestPlanIntegrationSelect:
@@ -453,3 +453,23 @@ class TestPlanIntegrationSelect:
         )
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
+
+    def test_update_table(self):
+
+        # select on results after select to integration
+
+        sql = "update integration1.direct_messages set a=1 where b=2"
+        query = parse_sql(sql, dialect='mindsdb')
+
+        plan = plan_query(query, integrations=['integration1'])
+
+        expected_plan = QueryPlan(
+            default_namespace='integration1',
+            steps=[
+                UpdateToTable(dataframe=None, table=Identifier('integration1.direct_messages'),
+                              update_command=query),
+            ]
+        )
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+

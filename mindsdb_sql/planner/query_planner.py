@@ -1093,14 +1093,12 @@ class QueryPlanner():
             ))
 
     def plan_update(self, query):
-        if query.from_select is None:
-            raise PlanningException(f'Support only insert from select')
-
-        integration_name = query.table.parts[0]
+        last_step = None
+        if query.from_select is not None:
+            integration_name = query.table.parts[0]
+            last_step = self.plan_select(query.from_select, integration=integration_name)
 
         # plan sub-select first
-        last_step = self.plan_select(query.from_select, integration=integration_name)
-
         update_command = copy.deepcopy(query)
         # clear subselect
         update_command.from_select = None
