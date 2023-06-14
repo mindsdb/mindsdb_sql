@@ -22,6 +22,18 @@ RESERVED_KEYWORDS = {
 }
 
 
+def get_reserved_words():
+    from mindsdb_sql.parser.lexer import SQLLexer
+    from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
+
+    reserved = RESERVED_KEYWORDS
+    for word in SQLLexer.tokens | MindsDBLexer.tokens:
+        if '_' not in word:
+            # exclude combinations
+            reserved.add(word)
+    return reserved
+
+
 class Identifier(ASTNode):
     def __init__(self, path_str=None, parts=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -35,15 +47,6 @@ class Identifier(ASTNode):
         assert isinstance(parts, list)
         self.parts = parts
 
-        from mindsdb_sql.parser.lexer import SQLLexer
-        from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
-
-        self.reserved = RESERVED_KEYWORDS
-        for word in SQLLexer.tokens | MindsDBLexer.tokens:
-            if '_' not in word:
-                # exclude combinations
-                self.reserved.add(word)
-
     @classmethod
     def from_path_str(self, value, *args, **kwargs):
         parts = path_str_to_parts(value)
@@ -51,6 +54,7 @@ class Identifier(ASTNode):
 
     def parts_to_str(self):
         out_parts = []
+        reserved_words = get_reserved_words()
         for part in self.parts:
             if isinstance(part, Star):
                 part = str(part)
@@ -58,7 +62,7 @@ class Identifier(ASTNode):
                 if (
                     not no_wrap_identifier_regex.fullmatch(part)
                     or
-                    part.upper() in self.reserved
+                    part.upper() in reserved_words
                 ):
                     part = f'`{part}`'
 
