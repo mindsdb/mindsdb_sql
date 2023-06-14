@@ -235,6 +235,14 @@ class UpdateToTable(PlanStep):
         self.update_command = update_command
 
 
+class DeleteStep(PlanStep):
+    def __init__(self, table, where, *args, **kwargs):
+        """Fills table with content of dataframe"""
+        super().__init__(*args, **kwargs)
+        self.table = table
+        self.where = where
+
+
 class SubSelectStep(PlanStep):
     def __init__(self, query, dataframe, table_name=None, *args, **kwargs):
         """Performs select from dataframe"""

@@ -4,13 +4,14 @@ from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
                                     BetweenOperation, Union, NullConstant, CreateTable, Function, Insert,
-                                    Update, NativeQuery, Parameter)
+                                    Update, NativeQuery, Parameter, Delete)
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep,
-                                       GetPredictorColumns, SaveToTable, InsertToTable, UpdateToTable, SubSelectStep)
+                                       GetPredictorColumns, SaveToTable, InsertToTable, UpdateToTable, SubSelectStep,
+                                       DeleteStep)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (disambiguate_predictor_column_identifier,
@@ -220,6 +221,27 @@ class QueryPlanner():
         utils.query_traversal(query, find_predictors)
         return {'mdb_entities': mdb_entities, 'integrations': integrations, 'predictors': predictors}
 
+    def get_nested_selects_plan_fnc(self, main_integration, force=False):
+        # returns function for traversal over query and inject fetch data query instead of subselects
+        def find_selects(node, **kwargs):
+            if isinstance(node, Select):
+                query_info2 = self.get_query_info(node)
+                if force or (
+                        len(query_info2['integrations']) > 1 or
+                        main_integration not in query_info2['integrations'] or
+                        len(query_info2['mdb_entities']) > 0
+                ):
+                    # need to execute in planner
+
+                    node.parentheses = False
+                    last_step = self.plan_select(node)
+                    node2 = Parameter(last_step.result)
+
+                    return node2
+
+        return find_selects
+
+
     def plan_select_identifier(self, query):
         query_info = self.get_query_info(query)
 
@@ -235,23 +257,9 @@ class QueryPlanner():
 
         # find subselects
         main_integration, _ = self.resolve_database_table(query.from_table)
+        is_api_db = self.integrations.get(main_integration, {}).get('class_type') == 'api'
 
-        def find_selects(node, **kwargs):
-            if isinstance(node, Select):
-                query_info2 = self.get_query_info(node)
-                if (
-                        len(query_info2['integrations']) > 1 or
-                        main_integration not in query_info2['integrations'] or
-                        len(query_info2['mdb_entities']) > 0
-                ):
-                    # need to execute in planner
-
-                    node.parentheses = False
-                    last_step = self.plan_select(node)
-                    node2 = Parameter(last_step.result)
-
-                    return node2
-
+        find_selects = self.get_nested_selects_plan_fnc(main_integration, force=is_api_db)
         query.targets = utils.query_traversal(query.targets, find_selects)
         utils.query_traversal(query.where, find_selects)
 
@@ -1093,14 +1101,12 @@ class QueryPlanner():
             ))
 
     def plan_update(self, query):
-        if query.from_select is None:
-            raise PlanningException(f'Support only insert from select')
-
-        integration_name = query.table.parts[0]
+        last_step = None
+        if query.from_select is not None:
+            integration_name = query.table.parts[0]
+            last_step = self.plan_select(query.from_select, integration=integration_name)
 
         # plan sub-select first
-        last_step = self.plan_select(query.from_select, integration=integration_name)
-
         update_command = copy.deepcopy(query)
         # clear subselect
         update_command.from_select = None
@@ -1110,6 +1116,23 @@ class QueryPlanner():
             table=table,
             dataframe=last_step,
             update_command=update_command
+        ))
+
+    def plan_delete(self, query: Delete):
+
+        # find subselects
+        main_integration, _ = self.resolve_database_table(query.table)
+
+        is_api_db = self.integrations.get(main_integration, {}).get('class_type') == 'api'
+
+        find_selects = self.get_nested_selects_plan_fnc(main_integration, force=is_api_db)
+        utils.query_traversal(query.where, find_selects)
+
+        self.prepare_integration_select(main_integration, query.where)
+
+        return self.plan.add_step(DeleteStep(
+            table=query.table,
+            where=query.where
         ))
 
     def plan_select(self, query, integration=None):
@@ -1174,6 +1197,8 @@ class QueryPlanner():
             self.plan_insert(query)
         elif isinstance(query, Update):
             self.plan_update(query)
+        elif isinstance(query, Delete):
+            self.plan_delete(query)
         else:
             raise PlanningException(f'Unsupported query type {type(query)}')
 
