@@ -1099,7 +1099,6 @@ class TestJoinTimeseriesPredictor:
                              left=Identifier('result_0'),
                              join_type=JoinType.JOIN)
                          ),
-                ProjectStep(dataframe=Result(2), columns=[Star()]),
             ],
         )
 
