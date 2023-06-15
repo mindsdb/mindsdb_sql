@@ -375,9 +375,8 @@ class TestPlanJoinPredictor:
                          query=Join(left=Identifier('result_0'),
                                     right=Identifier('result_1'),
                                     join_type=JoinType.JOIN)),
-                ProjectStep(dataframe=Result(2), columns=[Star()]),
-                SubSelectStep(dataframe=Result(3), query=parse_sql('SELECT time limit 1'), table_name='Custom SQL Query'),
-                LimitOffsetStep(dataframe=Result(4), limit=1)
+                SubSelectStep(dataframe=Result(2), query=parse_sql('SELECT time limit 1'), table_name='Custom SQL Query'),
+                LimitOffsetStep(dataframe=Result(3), limit=1)
             ],
         )
 
@@ -413,8 +412,7 @@ class TestPlanJoinPredictor:
                          query=Join(left=Identifier('result_0'),
                                     right=Identifier('result_1'),
                                     join_type=JoinType.JOIN)),
-                ProjectStep(dataframe=Result(2), columns=[Star()]),
-                SubSelectStep(dataframe=Result(3),
+                SubSelectStep(dataframe=Result(2),
                               query=Select(targets=[Identifier('time')], group_by=[Constant(1)]),
                               table_name='Custom SQL Query'),
             ],

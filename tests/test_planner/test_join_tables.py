@@ -464,11 +464,10 @@ class TestPlanJoinTables:
                          query=Join(left=Identifier('result_1'),
                                     right=Identifier('result_2'),
                                     join_type=JoinType.JOIN)),
-                ProjectStep(dataframe=Result(3), columns=[Star()]),
-                SubSelectStep(dataframe=Result(4), query=Select(targets=[Star()]), table_name='t2'),
+                SubSelectStep(dataframe=Result(3), query=Select(targets=[Star()]), table_name='t2'),
                 JoinStep(
                      left=Result(0),
-                     right=Result(5),
+                     right=Result(4),
                      query=Join(
                         left=Identifier('tab1'),
                         right=Identifier('tab2'),
@@ -479,7 +478,6 @@ class TestPlanJoinTables:
                                    Identifier('t2.id')])
                      )
                 ),
-                ProjectStep(dataframe=Result(6), columns=[Star()]),
             ]
         )
 

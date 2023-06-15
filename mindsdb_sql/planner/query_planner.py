@@ -881,6 +881,10 @@ class QueryPlanner():
     def plan_project(self, query, dataframe, ignore_doubles=False):
         out_identifiers = []
 
+        if len(query.targets) == 1 and isinstance(query.targets[0], Star):
+            last_step = self.plan.steps[-1]
+            return last_step
+
         for target in query.targets:
             if isinstance(target, Identifier) \
                     or isinstance(target, Star) \
