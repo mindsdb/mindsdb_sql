@@ -21,7 +21,6 @@ class TestPlanSelectFromPredictor:
                                   steps=[
                                       ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('pred'),
                                                             row_dict={'x1': 1, 'x2': '2'}),
-                                      ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
 
                                   )
@@ -40,7 +39,6 @@ class TestPlanSelectFromPredictor:
                                   steps=[
                                       ApplyPredictorRowStep(namespace='mlflow', predictor=Identifier('pred'),
                                                             row_dict={'x1': 1, 'x2': '2'}),
-                                      ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
 
                                   )
@@ -92,7 +90,6 @@ class TestPlanSelectFromPredictor:
                                   steps=[
                                       ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('pred', alias=Identifier('pred_alias')),
                                                             row_dict={'x1': 1, 'x2': '2'}),
-                                      ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
                                   )
 
@@ -175,7 +172,6 @@ class TestPlanSelectFromPredictor:
                                   steps=[
                                       ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('pred'),
                                                             row_dict={'x1': 1, 'x2': '2'}),
-                                      ProjectStep(dataframe=Result(0), columns=[Star()]),
                                   ],
                                   )
 
@@ -215,8 +211,7 @@ class TestPlanSelectFromPredictor:
         expected_plan = QueryPlan(predictor_namespace='mindsdb',
                                   steps=[
                                       ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier(parts=['pred', '21']),
-                                                            row_dict={'x1': 1}),
-                                      ProjectStep(dataframe=Result(0), columns=[Star()]),
+                                                            row_dict={'x1': 1})
                                   ],
                                   )
 
@@ -241,11 +236,7 @@ class TestPlanSelectFromPredictor:
                     namespace='mindsdb',
                     predictor=Identifier(parts=['pred', '21']),
                     row_dict={'x1': Parameter(Result(0))}
-                ),
-                ProjectStep(
-                    dataframe=Result(1),
-                    columns=[Star()]
-                ),
+                )
             ],
         )
 
