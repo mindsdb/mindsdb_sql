@@ -143,7 +143,9 @@ class QueryPlanner():
             table = parent_query.from_table
             if not is_table:
                 # add table name or alias for identifiers
-
+                if isinstance(table, Join):
+                    # skip for join
+                    return
                 if table.alias is not None:
                     prefix = table.alias.parts
                 else:
@@ -193,6 +195,9 @@ class QueryPlanner():
         if len(parts) > 1:
             if parts[0].lower() in self.databases:
                 database = parts.pop(0).lower()
+
+        if database is None:
+            raise PlanningException(f'Integration not found for: {node}')
 
         return database, Identifier(parts=parts, alias=alias)
 
@@ -650,7 +655,7 @@ class QueryPlanner():
     def plan_join_tables(self, query):
         query = copy.deepcopy(query)
 
-        # replace sub selects
+        # replace sub selects, with identifiers with links to original selects
         def replace_subselects(node, **args):
             if isinstance(node, Select) or isinstance(node, NativeQuery):
                 name = f't_{id(node)}'
@@ -701,10 +706,8 @@ class QueryPlanner():
                 sub_select=sub_select,
             )
 
-            # return integration, table_name
+        # get all join tables, form join sequence
 
-        # get all join tables
-        # join_sequence = []
         tables_idx = {}
 
         def get_join_sequence(node):
@@ -1037,6 +1040,24 @@ class QueryPlanner():
                                                               limit=predictor_steps['saved_limit']))
 
         if predictor is None:
+
+            query_info = self.get_query_info(query)
+
+            # can we send all query to integration?
+            if (
+                    len(query_info['mdb_entities']) == 0
+                    and len(query_info['integrations']) == 1
+                    and 'files' not in query_info['integrations']
+                    and 'views' not in query_info['integrations']
+            ):
+                int_name = list(query_info['integrations'])[0]
+                if self.integrations.get(int_name, {}).get('class_type') != 'api':
+                    # if no predictor inside = run as is
+                    self.prepare_integration_select(int_name, query)
+
+                    last_step = self.plan.add_step(FetchDataframeStep(integration=int_name, query=query))
+
+                    return last_step
 
             # Both arguments are tables, join results of 2 dataframe fetches
 
