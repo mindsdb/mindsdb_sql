@@ -10,7 +10,7 @@ from mindsdb_sql.parser.dialects.mindsdb.create_database import CreateDatabase
 from mindsdb_sql.parser.dialects.mindsdb.create_ml_engine import CreateMLEngine
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.create_job import CreateJob
-from mindsdb_sql.parser.dialects.mindsdb.chatbot import CreateChatBot, DropChatBot
+from mindsdb_sql.parser.dialects.mindsdb.chatbot import CreateChatBot, UpdateChatBot, DropChatBot
 from mindsdb_sql.parser.dialects.mindsdb.drop_job import DropJob
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
@@ -73,13 +73,16 @@ class MindsDBParser(Parser):
        'create_table',
        'create_job',
        'drop_job',
+       'create_chat_bot',
+       'drop_chat_bot',
+       'update_chat_bot'
        )
     def query(self, p):
         return p[0]
 
     # -- ChatBot --
     @_('CREATE CHATBOT identifier USING kw_parameter_list')
-    def create_job(self, p):
+    def create_chat_bot(self, p):
         params = p.kw_parameter_list
 
         database = Identifier(params.pop('database'))
@@ -91,8 +94,13 @@ class MindsDBParser(Parser):
             params=params
         )
 
+    @_('UPDATE CHATBOT identifier SET kw_parameter_list')
+    def update_chat_bot(self, p):
+        return UpdateChatBot(name=p.identifier, updated_params=p.kw_parameter_list)
+
+
     @_('DROP CHATBOT identifier')
-    def drop_job(self, p):
+    def drop_chat_bot(self, p):
         return DropChatBot(name=p.identifier)
 
     # -- Jobs --
