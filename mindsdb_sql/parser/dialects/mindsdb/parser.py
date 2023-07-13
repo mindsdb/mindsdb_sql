@@ -504,6 +504,14 @@ class MindsDBParser(Parser):
                       from_select_alias=from_select_alias,
                       where=where)
 
+    # UPDATE
+    @_('UPDATE identifier ON ordering_terms FROM LPAREN select RPAREN')
+    def update(self, p):
+        keys = [i.field for i in p.ordering_terms]
+        return Update(table=p.identifier,
+                      keys=keys,
+                      from_select=p.select)
+
     # INSERT
     @_('INSERT INTO identifier LPAREN result_columns RPAREN select',
        'INSERT INTO identifier select')
