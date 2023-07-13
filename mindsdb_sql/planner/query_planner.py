@@ -11,7 +11,7 @@ from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep,
                                        GetPredictorColumns, SaveToTable, InsertToTable, UpdateToTable, SubSelectStep,
-                                       DeleteStep)
+                                       DeleteStep, DataStep)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (disambiguate_predictor_column_identifier,
@@ -210,18 +210,21 @@ class QueryPlanner():
 
         def find_predictors(node, is_table, **kwargs):
 
-            if is_table and isinstance(node, ast.Identifier):
-                integration, _ = self.resolve_database_table(node)
+            if is_table:
+                if isinstance(node, ast.Identifier):
+                    integration, _ = self.resolve_database_table(node)
 
-                if self.is_predictor(node):
-                    predictors.append(node)
+                    if self.is_predictor(node):
+                        predictors.append(node)
 
-                if integration in self.projects:
-                    # it is project
+                    if integration in self.projects:
+                        # it is project
+                        mdb_entities.append(node)
+
+                    elif integration is not None:
+                        integrations.add(integration)
+                if isinstance(node, ast.NativeQuery) or isinstance(node, ast.Data):
                     mdb_entities.append(node)
-
-                elif integration is not None:
-                    integrations.add(integration)
 
         utils.query_traversal(query, find_predictors)
         return {'mdb_entities': mdb_entities, 'integrations': integrations, 'predictors': predictors}
@@ -1177,6 +1180,9 @@ class QueryPlanner():
             if sup_select is not None:
                 last_step = self.plan.add_step(sup_select)
             return last_step
+        elif isinstance(from_table, ast.Data):
+            step = DataStep(from_table.data)
+            return self.plan.add_step(step)
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 

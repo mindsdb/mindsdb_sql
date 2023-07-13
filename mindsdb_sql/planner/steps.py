@@ -250,3 +250,9 @@ class SubSelectStep(PlanStep):
         self.query = query
         self.dataframe = dataframe
         self.table_name = table_name
+
+
+class DataStep(PlanStep):
+    def __init__(self, data,  *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.data = data
