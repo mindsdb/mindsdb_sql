@@ -12,6 +12,7 @@ from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.create_job import CreateJob
 from mindsdb_sql.parser.dialects.mindsdb.chatbot import CreateChatBot, UpdateChatBot, DropChatBot
 from mindsdb_sql.parser.dialects.mindsdb.drop_job import DropJob
+from mindsdb_sql.parser.dialects.mindsdb.trigger import CreateTrigger, DropTrigger
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
 from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
@@ -75,7 +76,9 @@ class MindsDBParser(Parser):
        'drop_job',
        'create_chat_bot',
        'drop_chat_bot',
-       'update_chat_bot'
+       'update_chat_bot',
+       'create_trigger',
+       'drop_trigger',
        )
     def query(self, p):
         return p[0]
@@ -102,6 +105,22 @@ class MindsDBParser(Parser):
     @_('DROP CHATBOT identifier')
     def drop_chat_bot(self, p):
         return DropChatBot(name=p.identifier)
+
+    # -- triggers --
+    @_('CREATE TRIGGER identifier ON identifier LPAREN raw_query RPAREN')
+    def create_trigger(self, p):
+        query_str = tokens_to_string(p.raw_query)
+
+        return CreateTrigger(
+            name=p.identifier0,
+            table=p.identifier1,
+            query_str=query_str
+        )
+
+    @_('DROP TRIGGER identifier')
+    def drop_trigger(self, p):
+        return DropTrigger(name=p.identifier)
+
 
     # -- Jobs --
     @_('CREATE JOB identifier LPAREN raw_query RPAREN job_schedule',
