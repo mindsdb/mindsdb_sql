@@ -161,7 +161,9 @@ class QueryPlanner():
                 # keep column name for target
                 if is_target:
                     if node.alias is None:
-                        node.alias = Identifier(parts=[node.parts[-1]])
+                        last_part = node.parts[-1]
+                        if isinstance(last_part, str):
+                            node.alias = Identifier(parts=[node.parts[-1]])
 
         utils.query_traversal(query, _prepare_integration_select)
 
