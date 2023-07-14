@@ -14,6 +14,7 @@ class Update(ASTNode):
         super().__init__(*args, **kwargs)
 
         self.table = table
+        # list[Identifier]
         self.keys = keys
         # dict: {str: Identifier}
         self.update_columns = update_columns

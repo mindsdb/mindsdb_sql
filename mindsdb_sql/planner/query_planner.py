@@ -1184,7 +1184,11 @@ class QueryPlanner():
             return last_step
         elif isinstance(from_table, ast.Data):
             step = DataStep(from_table.data)
-            return self.plan.add_step(step)
+            last_step = self.plan.add_step(step)
+            sup_select = self.sub_select_step(query, step)
+            if sup_select is not None:
+                last_step = self.plan.add_step(sup_select)
+            return last_step
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 
