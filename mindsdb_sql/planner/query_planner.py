@@ -11,7 +11,7 @@ from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep,
                                        GetPredictorColumns, SaveToTable, InsertToTable, UpdateToTable, SubSelectStep,
-                                       DeleteStep)
+                                       DeleteStep, DataStep)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (disambiguate_predictor_column_identifier,
@@ -161,7 +161,9 @@ class QueryPlanner():
                 # keep column name for target
                 if is_target:
                     if node.alias is None:
-                        node.alias = Identifier(parts=[node.parts[-1]])
+                        last_part = node.parts[-1]
+                        if isinstance(last_part, str):
+                            node.alias = Identifier(parts=[node.parts[-1]])
 
         utils.query_traversal(query, _prepare_integration_select)
 
@@ -210,18 +212,21 @@ class QueryPlanner():
 
         def find_predictors(node, is_table, **kwargs):
 
-            if is_table and isinstance(node, ast.Identifier):
-                integration, _ = self.resolve_database_table(node)
+            if is_table:
+                if isinstance(node, ast.Identifier):
+                    integration, _ = self.resolve_database_table(node)
 
-                if self.is_predictor(node):
-                    predictors.append(node)
+                    if self.is_predictor(node):
+                        predictors.append(node)
 
-                if integration in self.projects:
-                    # it is project
+                    if integration in self.projects:
+                        # it is project
+                        mdb_entities.append(node)
+
+                    elif integration is not None:
+                        integrations.add(integration)
+                if isinstance(node, ast.NativeQuery) or isinstance(node, ast.Data):
                     mdb_entities.append(node)
-
-                elif integration is not None:
-                    integrations.add(integration)
 
         utils.query_traversal(query, find_predictors)
         return {'mdb_entities': mdb_entities, 'integrations': integrations, 'predictors': predictors}
@@ -657,12 +662,12 @@ class QueryPlanner():
 
         # replace sub selects, with identifiers with links to original selects
         def replace_subselects(node, **args):
-            if isinstance(node, Select) or isinstance(node, NativeQuery):
+            if isinstance(node, Select) or isinstance(node, NativeQuery) or isinstance(node, ast.Data):
                 name = f't_{id(node)}'
                 node2 = Identifier(name, alias=node.alias)
 
                 # save in attribute
-                if isinstance(node, NativeQuery):
+                if isinstance(node, NativeQuery) or isinstance(node, ast.Data):
                     # wrap to select
                     node = Select(targets=[Star()], from_table=node)
                 node2.sub_select = node
@@ -803,10 +808,23 @@ class QueryPlanner():
                     item['sub_select'].parentheses = False
                     step = self.plan_select(item['sub_select'])
 
+                    where = None
+                    for cond in item['conditions']:
+                        if where is None:
+                            where = cond
+                        else:
+                            where = BinaryOperation(op='and', args=[where, cond])
+
                     # apply table alias
-                    query2 = Select(targets=[Star()])
+                    query2 = Select(targets=[Star()], where=where)
                     table_name = item['table'].alias.parts[-1]
-                    step2 = SubSelectStep(query2, step.result, table_name=table_name)
+
+                    add_absent_cols = False
+                    if hasattr (item['sub_select'], 'from_table') and\
+                         isinstance(item['sub_select'].from_table, ast.Data):
+                        add_absent_cols = True
+
+                    step2 = SubSelectStep(query2, step.result, table_name=table_name, add_absent_cols=add_absent_cols)
                     step2 = self.plan.add_step(step2)
                     step_stack.append(step2)
                 elif predictor_info is not None:
@@ -985,24 +1003,29 @@ class QueryPlanner():
         recursively_check_join_identifiers_for_ambiguity(query.having)
         recursively_check_join_identifiers_for_ambiguity(query.order_by, aliased_fields=aliased_fields)
 
+        # check predictor
         predictor = None
-        if isinstance(join_left, Identifier) and isinstance(join_right, Identifier):
-            if self.is_predictor(join_left) and self.is_predictor(join_right):
+        table = None
+        predictor_namespace = None
+        predictor_is_left = False
+
+        if not (isinstance(join_right, Identifier) and self.is_predictor(join_right)):
+            # predictor not in the right, swap
+            join_left, join_right = join_right, join_left
+            predictor_is_left = True
+
+        if isinstance(join_right, Identifier) and self.is_predictor(join_right):
+            # predictor is in the right now
+
+            if isinstance(join_left, Identifier) and self.is_predictor(join_left):
+                # left is predictor too
+
                 raise PlanningException(f'Can\'t join two predictors {str(join_left.parts[0])} and {str(join_left.parts[1])}')
-
-            predictor_namespace = None
-            table = None
-            predictor_is_left = False
-            if self.is_predictor(join_left):
-                predictor_namespace, predictor = self.get_predictor_namespace_and_name_from_identifier(join_left)
-                predictor_is_left = True
-            else:
-                table = join_left
-
-            if self.is_predictor(join_right):
+            elif isinstance(join_left, Identifier):
+                # the left is table
                 predictor_namespace, predictor = self.get_predictor_namespace_and_name_from_identifier(join_right)
-            else:
-                table = join_right
+
+                table = join_left
 
             last_step = None
             if predictor:
@@ -1177,10 +1200,17 @@ class QueryPlanner():
             if sup_select is not None:
                 last_step = self.plan.add_step(sup_select)
             return last_step
+        elif isinstance(from_table, ast.Data):
+            step = DataStep(from_table.data)
+            last_step = self.plan.add_step(step)
+            sup_select = self.sub_select_step(query, step, add_absent_cols=True)
+            if sup_select is not None:
+                last_step = self.plan.add_step(sup_select)
+            return last_step
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 
-    def sub_select_step(self, query, prev_step):
+    def sub_select_step(self, query, prev_step, add_absent_cols=False):
         if (
             query.group_by is not None
             or query.order_by is not None
@@ -1199,7 +1229,7 @@ class QueryPlanner():
 
             query2 = copy.deepcopy(query)
             query2.from_table = None
-            return SubSelectStep(query2, prev_step.result, table_name=table_name)
+            return SubSelectStep(query2, prev_step.result, table_name=table_name, add_absent_cols=add_absent_cols)
 
     def plan_union(self, query):
         query1 = self.plan_select(query.left)

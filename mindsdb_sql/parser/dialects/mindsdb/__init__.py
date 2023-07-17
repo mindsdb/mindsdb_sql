@@ -15,6 +15,7 @@ from .drop_ml_engine import DropMLEngine
 from .create_job import CreateJob
 from .drop_job import DropJob
 from .chatbot import CreateChatBot, UpdateChatBot, DropChatBot
+from .trigger import CreateTrigger, DropTrigger
 
 # remove it in next release
 CreateDatasource = CreateDatabase
