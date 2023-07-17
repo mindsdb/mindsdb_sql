@@ -1003,24 +1003,29 @@ class QueryPlanner():
         recursively_check_join_identifiers_for_ambiguity(query.having)
         recursively_check_join_identifiers_for_ambiguity(query.order_by, aliased_fields=aliased_fields)
 
+        # check predictor
         predictor = None
-        if isinstance(join_left, Identifier) and isinstance(join_right, Identifier):
-            if self.is_predictor(join_left) and self.is_predictor(join_right):
+        table = None
+        predictor_namespace = None
+        predictor_is_left = False
+
+        if not (isinstance(join_right, Identifier) and self.is_predictor(join_right)):
+            # predictor not in the right, swap
+            join_left, join_right = join_right, join_left
+            predictor_is_left = True
+
+        if isinstance(join_right, Identifier) and self.is_predictor(join_right):
+            # predictor is in the right now
+
+            if isinstance(join_left, Identifier) and self.is_predictor(join_left):
+                # left is predictor too
+
                 raise PlanningException(f'Can\'t join two predictors {str(join_left.parts[0])} and {str(join_left.parts[1])}')
-
-            predictor_namespace = None
-            table = None
-            predictor_is_left = False
-            if self.is_predictor(join_left):
-                predictor_namespace, predictor = self.get_predictor_namespace_and_name_from_identifier(join_left)
-                predictor_is_left = True
-            else:
-                table = join_left
-
-            if self.is_predictor(join_right):
+            elif isinstance(join_left, Identifier):
+                # the left is table
                 predictor_namespace, predictor = self.get_predictor_namespace_and_name_from_identifier(join_right)
-            else:
-                table = join_right
+
+                table = join_left
 
             last_step = None
             if predictor:
