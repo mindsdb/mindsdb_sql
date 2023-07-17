@@ -662,12 +662,12 @@ class QueryPlanner():
 
         # replace sub selects, with identifiers with links to original selects
         def replace_subselects(node, **args):
-            if isinstance(node, Select) or isinstance(node, NativeQuery):
+            if isinstance(node, Select) or isinstance(node, NativeQuery) or isinstance(node, ast.Data):
                 name = f't_{id(node)}'
                 node2 = Identifier(name, alias=node.alias)
 
                 # save in attribute
-                if isinstance(node, NativeQuery):
+                if isinstance(node, NativeQuery) or isinstance(node, ast.Data):
                     # wrap to select
                     node = Select(targets=[Star()], from_table=node)
                 node2.sub_select = node
@@ -808,10 +808,23 @@ class QueryPlanner():
                     item['sub_select'].parentheses = False
                     step = self.plan_select(item['sub_select'])
 
+                    where = None
+                    for cond in item['conditions']:
+                        if where is None:
+                            where = cond
+                        else:
+                            where = BinaryOperation(op='and', args=[where, cond])
+
                     # apply table alias
-                    query2 = Select(targets=[Star()])
+                    query2 = Select(targets=[Star()], where=where)
                     table_name = item['table'].alias.parts[-1]
-                    step2 = SubSelectStep(query2, step.result, table_name=table_name)
+
+                    add_absent_cols = False
+                    if hasattr (item['sub_select'], 'from_table') and\
+                         isinstance(item['sub_select'].from_table, ast.Data):
+                        add_absent_cols = True
+
+                    step2 = SubSelectStep(query2, step.result, table_name=table_name, add_absent_cols=add_absent_cols)
                     step2 = self.plan.add_step(step2)
                     step_stack.append(step2)
                 elif predictor_info is not None:
@@ -1185,14 +1198,14 @@ class QueryPlanner():
         elif isinstance(from_table, ast.Data):
             step = DataStep(from_table.data)
             last_step = self.plan.add_step(step)
-            sup_select = self.sub_select_step(query, step)
+            sup_select = self.sub_select_step(query, step, add_absent_cols=True)
             if sup_select is not None:
                 last_step = self.plan.add_step(sup_select)
             return last_step
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 
-    def sub_select_step(self, query, prev_step):
+    def sub_select_step(self, query, prev_step, add_absent_cols=False):
         if (
             query.group_by is not None
             or query.order_by is not None
@@ -1211,7 +1224,7 @@ class QueryPlanner():
 
             query2 = copy.deepcopy(query)
             query2.from_table = None
-            return SubSelectStep(query2, prev_step.result, table_name=table_name)
+            return SubSelectStep(query2, prev_step.result, table_name=table_name, add_absent_cols=add_absent_cols)
 
     def plan_union(self, query):
         query1 = self.plan_select(query.left)

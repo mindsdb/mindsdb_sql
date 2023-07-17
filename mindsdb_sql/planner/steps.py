@@ -244,12 +244,13 @@ class DeleteStep(PlanStep):
 
 
 class SubSelectStep(PlanStep):
-    def __init__(self, query, dataframe, table_name=None, *args, **kwargs):
+    def __init__(self, query, dataframe, table_name=None, add_absent_cols=False, *args, **kwargs):
         """Performs select from dataframe"""
         super().__init__(*args, **kwargs)
         self.query = query
         self.dataframe = dataframe
         self.table_name = table_name
+        self.add_absent_cols = add_absent_cols
 
 
 class DataStep(PlanStep):
