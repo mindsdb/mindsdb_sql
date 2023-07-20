@@ -17,7 +17,7 @@ setuptools.setup(
     author=about['__author__'],
     author_email=about['__email__'],
     description=about['__description__'],
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=('tests*',)),
     install_requires=requirements,
     classifiers=[
         "Programming Language :: Python :: 3.6",

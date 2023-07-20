@@ -38,6 +38,33 @@ class TestChatbots:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+    def test_update_chatbot(self):
+        sql = '''
+            update chatbot mybot
+            set
+            name = 'new_name',
+            model = 'new_model',
+            database = 'new_database',
+            chat_engine = 'new_chat_engine',
+            is_running = true,
+            new_param = 'new_value'
+        '''
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_params = {
+            'name': 'new_name',
+            'model': 'new_model',
+            'database': 'new_database',
+            'chat_engine': 'new_chat_engine',
+            'is_running': True,
+            'new_param': 'new_value'
+        }
+        expected_ast = UpdateChatBot(
+            name=Identifier('mybot'),
+            updated_params=expected_params
+        )
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_drop_chatbot(self):
         sql = '''
             drop chatbot mybot

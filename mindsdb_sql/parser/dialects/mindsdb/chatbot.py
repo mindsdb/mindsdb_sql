@@ -43,6 +43,29 @@ class CreateChatBot(ASTNode):
         return out_str
 
 
+class UpdateChatBot(ASTNode):
+    def __init__(self, name, updated_params, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.name = name
+        self.params = updated_params
+
+    def to_tree(self, *args, level=0, **kwargs):
+        ind = indent(level)
+        out_str = f'{ind}UpdateChatBot(' \
+                  f'name={self.name.to_string()}, ' \
+                  f'updated_params={self.params})'
+        return out_str
+
+    def get_string(self, *args, **kwargs):
+        params = self.params.copy()
+
+        set_ar = [f'{k}={repr(v)}' for k, v in params.items()]
+        set_str = ', '.join(set_ar)
+
+        out_str = f'UPDATE CHATBOT {self.name.to_string()} USING {set_str}'
+        return out_str
+
+
 class DropChatBot(ASTNode):
     def __init__(self,
                  name,

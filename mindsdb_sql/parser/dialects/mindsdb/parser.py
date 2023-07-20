@@ -10,8 +10,9 @@ from mindsdb_sql.parser.dialects.mindsdb.create_database import CreateDatabase
 from mindsdb_sql.parser.dialects.mindsdb.create_ml_engine import CreateMLEngine
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
 from mindsdb_sql.parser.dialects.mindsdb.create_job import CreateJob
-from mindsdb_sql.parser.dialects.mindsdb.chatbot import CreateChatBot, DropChatBot
+from mindsdb_sql.parser.dialects.mindsdb.chatbot import CreateChatBot, UpdateChatBot, DropChatBot
 from mindsdb_sql.parser.dialects.mindsdb.drop_job import DropJob
+from mindsdb_sql.parser.dialects.mindsdb.trigger import CreateTrigger, DropTrigger
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
 from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
@@ -73,13 +74,18 @@ class MindsDBParser(Parser):
        'create_table',
        'create_job',
        'drop_job',
+       'create_chat_bot',
+       'drop_chat_bot',
+       'update_chat_bot',
+       'create_trigger',
+       'drop_trigger',
        )
     def query(self, p):
         return p[0]
 
     # -- ChatBot --
     @_('CREATE CHATBOT identifier USING kw_parameter_list')
-    def create_job(self, p):
+    def create_chat_bot(self, p):
         params = p.kw_parameter_list
 
         database = Identifier(params.pop('database'))
@@ -91,9 +97,30 @@ class MindsDBParser(Parser):
             params=params
         )
 
+    @_('UPDATE CHATBOT identifier SET kw_parameter_list')
+    def update_chat_bot(self, p):
+        return UpdateChatBot(name=p.identifier, updated_params=p.kw_parameter_list)
+
+
     @_('DROP CHATBOT identifier')
-    def drop_job(self, p):
+    def drop_chat_bot(self, p):
         return DropChatBot(name=p.identifier)
+
+    # -- triggers --
+    @_('CREATE TRIGGER identifier ON identifier LPAREN raw_query RPAREN')
+    def create_trigger(self, p):
+        query_str = tokens_to_string(p.raw_query)
+
+        return CreateTrigger(
+            name=p.identifier0,
+            table=p.identifier1,
+            query_str=query_str
+        )
+
+    @_('DROP TRIGGER identifier')
+    def drop_trigger(self, p):
+        return DropTrigger(name=p.identifier)
+
 
     # -- Jobs --
     @_('CREATE JOB identifier LPAREN raw_query RPAREN job_schedule',
@@ -495,6 +522,14 @@ class MindsDBParser(Parser):
                       from_select=from_select,
                       from_select_alias=from_select_alias,
                       where=where)
+
+    # UPDATE
+    @_('UPDATE identifier ON ordering_terms FROM LPAREN select RPAREN')
+    def update(self, p):
+        keys = [i.field for i in p.ordering_terms]
+        return Update(table=p.identifier,
+                      keys=keys,
+                      from_select=p.select)
 
     # INSERT
     @_('INSERT INTO identifier LPAREN result_columns RPAREN select',

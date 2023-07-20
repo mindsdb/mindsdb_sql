@@ -4,7 +4,7 @@ from mindsdb_sql.parser.ast import *
 
 
 class TestJobs:
-    def test_test_create_job(self):
+    def test_create_job(self):
         sql = '''
             create job proj2.j1 ( 
                 select * from pg.tbl1 where b>{{PREVIOUS_START_DATE}}
