@@ -108,13 +108,19 @@ class MindsDBParser(Parser):
 
     # -- triggers --
     @_('CREATE TRIGGER identifier ON identifier LPAREN raw_query RPAREN')
+    @_('CREATE TRIGGER identifier ON identifier COLUMNS ordering_terms LPAREN raw_query RPAREN')
     def create_trigger(self, p):
         query_str = tokens_to_string(p.raw_query)
+
+        columns = None
+        if hasattr(p, 'ordering_terms'):
+            columns = [i.field for i in p.ordering_terms]
 
         return CreateTrigger(
             name=p.identifier0,
             table=p.identifier1,
-            query_str=query_str
+            query_str=query_str,
+            columns=columns
         )
 
     @_('DROP TRIGGER identifier')

@@ -9,11 +9,13 @@ class CreateTrigger(ASTNode):
                  name,
                  table,
                  query_str,
+                 columns=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.table = table
         self.query_str = query_str
+        self.columns = columns
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -24,16 +26,26 @@ class CreateTrigger(ASTNode):
 
         query_str = f'\n{ind1}query_str={repr(self.query_str)},'
 
+        columns_str = ''
+        if self.columns:
+            columns_str = ', '.join([k.to_string() for k in self.columns])
+            columns_str = f'\n{ind1}columns=[{columns_str}],'
+
         out_str = f'{ind}CreateTrigger(' \
                   f'{name_str}' \
                   f'{table_str}' \
+                  f'{columns_str}' \
                   f'{query_str}' \
                   f'\n{ind})'
         return out_str
 
     def get_string(self, *args, **kwargs):
+        columns_str = ''
+        if self.columns:
+            columns_str = ', '.join([k.to_string() for k in self.columns])
+            columns_str = f' columns {columns_str}'
 
-        out_str = f'CREATE TRIGGER {self.name.to_string()} ON {self.table.to_string()} ({self.query_str})'
+        out_str = f'CREATE TRIGGER {self.name.to_string()} ON {self.table.to_string()}{columns_str} ({self.query_str})'
         return out_str
 
 
