@@ -698,7 +698,7 @@ class QueryPlanner():
                 else:
                     integration = self.default_namespace
 
-            if integration is None:
+            if integration is None and not hasattr(table, 'sub_select'):
                 raise PlanningException(f'Integration not found for: {table}')
 
             sub_select = getattr(table, 'sub_select', None)
@@ -837,6 +837,7 @@ class QueryPlanner():
                         namespace=item['integration'],
                         dataframe=data_step.result,
                         predictor=table_name,
+                        params=query.using
                     ))
                     step_stack.append(predictor_step)
                 else:

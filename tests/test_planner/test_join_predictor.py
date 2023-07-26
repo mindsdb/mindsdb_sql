@@ -557,6 +557,34 @@ class TestPredictorWithUsing:
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
 
+        # with native query
+
+        sql = '''
+                    select * from int (select * from tab1) t
+                    join mindsdb.pred
+                    using a=1
+                '''
+
+        query = parse_sql(sql, dialect='mindsdb')
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int', raw_query='select * from tab1'),
+                SubSelectStep(step_num=1, references=[], query=Select(targets=[Star()]),
+                              dataframe=Result(0), table_name='t'),
+                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(1),
+                                   predictor=Identifier('pred'), params={'a': 1}),
+                JoinStep(left=Result(1), right=Result(2),
+                         query=Join(left=Identifier('tab1'),
+                                    right=Identifier('tab2'),
+                                    join_type=JoinType.JOIN)),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
+            ],
+        )
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
+
 
     def test_using_one_line(self):
 
