@@ -302,6 +302,8 @@ class Lexer(metaclass=LexerMeta):
             elif callable(value):
                 cls._token_funcs[tokname] = value
                 pattern = getattr(value, 'pattern')
+            else:
+                continue
 
             # Form the regular expression component
             part = f'(?P<{tokname}>{pattern})'

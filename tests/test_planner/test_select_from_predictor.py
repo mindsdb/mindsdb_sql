@@ -29,6 +29,23 @@ class TestPlanSelectFromPredictor:
 
         assert plan.steps == expected_plan.steps
 
+    def test_select_from_predictor_negative_constant(self):
+        query = parse_sql('''
+            select * from mindsdb.pred
+            where x1 = -1
+        ''')
+
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                ApplyPredictorRowStep(namespace='mindsdb', predictor=Identifier('pred'), row_dict={'x1': -1,}),
+            ],
+        )
+
+        plan = plan_query(query, predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
+
+        assert plan.steps == expected_plan.steps
+
     def test_select_from_predictor_plan_other_ml(self):
         query = parse_sql('''
             select * from mlflow.pred

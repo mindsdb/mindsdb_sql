@@ -2,7 +2,7 @@ import copy
 
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryOperation, Constant,
-                                    OrderBy, BetweenOperation, NullConstant, TypeCast, Parameter)
+                                    OrderBy, UnaryOperation, NullConstant, TypeCast, Parameter)
 from mindsdb_sql.parser import ast
 
 
@@ -43,6 +43,13 @@ def recursively_extract_column_values(op, row_dict, predictor):
     if isinstance(op, BinaryOperation) and op.op == '=':
         id = op.args[0]
         value = op.args[1]
+
+        if (
+            isinstance(value, UnaryOperation)
+            and value.op == '-'
+            and isinstance(value.args[0], Constant)
+        ):
+            value = Constant(-value.args[0].value)
 
         if not (
                 isinstance(id, Identifier)
