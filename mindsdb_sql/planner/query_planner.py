@@ -926,6 +926,77 @@ class QueryPlanner():
                 aliased_fields[target.alias.to_string()] = target
         return aliased_fields
 
+    def adapt_dbt_query(self, query, integration):
+        orig_query = query
+
+        join = query.from_table
+        join_left = join.left
+
+        # dbt query.
+
+        # move latest into subquery
+        moved_conditions = []
+
+        def move_latest(node, **kwargs):
+            if isinstance(node, BinaryOperation):
+                if Latest() in node.args:
+                    for arg in node.args:
+                        if isinstance(arg, Identifier):
+                            # remove table alias
+                            arg.parts = [arg.parts[-1]]
+                    moved_conditions.append(node)
+
+        query_traversal(query.where, move_latest)
+
+        # TODO make project step from query.target
+
+        # TODO support complex query. Only one table is supported at the moment.
+        # if not isinstance(join_left.from_table, Identifier):
+        #     raise PlanningException(f'Statement not supported: {query.to_string()}')
+
+        # move properties to upper query
+        query = join_left
+
+        if query.from_table.alias is not None:
+            table_alias = [query.from_table.alias.parts[0]]
+        else:
+            table_alias = query.from_table.parts
+
+        # add latest to query.where
+        for cond in moved_conditions:
+            if query.where is not None:
+                query.where = BinaryOperation('and', args=[query.where, cond])
+            else:
+                query.where = cond
+
+        def add_aliases(node, is_table, **kwargs):
+            if not is_table and isinstance(node, Identifier):
+                if len(node.parts) == 1:
+                    # add table alias to field
+                    node.parts = table_alias + node.parts
+
+        query_traversal(query.where, add_aliases)
+
+        if isinstance(query.from_table, Identifier):
+            # DBT workaround: allow use tables without integration.
+            #   if table.part[0] not in integration - take integration name from create table command
+            if (
+                integration is not None
+                and query.from_table.parts[0] not in self.databases
+            ):
+                # add integration name to table
+                query.from_table.parts.insert(0, integration)
+
+        join_left = join_left.from_table
+
+        if orig_query.limit is not None:
+            if query.limit is None or query.limit.value > orig_query.limit.value:
+                query.limit = orig_query.limit
+        query.parentheses = False
+        query.alias = None
+
+        return query, join_left
+
     def plan_join(self, query, integration=None):
         orig_query = query
 
@@ -934,68 +1005,8 @@ class QueryPlanner():
         join_right = join.right
 
         if isinstance(join_left, Select) and isinstance(join_left.from_table, Identifier):
-            # dbt query.
-
-            # move latest into subquery
-            moved_conditions = []
-
-            def move_latest(node, **kwargs):
-                if isinstance(node, BinaryOperation):
-                    if Latest() in node.args:
-                        for arg in node.args:
-                            if isinstance(arg, Identifier):
-                                # remove table alias
-                                arg.parts = [arg.parts[-1]]
-                        moved_conditions.append(node)
-
-            query_traversal(query.where, move_latest)
-
-            # TODO make project step from query.target
-
-            # TODO support complex query. Only one table is supported at the moment.
-            # if not isinstance(join_left.from_table, Identifier):
-            #     raise PlanningException(f'Statement not supported: {query.to_string()}')
-
-            # move properties to upper query
-            query = join_left
-
-            if query.from_table.alias is not None:
-                table_alias = [query.from_table.alias.parts[0]]
-            else:
-                table_alias = query.from_table.parts
-
-            # add latest to query.where
-            for cond in moved_conditions:
-                if query.where is not None:
-                    query.where = BinaryOperation('and', args=[query.where, cond])
-                else:
-                    query.where = cond
-
-            def add_aliases(node, is_table, **kwargs):
-                if not is_table and isinstance(node, Identifier):
-                    if len(node.parts) == 1:
-                        # add table alias to field
-                        node.parts = table_alias + node.parts
-
-            query_traversal(query.where, add_aliases)
-
-            if isinstance(query.from_table, Identifier):
-                # DBT workaround: allow use tables without integration.
-                #   if table.part[0] not in integration - take integration name from create table command
-                if (
-                    integration is not None
-                    and query.from_table.parts[0] not in self.databases
-                ):
-                    # add integration name to table
-                    query.from_table.parts.insert(0, integration)
-
-            join_left = join_left.from_table
-
-            if orig_query.limit is not None:
-                if query.limit is None or query.limit.value > orig_query.limit.value:
-                    query.limit = orig_query.limit
-            query.parentheses = False
-            query.alias = None
+            if self.is_predictor(join_right) and self.get_predictor(join_right).get('timeseries'):
+                query, join_left = self.adapt_dbt_query(query, integration)
 
         aliased_fields = self.get_aliased_fields(query.targets)
 

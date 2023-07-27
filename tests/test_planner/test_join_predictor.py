@@ -434,7 +434,7 @@ class TestPlanJoinPredictor:
         sql = f'''
                SELECT *
                FROM ( 
-                  select * from int.covid 
+                  select col from int.covid 
                   limit 10
                ) as t
                join mindsdb.pred 
@@ -447,13 +447,15 @@ class TestPlanJoinPredictor:
             default_namespace='mindsdb',
             steps=[
                 FetchDataframeStep(integration='int',
-                                   query=parse_sql('select * from covid limit 5')),
-                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(0), predictor=Identifier('pred')),
-                JoinStep(left=Result(0), right=Result(1),
-                         query=Join(left=Identifier('result_0'),
-                                    right=Identifier('result_1'),
+                                   query=parse_sql('select covid.col as col from covid limit 10')),
+                SubSelectStep(query=Select(targets=[Star()]), dataframe=Result(0), table_name='t'),
+                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(1), predictor=Identifier('pred')),
+                JoinStep(left=Result(1), right=Result(2),
+                         query=Join(left=Identifier('tab1'),
+                                    right=Identifier('tab2'),
                                     join_type=JoinType.JOIN)),
-                ProjectStep(dataframe=Result(2), columns=[Star()])
+                LimitOffsetStep(dataframe=Result(3), limit=5),
+                ProjectStep(dataframe=Result(4), columns=[Star()])
             ],
         )
 
@@ -467,55 +469,34 @@ class TestPlanJoinPredictor:
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
 
-        # nested limit is lesser
-        sql = f'''
-               SELECT *
-               FROM ( 
-                  select * from int.covid 
-                  limit 5
-               ) as t
-               join mindsdb.pred 
-               limit 50
-            '''
-
-        plan = plan_query(
-            query,
-            integrations=['int'],
-            predictor_namespace='mindsdb',
-            default_namespace='mindsdb',
-            predictor_metadata={'pred': {}}
-        )
-        for i in range(len(plan.steps)):
-            assert plan.steps[i] == expected_plan.steps[i]
-
-        # nested select without limit
-        sql = f'''
-               SELECT *
-               FROM ( 
-                  select * from int.covid
-               ) as t
-               join mindsdb.pred 
-               limit 5
-            '''
-
-        plan = plan_query(
-            query,
-            integrations=['int'],
-            predictor_namespace='mindsdb',
-            default_namespace='mindsdb',
-            predictor_metadata={'pred': {}}
-        )
-        for i in range(len(plan.steps)):
-            assert plan.steps[i] == expected_plan.steps[i]
 
         # only nested select with limit
         sql = f'''
                SELECT *
                FROM ( 
-                  select * from int.covid limit 5
+                  select * from int.covid
+                  join int.info
+                  limit 5
                ) as t
                join mindsdb.pred 
             '''
+
+        query = parse_sql(sql, dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            default_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=parse_sql('select * from covid join info limit 5')),
+                SubSelectStep(query=Select(targets=[Star()]), dataframe=Result(0), table_name='t'),
+                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(1), predictor=Identifier('pred')),
+                JoinStep(left=Result(1), right=Result(2),
+                         query=Join(left=Identifier('tab1'),
+                                    right=Identifier('tab2'),
+                                    join_type=JoinType.JOIN)),
+                ProjectStep(dataframe=Result(3), columns=[Star()])
+            ],
+        )
 
         plan = plan_query(
             query,
