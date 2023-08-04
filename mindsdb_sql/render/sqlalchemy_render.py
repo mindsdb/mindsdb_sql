@@ -2,11 +2,17 @@ import datetime as dt
 
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm.query import aliased
-from sqlalchemy.dialects import mysql, postgresql, sqlite, mssql, firebird, oracle, sybase
+from sqlalchemy.orm import aliased
+from sqlalchemy.dialects import mysql, postgresql, sqlite, mssql, oracle
 from sqlalchemy.schema import CreateTable, DropTable
 
 from mindsdb_sql.parser import ast
+
+
+sa_type_names = [
+    key for key, val in sa.types.__dict__.items() if hasattr(val, '__module__')
+    and val.__module__ in ('sqlalchemy.sql.sqltypes', 'sqlalchemy.sql.type_api')
+]
 
 
 class RenderError(Exception):
@@ -22,9 +28,7 @@ class SqlalchemyRender:
             'postgres': postgresql,
             'sqlite': sqlite,
             'mssql': mssql,
-            'firebird': firebird,
             'oracle': oracle,
-            'sybase': sybase,
             'Snowflake': oracle,
         }
 
@@ -46,7 +50,7 @@ class SqlalchemyRender:
             self.dialect.server_version_info = (8, 0, 17)
 
         self.types_map = {}
-        for type_name in sa.types.__all__:
+        for type_name in sa_type_names:
             self.types_map[type_name.upper()] = getattr(sa.types, type_name)
 
     def to_column(self, parts):
@@ -129,7 +133,7 @@ class SqlalchemyRender:
             methods = {
                 "+": "__add__",
                 "-": "__sub__",
-                "/": "__div__",
+                "/": "__truediv__",
                 "*": "__mul__",
                 "%": "__mod__",
                 "=": "__eq__",
@@ -330,7 +334,7 @@ class SqlalchemyRender:
             col = self.to_expression(t)
             cols.append(col)
 
-        query = sa.select(cols)
+        query = sa.select(*cols)
 
         if node.cte is not None:
             for cte in node.cte:
