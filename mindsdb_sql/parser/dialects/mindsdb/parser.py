@@ -453,6 +453,7 @@ class MindsDBParser(Parser):
        'MODELS',
        'ML_ENGINES',
        'HANDLERS',
+       'SEARCH_PATH',
        'ALL')
     def show_category(self, p):
         return ' '.join([x for x in p])
