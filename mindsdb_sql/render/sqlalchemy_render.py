@@ -133,7 +133,7 @@ class SqlalchemyRender:
             methods = {
                 "+": "__add__",
                 "-": "__sub__",
-                "/": "__div__",
+                "/": "__truediv__",
                 "*": "__mul__",
                 "%": "__mod__",
                 "=": "__eq__",
@@ -334,7 +334,7 @@ class SqlalchemyRender:
             col = self.to_expression(t)
             cols.append(col)
 
-        query = sa.select(cols)
+        query = sa.select(*cols)
 
         if node.cte is not None:
             for cte in node.cte:
