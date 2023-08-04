@@ -97,8 +97,7 @@ def parse_sql2(sql, dialect='sqlite'):
         assert query2.to_tree() == query_.to_tree()
 
     # step 2: render to different dialects
-    dialects = ('postgresql', 'sqlite', 'mssql',
-                'firebird', 'oracle', 'sybase')
+    dialects = ('postgresql', 'sqlite', 'mssql', 'oracle')
 
     for dialect2 in dialects:
 
@@ -106,13 +105,11 @@ def parse_sql2(sql, dialect='sqlite'):
             SqlalchemyRender(dialect2).get_string(query, with_failback=False)
         except Exception as e:
             # skips for dialects
-            if dialect2 in ('firebird', 'oracle', 'sybase') \
+            if dialect2 == 'oracle' \
                     and 'does not support in-place multirow inserts' in str(e):
                 pass
             elif dialect2 == 'mssql' \
                     and 'requires an order_by when using an OFFSET or a non-simple LIMIT clause' in str(e):
-                pass
-            elif dialect2 == 'sybase' and 'for update' in sql.lower():
                 pass
             elif dialect2 == 'sqlite' and 'extract(MONTH' in sql:
                 pass

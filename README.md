@@ -222,7 +222,7 @@ Only one renderer is available at the moment: SqlalchemyRender.
 It uses [imperative](https://docs.sqlalchemy.org/en/14/orm/mapping_styles.html#orm-imperative-mapping) mapping for this 
 - Then created sqlalchemy object is compiled inside sqlalchemy using chosen dialect 
 
-Supported dialects at the moment: mysql, postgresql, sqlite, mssql, firebird, oracle, sybase
+Supported dialects at the moment: mysql, postgresql, sqlite, mssql, oracle
 
 Notes:
 - it is not possible to use more than 2 part in table name
