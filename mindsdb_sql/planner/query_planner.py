@@ -817,6 +817,8 @@ class QueryPlanner():
 
                     # apply table alias
                     query2 = Select(targets=[Star()], where=where)
+                    if item['table'].alias is None:
+                        raise PlanningException(f'Subselect in join have to be aliased: {item["sub_select"].to_string()}')
                     table_name = item['table'].alias.parts[-1]
 
                     add_absent_cols = False
