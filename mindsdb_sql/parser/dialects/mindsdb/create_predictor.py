@@ -124,7 +124,9 @@ class CreatePredictorBase(ASTNode):
         if self.integration_name is not None:
             integration_name_str = f'FROM {self.integration_name.to_string()} '
 
-        out_str = f'{self._command} {self.name.to_string()} {integration_name_str}{query_str}' \
+        if_not_exists_str = 'IF NOT EXISTS ' if self.if_not_exists else ''
+
+        out_str = f'{self._command} {if_not_exists_str}{self.name.to_string()} {integration_name_str}{query_str}' \
                   f'{datasource_name_str}' \
                   f'{targets_str} ' \
                   f'{order_by_str}' \

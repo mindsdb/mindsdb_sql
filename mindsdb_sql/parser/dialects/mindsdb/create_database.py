@@ -9,12 +9,14 @@ class CreateDatabase(ASTNode):
                  engine,
                  parameters,
                  is_replace=False,
+                 if_not_exists=False,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.engine = engine
         self.parameters = parameters
         self.is_replace = is_replace
+        self.if_not_exists = if_not_exists
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -28,6 +30,7 @@ class CreateDatabase(ASTNode):
             replace_str = f'\n{ind1}is_replace=True'
 
         out_str = f'{ind}CreateDatabase(' \
+                  f'\n{ind1}if_not_exists={self.if_not_exists},' \
                   f'{name_str}' \
                   f'{engine_str}' \
                   f'{parameters_str}' \
@@ -43,5 +46,5 @@ class CreateDatabase(ASTNode):
         parameters_str = ''
         if self.parameters:
             parameters_str = f', PARAMETERS = {json.dumps(self.parameters)}'
-        out_str = f'CREATE{replace_str} DATABASE {self.name.to_string()} WITH ENGINE = {repr(self.engine)}{parameters_str}'
+        out_str = f'CREATE{replace_str} DATABASE {"IF NOT EXISTS " if self.if_not_exists else ""}{self.name.to_string()} WITH ENGINE = {repr(self.engine)}{parameters_str}'
         return out_str
