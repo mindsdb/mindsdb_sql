@@ -7,11 +7,13 @@ class CreateMLEngine(ASTNode):
                  name,
                  handler,
                  params=None,
+                 if_not_exists=False,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.handler = handler
         self.params = params
+        self.if_not_exists = if_not_exists
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -20,6 +22,7 @@ class CreateMLEngine(ASTNode):
         param_str = f'{repr(self.params)},'
 
         out_str = f'{ind}CreateMLEngine(' \
+                  f'\n{ind1}if_not_exists={self.if_not_exists}' \
                   f'\n{ind1}name={self.name.to_tree()}' \
                   f'\n{ind1}handler={self.handler}' \
                   f'\n{ind1}using={param_str}' \
@@ -33,7 +36,7 @@ class CreateMLEngine(ASTNode):
 
             using_str = 'USING ' + ', '.join(using_ar)
 
-        out_str = f'CREATE ML_ENGINE {self.name.to_string()} FROM {self.handler} {using_str}'
+        out_str = f'CREATE ML_ENGINE {"IF NOT EXISTS" if self.if_not_exists else ""} {self.name.to_string()} FROM {self.handler} {using_str}'
 
         return out_str.strip()
 

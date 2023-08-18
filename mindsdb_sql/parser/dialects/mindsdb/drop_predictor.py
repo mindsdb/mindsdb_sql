@@ -17,8 +17,8 @@ class DropPredictor(Drop):
         name_str = f'\n{ind1}name={self.name.to_tree()},'
 
         out_str = f'{ind}DropPredictor(' \
-                  f'{name_str}' \
                   f'if_exists={self.if_exists}' \
+                  f'{name_str}' \
                   f'\n{ind})'
         return out_str
 

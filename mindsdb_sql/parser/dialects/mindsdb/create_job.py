@@ -12,6 +12,7 @@ class CreateJob(ASTNode):
                  start_str=None,
                  end_str=None,
                  repeat_str=None,
+                 if_not_exists=False,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
@@ -20,6 +21,7 @@ class CreateJob(ASTNode):
         self.end_str = end_str
         self.repeat_str = repeat_str
         self.date_format = '%Y-%m-%d %H:%M:%S'
+        self.if_not_exists = if_not_exists
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -40,7 +42,12 @@ class CreateJob(ASTNode):
         if self.repeat_str is not None:
             repeat_str = f'\n{ind1}repeat_str={self.repeat_str},'
 
+        if_not_exists_str = ''
+        if self.if_not_exists:
+            if_not_exists_str = f'\n{ind1}if_not_exists=True,'
+
         out_str = f'{ind}CreateJob(' \
+                  f'{if_not_exists_str}' \
                   f'{name_str}' \
                   f'{query_str}' \
                   f'{start_str}' \
@@ -63,5 +70,5 @@ class CreateJob(ASTNode):
         if self.repeat_str is not None:
             repeat_str = f" EVERY '{self.repeat_str}'"
 
-        out_str = f'CREATE JOB {self.name.to_string()} ({self.query_str}){start_str}{end_str}{repeat_str}'
+        out_str = f'CREATE JOB {"IF NOT EXISTS" if self.if_not_exists else ""} {self.name.to_string()} ({self.query_str}){start_str}{end_str}{repeat_str}'
         return out_str

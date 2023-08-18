@@ -18,6 +18,7 @@ class CreatePredictorBase(ASTNode):
                  horizon=None,
                  using=None,
                  is_replace=False,
+                 if_not_exists=False,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
@@ -31,6 +32,7 @@ class CreatePredictorBase(ASTNode):
         self.horizon = horizon
         self.using = using
         self.is_replace = is_replace
+        self.if_not_exists = if_not_exists
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -69,7 +71,10 @@ class CreatePredictorBase(ASTNode):
         horizon_str = f'\n{ind1}horizon={repr(self.horizon)},'
         using_str = f'\n{ind1}using={repr(self.using)},'
 
+        if_not_exists_str = f'\n{ind1}if_not_exists={self.if_not_exists},' if self.if_not_exists else ''
+
         out_str = f'{ind}{self.__class__.__name__}(' \
+                  f'{if_not_exists_str}' \
                   f'{name_str}' \
                   f'{integration_name_str}' \
                   f'{query_str}' \
