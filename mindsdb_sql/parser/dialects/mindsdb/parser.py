@@ -606,7 +606,8 @@ class MindsDBParser(Parser):
     # DROP PREDICTOR
     @_('DROP PREDICTOR identifier',
        'DROP MODEL identifier',
-       'DROP PREDICTOR IF_EXISTS identifier')
+       'DROP PREDICTOR IF_EXISTS identifier',
+       'DROP MODEL IF_EXISTS identifier')
     def drop_predictor(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropPredictor(p.identifier, if_exists=if_exists)
@@ -690,7 +691,9 @@ class MindsDBParser(Parser):
        'CREATE PREDICTOR IF_NOT_EXISTS identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
        'CREATE PREDICTOR IF_NOT_EXISTS identifier PREDICT result_columns',
        'CREATE MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
-       'CREATE MODEL identifier PREDICT result_columns')
+       'CREATE MODEL identifier PREDICT result_columns',
+       'CREATE MODEL IF_NOT_EXISTS identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE MODEL IF_NOT_EXISTS identifier PREDICT result_columns')
     def create_predictor(self, p):
         query_str = None
         if hasattr(p, 'raw_query'):
