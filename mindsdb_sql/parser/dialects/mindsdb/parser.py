@@ -132,7 +132,11 @@ class MindsDBParser(Parser):
     @_('CREATE JOB identifier LPAREN raw_query RPAREN job_schedule',
        'CREATE JOB identifier AS LPAREN raw_query RPAREN job_schedule',
        'CREATE JOB identifier LPAREN raw_query RPAREN',
-       'CREATE JOB identifier AS LPAREN raw_query RPAREN')
+       'CREATE JOB identifier AS LPAREN raw_query RPAREN',
+       'CREATE JOB IF_NOT_EXISTS identifier LPAREN raw_query RPAREN job_schedule',
+       'CREATE JOB IF_NOT_EXISTS identifier AS LPAREN raw_query RPAREN job_schedule',
+       'CREATE JOB IF_NOT_EXISTS identifier LPAREN raw_query RPAREN',
+       'CREATE JOB IF_NOT_EXISTS identifier AS LPAREN raw_query RPAREN')
     def create_job(self, p):
         query_str = tokens_to_string(p.raw_query)
 
@@ -158,7 +162,8 @@ class MindsDBParser(Parser):
             query_str=query_str,
             start_str=start_str,
             end_str=end_str,
-            repeat_str=repeat_str
+            repeat_str=repeat_str,
+            if_not_exists=hasattr(p, 'IF_NOT_EXISTS')
         )
 
     @_('START string',
@@ -190,9 +195,10 @@ class MindsDBParser(Parser):
         schedule = {param: value}
         return schedule
 
-    @_('DROP JOB identifier')
+    @_('DROP JOB identifier',
+       'DROP JOB IF_EXISTS identifier')
     def drop_job(self, p):
-        return DropJob(name=p.identifier)
+        return DropJob(name=p.identifier, if_exists=hasattr(p, 'IF_EXISTS'))
 
 
     # Explain
@@ -578,13 +584,16 @@ class MindsDBParser(Parser):
 
     # CREATE VIEW
     @_('CREATE VIEW identifier create_view_from_table_or_nothing AS LPAREN raw_query RPAREN',
-       'CREATE VIEW identifier create_view_from_table_or_nothing LPAREN raw_query RPAREN')
+       'CREATE VIEW identifier create_view_from_table_or_nothing LPAREN raw_query RPAREN',
+       'CREATE VIEW IF_NOT_EXISTS identifier create_view_from_table_or_nothing AS LPAREN raw_query RPAREN',
+       'CREATE VIEW IF_NOT_EXISTS identifier create_view_from_table_or_nothing LPAREN raw_query RPAREN')
     def create_view(self, p):
         query_str = tokens_to_string(p.raw_query)
 
         return CreateView(name=p.identifier,
                           from_table=p.create_view_from_table_or_nothing,
-                          query_str=query_str)
+                          query_str=query_str,
+                          if_not_exists=hasattr(p, 'IF_NOT_EXISTS'))
 
     @_('FROM identifier')
     def create_view_from_table_or_nothing(self, p):
@@ -597,20 +606,23 @@ class MindsDBParser(Parser):
     # DROP PREDICTOR
     @_('DROP PREDICTOR identifier',
        'DROP MODEL identifier',
-       'DROP PREDICTOR IF_EXISTS identifier')
+       'DROP PREDICTOR IF_EXISTS identifier',
+       'DROP MODEL IF_EXISTS identifier')
     def drop_predictor(self, p):
         if_exists = hasattr(p, 'IF_EXISTS')
         return DropPredictor(p.identifier, if_exists=if_exists)
 
     # DROP DATASOURCE
-    @_('DROP DATASOURCE identifier')
+    @_('DROP DATASOURCE identifier',
+       'DROP DATASOURCE IF_EXISTS identifier')
     def drop_datasource(self, p):
-        return DropDatasource(p.identifier)
+        return DropDatasource(p.identifier, if_exists=hasattr(p, 'IF_EXISTS'))
 
     # DROP DATASET
-    @_('DROP DATASET identifier')
+    @_('DROP DATASET identifier',
+       'DROP DATASET IF_EXISTS identifier')
     def drop_dataset(self, p):
-        return DropDataset(p.identifier)
+        return DropDataset(p.identifier, if_exists=hasattr(p, 'IF_EXISTS'))
 
     # DROP TABLE
     @_('DROP TABLE IF_EXISTS identifier',
@@ -622,6 +634,8 @@ class MindsDBParser(Parser):
     # create table
     @_('CREATE TABLE identifier select',
        'CREATE TABLE identifier LPAREN select RPAREN',
+       'CREATE TABLE IF_NOT_EXISTS identifier select',
+         'CREATE TABLE IF_NOT_EXISTS identifier LPAREN select RPAREN',
        'CREATE OR REPLACE TABLE identifier select',
        'CREATE OR REPLACE TABLE identifier LPAREN select RPAREN')
     def create_table(self, p):
@@ -632,7 +646,8 @@ class MindsDBParser(Parser):
         return CreateTable(
             name=p.identifier,
             is_replace=is_replace,
-            from_select=p.select
+            from_select=p.select,
+            if_not_exists=hasattr(p, 'IF_NOT_EXISTS')
         )
 
     @_('CREATE TABLE identifier USING kw_parameter_list')
@@ -673,8 +688,12 @@ class MindsDBParser(Parser):
 
     @_('CREATE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
        'CREATE PREDICTOR identifier PREDICT result_columns',
+       'CREATE PREDICTOR IF_NOT_EXISTS identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE PREDICTOR IF_NOT_EXISTS identifier PREDICT result_columns',
        'CREATE MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
-       'CREATE MODEL identifier PREDICT result_columns')
+       'CREATE MODEL identifier PREDICT result_columns',
+       'CREATE MODEL IF_NOT_EXISTS identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE MODEL IF_NOT_EXISTS identifier PREDICT result_columns')
     def create_predictor(self, p):
         query_str = None
         if hasattr(p, 'raw_query'):
@@ -690,7 +709,8 @@ class MindsDBParser(Parser):
             name=name,
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
-            targets=p.result_columns
+            targets=p.result_columns,
+            if_not_exists=hasattr(p, 'IF_NOT_EXISTS')
         )
 
     # RETRAIN PREDICTOR
@@ -760,16 +780,20 @@ class MindsDBParser(Parser):
     # ML ENGINE
     # CREATE
     @_('CREATE ML_ENGINE identifier FROM id USING kw_parameter_list',
-       'CREATE ML_ENGINE identifier FROM id')
+       'CREATE ML_ENGINE identifier FROM id',
+       'CREATE ML_ENGINE IF_NOT_EXISTS identifier FROM id USING kw_parameter_list',
+       'CREATE ML_ENGINE IF_NOT_EXISTS identifier FROM id')
     def create_integration(self, p):
         return CreateMLEngine(name=p.identifier,
                               handler=p.id,
-                              params=getattr(p, 'kw_parameter_list', None))
+                              params=getattr(p, 'kw_parameter_list', None),
+                              if_not_exists=hasattr(p, 'IF_NOT_EXISTS'))
 
     # DROP
-    @_('DROP ML_ENGINE identifier')
+    @_('DROP ML_ENGINE identifier',
+       'DROP ML_ENGINE IF_EXISTS identifier')
     def create_integration(self, p):
-        return DropMLEngine(name=p.identifier)
+        return DropMLEngine(name=p.identifier, if_exists=hasattr(p, 'IF_EXISTS'))
 
     # CREATE INTEGRATION
     @_('CREATE database_engine',
@@ -793,19 +817,26 @@ class MindsDBParser(Parser):
         return CreateDatabase(name=p.database_engine['identifier'],
                                 engine=p.database_engine['engine'],
                                 is_replace=is_replace,
-                                parameters=parameters)
+                                parameters=parameters,
+                                if_not_exists=p.database_engine['if_not_exists'])
 
     @_('DATABASE identifier',
        'PROJECT identifier',
        'DATABASE identifier ENGINE string',
        'DATABASE identifier ENGINE EQUALS string',
        'DATABASE identifier WITH ENGINE string',
-       'DATABASE identifier WITH ENGINE EQUALS string')
+       'DATABASE identifier WITH ENGINE EQUALS string',
+       'DATABASE IF_NOT_EXISTS identifier',
+       'DATABASE IF_NOT_EXISTS identifier ENGINE string',
+       'DATABASE IF_NOT_EXISTS identifier ENGINE EQUALS string',
+       'DATABASE IF_NOT_EXISTS identifier WITH ENGINE string',
+       'DATABASE IF_NOT_EXISTS identifier WITH ENGINE EQUALS string',
+       'PROJECT IF_NOT_EXISTS identifier')
     def database_engine(self, p):
         engine = None
         if hasattr(p, 'string'):
             engine = p.string
-        return {'identifier': p.identifier, 'engine': engine}
+        return {'identifier': p.identifier, 'engine': engine, 'if_not_exists': hasattr(p, 'IF_NOT_EXISTS')}
 
     # UNION / UNION ALL
     @_('select UNION select')

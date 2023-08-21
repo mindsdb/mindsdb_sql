@@ -60,7 +60,7 @@ class TestCreatePredictor:
         assert ast.to_tree() == ast2.to_tree()
 
     def test_create_predictor_minimal(self):
-        sql = """CREATE PREDICTOR pred
+        sql = """CREATE PREDICTOR IF NOT EXISTS pred
                 FROM integration_name 
                 (select * FROM table_name)
                 PREDICT f1 as f1_alias, f2
@@ -68,6 +68,7 @@ class TestCreatePredictor:
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreatePredictor(
             name=Identifier('pred'),
+            if_not_exists=True,
             integration_name=Identifier('integration_name'),
             query_str="select * FROM table_name",
             targets=[Identifier('f1', alias=Identifier('f1_alias')),

@@ -15,12 +15,14 @@ class CreateTable(ASTNode):
                  from_select=None,
                  columns: List[TableColumn] = None,
                  is_replace=False,
+                 if_not_exists=False,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.is_replace = is_replace
         self.from_select = from_select
         self.columns = columns
+        self.if_not_exists = if_not_exists
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -45,6 +47,7 @@ class CreateTable(ASTNode):
             columns_str = f'{ind1}columns=\n' + '\n'.join(columns)
 
         out_str = f'{ind}CreateTable(\n' \
+                  f'{ind1}if_not_exists={self.if_not_exists},\n' \
                   f'{ind1}name={self.name}\n' \
                   f'{replace_str}' \
                   f'{from_select_str}' \
@@ -72,4 +75,4 @@ class CreateTable(ASTNode):
             from_select_str = self.from_select.to_string()
 
         name_str = str(self.name)
-        return f'CREATE{replace_str} TABLE {name_str} {columns_str} {from_select_str}'
+        return f'CREATE{replace_str} TABLE {"IF NOT EXISTS " if self.if_not_exists else ""}{name_str} {columns_str} {from_select_str}'
