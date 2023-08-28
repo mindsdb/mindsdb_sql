@@ -642,12 +642,16 @@ class QueryPlanner():
 
         predictor_identifier = utils.get_predictor_name_identifier(predictor)
 
+        params = None
+        if query.using is not None:
+            params = query.using
         predictor_step = self.plan.add_step(
             ApplyTimeseriesPredictorStep(
                 output_time_filter=time_filter,
                 namespace=predictor_namespace,
                 dataframe=data_step.result,
                 predictor=predictor_identifier,
+                params=params,
             )
         )
 
