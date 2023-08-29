@@ -44,12 +44,12 @@ def recursively_extract_column_values(op, row_dict, predictor):
         id = op.args[0]
         value = op.args[1]
 
-        if (
-            isinstance(value, UnaryOperation)
-            and value.op == '-'
-            and isinstance(value.args[0], Constant)
-        ):
-            value = Constant(-value.args[0].value)
+        # if (
+        #     isinstance(value, UnaryOperation)
+        #     and value.op == '-'
+        #     and isinstance(value.args[0], Constant)
+        # ):
+        #     value = Constant(-value.args[0].value)
 
         if not (
                 isinstance(id, Identifier)

@@ -1314,6 +1314,10 @@ class MindsDBParser(Parser):
     def expr(self, p):
         return UnaryOperation(op=p[0], args=(p.expr,))
 
+    @_('MINUS constant %prec UMINUS')
+    def constant(self, p):
+        return Constant(-p.constant.value)
+
     # update fields list
     @_('update_parameter',
        'update_parameter_list COMMA update_parameter')

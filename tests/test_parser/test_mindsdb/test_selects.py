@@ -109,3 +109,15 @@ class TestSpecificSelects:
 
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_select_limit_negative(self):
+        sql = """SELECT * FROM t1 LIMIT -1"""
+
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = Select(targets=[Star()],
+                              from_table=Identifier(parts=['t1']),
+                              limit=Constant(-1))
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
