@@ -19,6 +19,7 @@ class CreatePredictorBase(ASTNode):
                  using=None,
                  is_replace=False,
                  if_not_exists=False,
+                 task=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
@@ -33,6 +34,7 @@ class CreatePredictorBase(ASTNode):
         self.using = using
         self.is_replace = is_replace
         self.if_not_exists = if_not_exists
+        self.task = task
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -142,3 +144,11 @@ class CreatePredictor(CreatePredictorBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._command = 'CREATE PREDICTOR'
+
+
+# Models by task type
+class CreateAnomalyDetectionModel(CreatePredictorBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._command = 'CREATE ANOMALY DETECTION MODEL'
+        self.task = Identifier('AnomalyDetection')

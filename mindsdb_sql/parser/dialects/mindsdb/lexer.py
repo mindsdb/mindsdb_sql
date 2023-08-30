@@ -29,6 +29,7 @@ class MindsDBLexer(Lexer):
         FINETUNE, EVALUATE,
         LATEST, HORIZON, USING,
         ENGINE, TRAIN, PREDICT, PARAMETERS, JOB, CHATBOT, EVERY,PROJECT,
+        ANOMALY, DETECTION,
 
         # SHOW/DDL Keywords
 
@@ -109,6 +110,10 @@ class MindsDBLexer(Lexer):
     EVERY = r'\bEVERY\b'
     PROJECT = r'\bPROJECT\b'
     EVALUATE = r'\bEVALUATE\b'
+
+    # Typed models
+    ANOMALY = r'\bANOMALY\b'
+    DETECTION = r'\bDETECTION\b'
 
     # Misc
     SET = r'\bSET\b'
