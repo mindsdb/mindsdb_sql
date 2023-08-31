@@ -245,6 +245,10 @@ class QueryPlanner():
 
                     node.parentheses = False
                     last_step = self.plan_select(node)
+                    if isinstance(last_step, tuple):
+                        # hack when the step is a result of ApplyPredictorRowStep
+                        # the plan function returns a tuple that contains the predictor step and the project step
+                        last_step = last_step[-1]
                     node2 = Parameter(last_step.result)
 
                     return node2
@@ -273,10 +277,11 @@ class QueryPlanner():
         query.targets = utils.query_traversal(query.targets, find_selects)
         utils.query_traversal(query.where, find_selects)
 
-        if len(query_info['predictors']) >= 1:
+        if query.from_table in query_info['predictors']:
             # select from predictor
             return self.plan_select_from_predictor(query)
         else:
+            # fallback to integration
             return self.plan_integration_select(query)
 
     def plan_nested_select(self, select):

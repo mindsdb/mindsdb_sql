@@ -360,3 +360,100 @@ class TestMLSelect:
         assert plan.steps == expected_plan.steps
 
 
+
+class TestNestedSelect:
+
+    def test_using_predictor_in_subselect(self):
+        """
+        Use predictor in subselect when selecting from integration
+        """
+        sql = """
+        SELECT *
+        FROM chromadb.test_tabl 
+        WHERE
+            search_vector = (
+                SELECT emebddings
+                FROM mindsdb.embedding_model
+                WHERE
+                    content = 'some text'
+            )
+        """
+        ast_tree = parse_sql(sql)
+        plan = plan_query(
+            ast_tree,
+            integrations=['chromadb'],
+            predictor_metadata=[
+                {'name': 'embedding_model', 'integration_name': 'mindsdb'}
+            ]
+        )
+
+        expected_plan = [
+            ApplyPredictorRowStep(
+                step_num=0,
+                namespace='mindsdb',
+                predictor=Identifier(parts=['embedding_model']),
+                row_dict={'content': 'some text'}
+            ),
+            ProjectStep(
+                step_num=1,
+                dataframe=Result(0),
+                columns=[Identifier(parts=['emebddings'])]
+            ),
+            FetchDataframeStep(
+                step_num=2,
+                integration='chromadb',
+                query=Select(
+                    targets=[Star()],
+                    from_table=Identifier(parts=['test_tabl']),
+                    where=BinaryOperation(
+                        op='=',
+                        args=[
+                            Identifier(parts=['test_tabl', 'search_vector']),
+                            Parameter(Result(1))
+                        ]
+                    )
+                ),
+            ),
+        ]
+
+        assert plan.steps == expected_plan
+
+    def test_using_integration_in_subselect(self):
+        """
+        Use integration in subselect when selecting from predictor
+        """
+        sql = """
+
+        SELECT *
+        FROM mindsdb.embedding_model
+        WHERE
+            content = (
+                SELECT content
+                FROM chromadb.test_tabl
+                LIMIT 1
+            )
+        """
+        ast_tree = parse_sql(sql)
+        plan = plan_query(
+            ast_tree,
+            integrations=['chromadb'],
+            predictor_metadata=[
+                {'name': 'embedding_model', 'integration_name': 'mindsdb'}
+            ]
+        )
+
+        expected_plan = [
+            FetchDataframeStep(
+                step_num=0,
+                integration='chromadb',
+                query=parse_sql('SELECT test_tabl.content AS content FROM test_tabl LIMIT 1')
+            ),
+            ApplyPredictorRowStep(
+                step_num=1,
+                namespace='mindsdb',
+                predictor=Identifier(parts=['embedding_model']),
+                row_dict={'content': Parameter(Result(0))}
+            )
+        ]
+
+        assert plan.steps == expected_plan
