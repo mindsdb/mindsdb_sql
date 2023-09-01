@@ -31,7 +31,7 @@ def test_create_knowledeg_base():
         if_not_exists=False,
         model=Identifier(parts=["mindsdb", "my_embedding_model"]),
         storage=Identifier(parts=["my_vector_database", "some_table"]),
-        from_query=None,
+        from_select=None,
         params={},
     )
     assert ast == expected_ast
@@ -63,7 +63,7 @@ def test_create_knowledeg_base():
         if_not_exists=False,
         model=Identifier(parts=["mindsdb", "my_embedding_model"]),
         storage=Identifier(parts=["my_vector_database", "some_table"]),
-        from_query=Select(
+        from_select=Select(
             targets=[
                 Identifier("id"),
                 Identifier("content"),
@@ -113,7 +113,7 @@ def test_create_knowledeg_base():
         if_not_exists=True,
         model=Identifier(parts=["mindsdb", "my_embedding_model"]),
         storage=Identifier(parts=["my_vector_database", "some_table"]),
-        from_query=None,
+        from_select=None,
         params={},
     )
     assert ast == expected_ast
@@ -133,7 +133,7 @@ def test_create_knowledeg_base():
         if_not_exists=False,
         model=Identifier(parts=["mindsdb", "my_embedding_model"]),
         storage=Identifier(parts=["my_vector_database", "some_table"]),
-        from_query=None,
+        from_select=None,
         params={"some_param": "some value", "other_param": "other value"},
     )
     assert ast == expected_ast

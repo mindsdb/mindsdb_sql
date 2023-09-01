@@ -8,7 +8,7 @@ class CreateKnowledgeBase(ASTNode):
         name,
         model,
         storage,
-        from_query=None,
+        from_select=None,
         params=None,
         if_not_exists=False,
         *args,
@@ -20,7 +20,7 @@ class CreateKnowledgeBase(ASTNode):
         self.storage = storage
         self.params = params
         self.if_not_exists = if_not_exists
-        self.from_query = from_query
+        self.from_query = from_select
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)

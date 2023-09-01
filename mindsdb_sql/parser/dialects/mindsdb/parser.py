@@ -111,7 +111,7 @@ class MindsDBParser(Parser):
             name=name,
             model=model,
             storage=storage,
-            from_query=from_query,
+            from_select=from_query,
             params=params,
             if_not_exists=if_not_exists
         )
