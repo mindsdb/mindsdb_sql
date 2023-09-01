@@ -16,6 +16,7 @@ from mindsdb_sql.parser.dialects.mindsdb.trigger import CreateTrigger, DropTrigg
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
 from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
+from mindsdb_sql.parser.dialects.mindsdb.knowledge_base import CreateKnowledgeBase, DropKnowledgeBase
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.parser.dialects.mindsdb.retrain_predictor import RetrainPredictor
@@ -80,9 +81,46 @@ class MindsDBParser(Parser):
        'update_chat_bot',
        'create_trigger',
        'drop_trigger',
+       'create_kb',
+       'drop_kb',
        )
     def query(self, p):
         return p[0]
+
+    # -- Knowledge Base --
+    @_(
+        'CREATE KNOWLEDGE_BASE identifier MODEL identifier STORAGE identifier',
+        'CREATE KNOWLEDGE_BASE identifier MODEL identifier STORAGE identifier USING kw_parameter_list',
+        # from select
+        'CREATE KNOWLEDGE_BASE identifier FROM LPAREN select RPAREN MODEL identifier STORAGE identifier',
+        'CREATE KNOWLEDGE_BASE identifier FROM LPAREN select RPAREN MODEL identifier STORAGE identifier USING kw_parameter_list',
+        'CREATE KNOWLEDGE_BASE IF_NOT_EXISTS identifier MODEL identifier STORAGE identifier',
+        'CREATE KNOWLEDGE_BASE IF_NOT_EXISTS identifier MODEL identifier STORAGE identifier USING kw_parameter_list',
+        'CREATE KNOWLEDGE_BASE IF_NOT_EXISTS identifier FROM LPAREN select RPAREN MODEL identifier STORAGE identifier',
+        'CREATE KNOWLEDGE_BASE IF_NOT_EXISTS identifier FROM LPAREN select RPAREN MODEL identifier STORAGE identifier USING kw_parameter_list',
+    )
+    def create_kb(self, p):
+        params = getattr(p, 'kw_parameter_list', {})
+        from_query = getattr(p, 'select', None)
+        name = p.identifier0
+        model = p.identifier1
+        storage = p.identifier2
+        if_not_exists = hasattr(p, 'IF_NOT_EXISTS')
+
+        return CreateKnowledgeBase(
+            name=name,
+            model=model,
+            storage=storage,
+            from_query=from_query,
+            params=params,
+            if_not_exists=if_not_exists
+        )
+
+    @_('DROP KNOWLEDGE_BASE identifier',
+       'DROP KNOWLEDGE_BASE IF_EXISTS identifier')
+    def drop_kb(self, p):
+        if_exists = hasattr(p, 'IF_EXISTS')
+        return DropKnowledgeBase(name=p.identifier, if_exists=if_exists)
 
     # -- ChatBot --
     @_('CREATE CHATBOT identifier USING kw_parameter_list')
@@ -461,6 +499,7 @@ class MindsDBParser(Parser):
        'ML_ENGINES',
        'HANDLERS',
        'SEARCH_PATH',
+       'KNOWLEDGE_BASES',
        'ALL')
     def show_category(self, p):
         return ' '.join([x for x in p])
