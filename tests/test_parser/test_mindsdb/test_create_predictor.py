@@ -162,23 +162,25 @@ class TestCreatePredictor:
         assert ast.to_tree() == expected_ast.to_tree()
 
     def test_create_anomaly_detection_model(self):
-        sql = """
-        CREATE ANOMALY DETECTION MODEL alert_model
-        FROM integration_name (select * FROM table)
-        USING
-            confidence=0.5
-        """
-        ast = parse_sql(sql, dialect='mindsdb')
+        for predict_clause in ["", " PREDICT alert "]:
+            create_clause = """CREATE ANOMALY DETECTION MODEL alert_model """
+            rest_clause = """
+            FROM integration_name (select * FROM table)
+            USING
+                confidence=0.5
+            """
+            sql = create_clause + predict_clause + rest_clause
+            ast = parse_sql(sql, dialect='mindsdb')
 
-        expected_ast = CreateAnomalyDetectionModel(
-            name=Identifier('alert_model'),
-            integration_name=Identifier('integration_name'),
-            query_str='select * FROM table',
-            targets=None,
-            using={
-                'confidence': 0.5
-            }
-        )
+            expected_ast = CreateAnomalyDetectionModel(
+                name=Identifier('alert_model'),
+                integration_name=Identifier('integration_name'),
+                query_str='select * FROM table',
+                targets=[Identifier('alert')] if predict_clause else None,
+                using={
+                    'confidence': 0.5
+                }
+            )
 
-        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
-        assert ast.to_tree() == expected_ast.to_tree()
+            assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+            assert ast.to_tree() == expected_ast.to_tree()

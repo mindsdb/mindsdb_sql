@@ -718,10 +718,10 @@ class MindsDBParser(Parser):
     ## Anomaly detection
     @_(
         'CREATE ANOMALY DETECTION MODEL identifier',  # for methods that do not require training (e.g. TimeGPT)
-        'CREATE ANOMALY DETECTION MODEL IF_NOT_EXISTS identifier',
         'CREATE ANOMALY DETECTION MODEL identifier FROM identifier LPAREN raw_query RPAREN',
-        'CREATE ANOMALY DETECTION MODEL identifier IF_NOT_EXISTS FROM identifier LPAREN raw_query RPAREN',
-
+        'CREATE ANOMALY DETECTION MODEL identifier PREDICT result_columns',
+        'CREATE ANOMALY DETECTION MODEL identifier PREDICT result_columns FROM identifier LPAREN raw_query RPAREN',
+        # TODO add IF_NOT_EXISTS elegantly (should be low level BNF expansion)
     )
     def create_anomaly_detection_model(self, p):
 
@@ -737,6 +737,7 @@ class MindsDBParser(Parser):
 
         return CreateAnomalyDetectionModel(
             name=name,
+            targets=getattr(p, 'result_columns', None),
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
             if_not_exists=hasattr(p, 'IF_NOT_EXISTS')
