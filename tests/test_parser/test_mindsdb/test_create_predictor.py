@@ -174,6 +174,7 @@ class TestCreatePredictor:
 
             expected_ast = CreateAnomalyDetectionModel(
                 name=Identifier('alert_model'),
+                task=Identifier('AnomalyDetection'),
                 integration_name=Identifier('integration_name'),
                 query_str='select * FROM table',
                 targets=[Identifier('alert')] if predict_clause else None,
