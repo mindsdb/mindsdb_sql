@@ -26,8 +26,6 @@ jobs:
       run: pytest --cov=mindsdb_sql --cov-report=term-missing
     - name: Coveralls
       uses: coverallsapp/github-action@v2.2.2
-      with:
-        parallel: true
 
   finish:
     needs: test
@@ -37,4 +35,3 @@ jobs:
         uses: coverallsapp/github-action@v2.2.2
         with:
           github-token: ${{ secrets.G_TOKEN }}
-          parallel-finished: true
