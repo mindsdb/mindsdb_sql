@@ -21,12 +21,18 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install --no-cache-dir -e .[test]
-        pip install coveralls pytest-cov
+        pip install coveralls coverage-lcov
     - name: Run unit tests
-      run: pytest --cov=mindsdb_sql --cov-report=term-missing
+      run: pytest --cov=geks test/ --cov-report xml 
     - name: Coveralls
       uses: coverallsapp/github-action@v2.2.2
-
+      with:
+        github-token: ${{ secrets.github_token }}
+        file: ./coverage.xml
+        flag-name: run-${{ join(matrix.*, '-') }}
+        git-branch: main
+        parallel: true
+        
   finish:
     needs: test
     runs-on: ubuntu-latest
@@ -36,3 +42,4 @@ jobs:
         with:
           file: coverage.xml
           github-token: ${{ secrets.G_TOKEN }}
+          parallel-finished: true
