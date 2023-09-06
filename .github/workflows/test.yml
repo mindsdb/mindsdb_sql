@@ -23,7 +23,7 @@ jobs:
         pip install --no-cache-dir -e .[test]
         pip install coveralls pytest-cov
     - name: Run unit tests
-      run: pytest --cov=geks tests/ --cov-report xml 
+      run: pytest --cov=mindsdb_sql tests/ --cov-report xml 
     - name: Coveralls
       uses: coverallsapp/github-action@v2.2.2
       with:
