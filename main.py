@@ -12,5 +12,3 @@ if __name__ == '__main__':
         if text:
             for tok in lexer.tokenize(text):
                 print('type=%r, value=%r' % (tok.type, tok.value))
-
-            # parser.parse(lexer.tokenize(text))
