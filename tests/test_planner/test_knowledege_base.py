@@ -67,9 +67,8 @@ def test_insert_into_kb(planner_context):
     (2, 'hello world', '{"a": 1, "b": 2}'),
     (3, 'hello world', '{"a": 1, "b": 2}');
     """
-    # this will dispatch the underlying dataframes to the underlying model
-    # then it will dispatch the query to the underlying storage
-    # TODO: need to figure out what to do with this situation
+    plan = _plan_sql(sql)
+    assert len(plan.steps) > 0  # TODO: better to specify t the detail of the plan
 
     # insert into kb with select
     sql = """

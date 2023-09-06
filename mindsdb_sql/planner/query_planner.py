@@ -1446,7 +1446,50 @@ class QueryPlanner():
 
             return self.plan_insert(query)
         else:
-            raise NotImplementedError("Not implemented insert without select")
+            if not query.columns:
+                raise PlanningException("Columns list is empty when using values")
+
+            keys = [column.name for column in query.columns]
+            is_embeddings_field_present = EMBEDDINGS_FIELD in keys
+
+            query.table = Identifier(vector_database_table)
+            # directly dispatch to the underlying storage table
+            if is_embeddings_field_present:
+                return self.plan_insert(query)
+
+            # if the embeddings field is not present in the columns list
+            # we need to wrap values in ast.Data
+            # join it with a model table
+            # modify the query using from_table
+            # and dispatch to the underlying storage table
+
+            records = []
+            _unwrap_constant_or_self = lambda node: node.value if isinstance(node, Constant) else node
+            for row in query.values:
+                records.append(
+                    dict(
+                        zip(
+                            keys,
+                            map(_unwrap_constant_or_self, row)
+                        )
+                    )
+                )
+
+            data = ast.Data(records, alias=Identifier("data"))
+            predictor_select = Select(
+                targets=[Identifier(col.name) for col in query.columns] + [Identifier(EMBEDDINGS_FIELD)],
+                from_table=Join(
+                    left=data,
+                    right=Identifier(model_name),
+                    join_type="JOIN"
+                )
+            )
+
+            query.columns += [ast.TableColumn(name=EMBEDDINGS_FIELD)]
+            query.from_select = predictor_select
+            query.values = None
+
+            return self.plan_insert(query)
 
     # method for compatibility
     def from_query(self, query=None):
