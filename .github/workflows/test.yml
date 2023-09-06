@@ -33,13 +33,12 @@ jobs:
         git-branch: main
         parallel: true
         
-  finish:
+  coveralls-finish:
     needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished
         uses: coverallsapp/github-action@v2.2.2
         with:
-          file: coverage.xml
           github-token: ${{ secrets.G_TOKEN }}
           parallel-finished: true
