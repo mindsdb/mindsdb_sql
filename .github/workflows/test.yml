@@ -21,7 +21,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install --no-cache-dir -e .[test]
-        pip install coveralls coverage-lcov
+        pip install coveralls pytest-cov
     - name: Run unit tests
       run: pytest --cov=geks test/ --cov-report xml 
     - name: Coveralls
