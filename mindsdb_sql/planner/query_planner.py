@@ -274,7 +274,10 @@ class QueryPlanner():
         query.targets = utils.query_traversal(query.targets, find_selects)
         utils.query_traversal(query.where, find_selects)
 
-        if query.from_table in query_info['predictors']:
+        # get info of updated query
+        query_info = self.get_query_info(query)
+
+        if len(query_info['predictors']) >= 1:
             # select from predictor
             return self.plan_select_from_predictor(query)
         else:
