@@ -44,3 +44,9 @@ class ASTNode:
             return self.to_tree() == other.to_tree() and to_single_line(str(self)) == to_single_line(str(other))
         else:
             return False
+
+    def __repr__(self):
+        sql = self.to_string().replace('\n', ' ')
+        if len(sql) > 500:
+            sql = sql[:500] + '...'
+        return f'{self.__class__.__name__}({sql})'

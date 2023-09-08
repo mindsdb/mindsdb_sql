@@ -76,9 +76,6 @@ class Identifier(ASTNode):
     def get_string(self, *args, **kwargs):
         return self.parts_to_str()
 
-    def __repr__(self) -> str:
-        return f"Identifier(parts={self.parts})"
-
     def __copy__(self):
         identifier = Identifier(parts=copy(self.parts))
         identifier.alias = deepcopy(self.alias)
