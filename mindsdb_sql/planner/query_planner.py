@@ -245,6 +245,7 @@ class QueryPlanner():
 
                     node.parentheses = False
                     last_step = self.plan_select(node)
+
                     node2 = Parameter(last_step.result)
 
                     return node2
@@ -273,10 +274,14 @@ class QueryPlanner():
         query.targets = utils.query_traversal(query.targets, find_selects)
         utils.query_traversal(query.where, find_selects)
 
+        # get info of updated query
+        query_info = self.get_query_info(query)
+
         if len(query_info['predictors']) >= 1:
             # select from predictor
             return self.plan_select_from_predictor(query)
         else:
+            # fallback to integration
             return self.plan_integration_select(query)
 
     def plan_nested_select(self, select):
@@ -386,7 +391,7 @@ class QueryPlanner():
                 )
             )
         project_step = self.plan_project(select, predictor_step.result)
-        return predictor_step, project_step
+        return project_step
 
     def plan_predictor(self, query, table, predictor_namespace, predictor):
         int_select = copy.deepcopy(query)

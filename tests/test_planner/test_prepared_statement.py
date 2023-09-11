@@ -54,7 +54,7 @@ class FakeExecutor:
             if name.isdigit():
                 name = step.predictor.parts[-2]
 
-            if name in ('pred', 'tp3', 'pr'):
+            if name in ('pred', 'tp3', 'pr', 'embedding_model'):
                 cols = [
                     {'name': 'id', 'type': 'int'},
                     {'name': 'value', 'type': 'str'},
