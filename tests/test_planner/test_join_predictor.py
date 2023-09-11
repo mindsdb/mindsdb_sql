@@ -5,7 +5,7 @@ from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
+from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep, FilterStep,
                                        LimitOffsetStep, GroupByStep, SubSelectStep, ApplyPredictorRowStep)
 from mindsdb_sql.parser.utils import JoinType
 from mindsdb_sql import parse_sql
@@ -131,30 +131,30 @@ class TestPlanJoinPredictor:
         assert plan.steps == expected_plan.steps
         
 
-    def test_join_predictor_error_when_filtering_on_predictions(self):
-        """
-        Query:
-        SELECT rental_price_confidence
-        FROM postgres_90.test_data.home_rentals AS ta
-        JOIN mindsdb.hrp3 AS tb
-        WHERE ta.sqft > 1000 AND tb.rental_price_confidence > 0.5
-        LIMIT 5;
-        """
-
-        query = Select(targets=[Identifier('rental_price_confidence')],
-                       from_table=Join(left=Identifier('postgres_90.test_data.home_rentals', alias=Identifier('ta')),
-                                       right=Identifier('mindsdb.hrp3', alias=Identifier('tb')),
-                                       join_type=JoinType.INNER_JOIN,
-                                       implicit=True),
-                       where=BinaryOperation('and', args=[
-                           BinaryOperation('>', args=[Identifier('ta.sqft'), Constant(1000)]),
-                           BinaryOperation('>', args=[Identifier('tb.rental_price_confidence'), Constant(0.5)]),
-                       ]),
-                       limit=5
-                       )
-
-        with pytest.raises(PlanningException):
-            plan_query(query, integrations=['postgres_90'], predictor_namespace='mindsdb', predictor_metadata={'hrp3': {}})
+    # def test_join_predictor_error_when_filtering_on_predictions(self):
+    #     """
+    #     Query:
+    #     SELECT rental_price_confidence
+    #     FROM postgres_90.test_data.home_rentals AS ta
+    #     JOIN mindsdb.hrp3 AS tb
+    #     WHERE ta.sqft > 1000 AND tb.rental_price_confidence > 0.5
+    #     LIMIT 5;
+    #     """
+    #
+    #     query = Select(targets=[Identifier('rental_price_confidence')],
+    #                    from_table=Join(left=Identifier('postgres_90.test_data.home_rentals', alias=Identifier('ta')),
+    #                                    right=Identifier('mindsdb.hrp3', alias=Identifier('tb')),
+    #                                    join_type=JoinType.INNER_JOIN,
+    #                                    implicit=True),
+    #                    where=BinaryOperation('and', args=[
+    #                        BinaryOperation('>', args=[Identifier('ta.sqft'), Constant(1000)]),
+    #                        BinaryOperation('>', args=[Identifier('tb.rental_price_confidence'), Constant(0.5)]),
+    #                    ]),
+    #                    limit=5
+    #                    )
+    #
+    #     with pytest.raises(PlanningException):
+    #         plan_query(query, integrations=['postgres_90'], predictor_namespace='mindsdb', predictor_metadata={'hrp3': {}})
 
     def test_join_predictor_plan_group_by(self):
         query = Select(targets=[Identifier('tab.asset'), Identifier('tab.time'), Identifier('pred.predicted')],
@@ -646,12 +646,22 @@ class TestPredictorVersion:
                 FetchDataframeStep(integration='int',
                                    query=parse_sql('select * from tab1 as a where a.x=1 and a.y=3', dialect='mindsdb')),
                 ApplyPredictorStep(namespace='proj', dataframe=Result(0),
-                                   predictor=Identifier('pred.1', alias=Identifier('p')), params={'x': 1, 'y': ''}),
+                                   predictor=Identifier('pred.1', alias=Identifier('p'))),
                 JoinStep(left=Result(0), right=Result(1),
                          query=Join(left=Identifier('result_0'),
                                     right=Identifier('result_1'),
                                     join_type=JoinType.JOIN)),
-                ProjectStep(dataframe=Result(2), columns=[Star()]),
+                FilterStep(dataframe=Result(2), query=BinaryOperation(op='and', args=[
+                    BinaryOperation(op='=', args=[
+                        Identifier(parts=['p', 'x']),
+                        Constant(1)
+                    ]),
+                    BinaryOperation(op='=', args=[
+                        Identifier(parts=['p', 'y']),
+                        Constant('')
+                    ]),
+                ])),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
             ],
         )
 

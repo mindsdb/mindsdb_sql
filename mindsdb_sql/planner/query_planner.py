@@ -402,15 +402,18 @@ class QueryPlanner():
             params = query.using
 
         binary_ops = []
-        filters = []
+        table_filters = []
+        model_filters = []
 
-        def extract_predictor_params(node, **kwargs):
+        def split_filters(node, **kwargs):
+            # split conditions between model and table
+
             if isinstance(node, BinaryOperation):
                 op = node.op.lower()
 
                 binary_ops.append(op)
 
-                if op != '=':
+                if op in ['and', 'or']:
                     return
 
                 arg1, arg2 = node.args
@@ -418,7 +421,6 @@ class QueryPlanner():
                     arg1, arg2 = arg2, arg1
 
                 if isinstance(arg1, Identifier) and isinstance(arg2, Constant) and len(arg1.parts) > 1:
-                    col = arg1.parts[-1]
                     model = Identifier(parts=arg1.parts[:-1])
 
                     if (
@@ -427,25 +429,26 @@ class QueryPlanner():
                             len(model.parts) == 1 and model.parts[0] == predictor_alias
                         )
                     ):
-                        params[col] = arg2.value
+                        model_filters.append(node)
                         return
-                filters.append(node)
+                table_filters.append(node)
 
-        query_traversal(int_select.where, extract_predictor_params)
+        query_traversal(int_select.where, split_filters)
 
-        if len(params) > 0:
-            if 'or' in binary_ops:
-                # rollback
-                params = {}
-            else:
-                # make a new where clause without params
-                where = None
-                for flt in filters:
-                    if where is None:
-                        where = flt
-                    else:
-                        where = BinaryOperation(op='and', args=[where, flt])
-                int_select.where = where
+        def filters_to_bin_op(filters):
+            # make a new where clause without params
+            where = None
+            for flt in filters:
+                if where is None:
+                    where = flt
+                else:
+                    where = BinaryOperation(op='and', args=[where, flt])
+            return where
+
+        model_where = None
+        if len(model_filters) > 0 and 'or' not in binary_ops:
+            int_select.where = filters_to_bin_op(table_filters)
+            model_where = filters_to_bin_op(model_filters)
 
         integration_select_step = self.plan_integration_select(int_select)
 
@@ -453,7 +456,7 @@ class QueryPlanner():
 
         if len(params) == 0:
             params = None
-        predictor_step = self.plan.add_step(ApplyPredictorStep(
+        last_step = self.plan.add_step(ApplyPredictorStep(
             namespace=predictor_namespace,
             dataframe=integration_select_step.result,
             predictor=predictor_identifier,
@@ -461,8 +464,9 @@ class QueryPlanner():
         ))
 
         return {
-            'predictor': predictor_step,
-            'data': integration_select_step
+            'predictor': last_step,
+            'data': integration_select_step,
+            'model_filters': model_where,
         }
 
     def plan_fetch_timeseries_partitions(self, query, table, predictor_group_by_names):
@@ -1074,6 +1078,10 @@ class QueryPlanner():
                     left, right = right, left
 
                 last_step = self.plan.add_step(JoinStep(left=left, right=right, query=new_join))
+
+                if predictor_steps.get('model_filters'):
+                    last_step = self.plan.add_step(FilterStep(dataframe=last_step.result,
+                                                              query=predictor_steps['model_filters']))
 
                 # limit from timeseries
                 if predictor_steps.get('saved_limit'):
