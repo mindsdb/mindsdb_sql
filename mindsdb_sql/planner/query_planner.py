@@ -1258,6 +1258,9 @@ class QueryPlanner():
         ))
 
     def plan_delete(self, query: Delete):
+        if self.is_knowledge_base(query.table):
+            # knowledgebase table
+            return self.plan_delete_knowledge_base(query)
 
         # find subselects
         main_integration, _ = self.resolve_database_table(query.table)
@@ -1490,6 +1493,15 @@ class QueryPlanner():
             query.values = None
 
             return self.plan_insert(query)
+
+    def plan_delete_knowledge_base(self, query: Delete):
+        metadata = self.get_knowledge_base(query.table)
+        STORAGE_FIELD = "storage"
+
+        vector_database_table = metadata[STORAGE_FIELD]
+        query.table = Identifier(vector_database_table)
+
+        return self.plan_delete(query)
 
     # method for compatibility
     def from_query(self, query=None):

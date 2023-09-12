@@ -210,3 +210,46 @@ def test_select_from_kb(planner_context):
 @pytest.mark.skip(reason="not implemented")
 def test_update_kb():
     ...
+
+
+def test_delete_from_kb(planner_context):
+    integration_context, predictor_context, additional_context = planner_context
+    _plan_sql = partial(
+        plan_sql,
+        default_namespace="mindsdb",
+        integrations=integration_context,
+        predictor_metadata=predictor_context,
+        additional_metadata=additional_context,
+    )
+
+    sql = """
+    DELETE FROM my_kb
+    WHERE
+    id = 1
+    """
+    # this will dispatch the delete to the underlying storage
+    equivalent_sql = """
+    DELETE FROM my_chromadb.my_table
+    WHERE
+    id = 1
+    """
+    plan = _plan_sql(sql)
+    expected_plan = _plan_sql(equivalent_sql)
+
+    assert plan.steps == expected_plan.steps
+
+    sql = """
+    DELETE FROM my_kb
+    WHERE
+        `metadata.a` = 1
+    """
+    # this will dispatch the delete to the underlying storage
+    equivalent_sql = """
+    DELETE FROM my_chromadb.my_table
+    WHERE
+        `metadata.a` = 1
+    """
+    plan = _plan_sql(sql)
+    expected_plan = _plan_sql(equivalent_sql)
+
+    assert plan.steps == expected_plan.steps
