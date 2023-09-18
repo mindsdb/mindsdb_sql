@@ -89,23 +89,29 @@ class MindsDBParser(Parser):
 
     # -- Knowledge Base --
     @_(
-        'CREATE KNOWLEDGE_BASE identifier MODEL identifier STORAGE identifier',
-        'CREATE KNOWLEDGE_BASE identifier MODEL identifier STORAGE identifier USING kw_parameter_list',
+        'CREATE KNOWLEDGE_BASE if_not_exists_or_empty identifier USING kw_parameter_list',
         # from select
-        'CREATE KNOWLEDGE_BASE identifier FROM LPAREN select RPAREN MODEL identifier STORAGE identifier',
-        'CREATE KNOWLEDGE_BASE identifier FROM LPAREN select RPAREN MODEL identifier STORAGE identifier USING kw_parameter_list',
-        'CREATE KNOWLEDGE_BASE IF_NOT_EXISTS identifier MODEL identifier STORAGE identifier',
-        'CREATE KNOWLEDGE_BASE IF_NOT_EXISTS identifier MODEL identifier STORAGE identifier USING kw_parameter_list',
-        'CREATE KNOWLEDGE_BASE IF_NOT_EXISTS identifier FROM LPAREN select RPAREN MODEL identifier STORAGE identifier',
-        'CREATE KNOWLEDGE_BASE IF_NOT_EXISTS identifier FROM LPAREN select RPAREN MODEL identifier STORAGE identifier USING kw_parameter_list',
+        'CREATE KNOWLEDGE_BASE if_not_exists_or_empty identifier FROM LPAREN select RPAREN USING kw_parameter_list',
+        'CREATE KNOWLEDGE_BASE if_not_exists_or_empty identifier FROM LPAREN select RPAREN',
     )
     def create_kb(self, p):
         params = getattr(p, 'kw_parameter_list', {})
         from_query = getattr(p, 'select', None)
-        name = p.identifier0
-        model = p.identifier1
-        storage = p.identifier2
-        if_not_exists = hasattr(p, 'IF_NOT_EXISTS')
+        name = p.identifier
+        # check model and storage are in params
+        model = params.pop('model', None) or params.pop('MODEL', None)  # case insensitive
+        storage = params.pop('storage', None) or params.pop('STORAGE', None)  # case insensitive
+        if not model:
+            if isinstance(model, str):
+                # convert to identifier
+                model = Identifier(model)
+            raise ParsingException('Missing model parameter')
+        if not storage:
+            if isinstance(storage, str):
+                # convert to identifier
+                storage = Identifier(storage)
+            raise ParsingException('Missing storage parameter')
+        if_not_exists = p.if_not_exists_or_empty
 
         return CreateKnowledgeBase(
             name=name,
@@ -115,6 +121,7 @@ class MindsDBParser(Parser):
             params=params,
             if_not_exists=if_not_exists
         )
+
 
     @_('DROP KNOWLEDGE_BASE identifier',
        'DROP KNOWLEDGE_BASE IF_EXISTS identifier')
@@ -1465,9 +1472,12 @@ class MindsDBParser(Parser):
         return params
 
     @_('identifier EQUALS object',
-       'identifier EQUALS json_value')
+       'identifier EQUALS json_value',
+       'identifier EQUALS identifier')
     def kw_parameter(self, p):
-        key = '.'.join(p.identifier.parts)
+        key = getattr(p, 'identifier', None) or getattr(p, 'identifier0', None)
+        assert key is not None
+        key = '.'.join(key.parts)
         return {key: p[2]}
 
     # json
@@ -1660,6 +1670,24 @@ class MindsDBParser(Parser):
     @_('raw_query raw_query')
     def raw_query(self, p):
         return p[0] + p[1]
+
+    @_(
+        'IF_NOT_EXISTS',
+        'empty'
+    )
+    def if_not_exists_or_empty(self, p):
+        if hasattr(p, 'IF_NOT_EXISTS'):
+            return True
+        return False
+
+    @_(
+        'IF_EXISTS',
+        'empty'
+    )
+    def if_exists_or_empty(self, p):
+        if hasattr(p, 'IF_EXISTS'):
+            return True
+        return False
 
     @_(*all_tokens_list)
     def raw_query(self, p):

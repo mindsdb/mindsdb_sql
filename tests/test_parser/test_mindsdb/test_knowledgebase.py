@@ -22,8 +22,9 @@ def test_create_knowledeg_base():
     # create without select
     sql = """
         CREATE KNOWLEDGE_BASE my_knowledge_base
-        MODEL mindsdb.my_embedding_model
-        STORAGE my_vector_database.some_table
+        USING
+            MODEL=mindsdb.my_embedding_model,
+            STORAGE = my_vector_database.some_table
     """
     ast = parse_sql(sql, dialect="mindsdb")
     expected_ast = CreateKnowledgeBase(
@@ -36,15 +37,25 @@ def test_create_knowledeg_base():
     )
     assert ast == expected_ast
 
+    # using the alias KNOWLEDGE BASE without underscore shall also work
+    sql = """
+        CREATE KNOWLEDGE BASE my_knowledge_base
+        USING
+            MODEL=mindsdb.my_embedding_model,
+            STORAGE = my_vector_database.some_table
+    """
+    ast = parse_sql(sql, dialect="mindsdb")
+    assert ast == expected_ast
+
     # the order of MODEL and STORAGE should not matter
-    # TODO: the current syntax is sensitive to the order
     sql = """
         CREATE KNOWLEDGE_BASE my_knowledge_base
-        STORAGE my_vector_database.some_table
-        MODEL mindsdb.my_embedding_model
+        USING
+            STORAGE = my_vector_database.some_table,
+            MODEL = mindsdb.my_embedding_model
     """
-    with pytest.raises(Exception):
-        ast = parse_sql(sql, dialect="mindsdb")
+    ast = parse_sql(sql, dialect="mindsdb")
+    assert ast == expected_ast
 
     # create from a query
     sql = """
@@ -54,8 +65,9 @@ def test_create_knowledeg_base():
             FROM my_table
             JOIN my_embedding_model
         )
-        MODEL mindsdb.my_embedding_model
-        STORAGE my_vector_database.some_table
+        USING
+            MODEL = mindsdb.my_embedding_model,
+            STORAGE = my_vector_database.some_table
     """
     ast = parse_sql(sql, dialect="mindsdb")
     expected_ast = CreateKnowledgeBase(
@@ -86,7 +98,8 @@ def test_create_knowledeg_base():
     # we may allow this in the future when we have a default model
     sql = """
         CREATE KNOWLEDGE_BASE my_knowledge_base
-        STORAGE my_vector_database.some_table
+        USING
+            STORAGE = my_vector_database.some_table
     """
     with pytest.raises(Exception):
         ast = parse_sql(sql, dialect="mindsdb")
@@ -96,7 +109,8 @@ def test_create_knowledeg_base():
     # we may allow this in the future when we have a default storage
     sql = """
         CREATE KNOWLEDGE_BASE my_knowledge_base
-        MODEL mindsdb.my_embedding_model
+        USING
+            MODEL = mindsdb.my_embedding_model
     """
     with pytest.raises(Exception):
         ast = parse_sql(sql, dialect="mindsdb")
@@ -104,8 +118,9 @@ def test_create_knowledeg_base():
     # create if not exists
     sql = """
         CREATE KNOWLEDGE_BASE IF NOT EXISTS my_knowledge_base
-        MODEL mindsdb.my_embedding_model
-        STORAGE my_vector_database.some_table
+        USING
+            MODEL = mindsdb.my_embedding_model,
+            STORAGE = my_vector_database.some_table
     """
     ast = parse_sql(sql, dialect="mindsdb")
     expected_ast = CreateKnowledgeBase(
@@ -121,9 +136,9 @@ def test_create_knowledeg_base():
     # create with params
     sql = """
         CREATE KNOWLEDGE_BASE my_knowledge_base
-        MODEL mindsdb.my_embedding_model
-        STORAGE my_vector_database.some_table
         USING
+            MODEL = mindsdb.my_embedding_model,
+            STORAGE = my_vector_database.some_table,
             some_param = 'some value',
             other_param = 'other value'
     """

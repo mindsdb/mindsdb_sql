@@ -3,6 +3,9 @@ from mindsdb_sql.parser.utils import indent
 
 
 class CreateKnowledgeBase(ASTNode):
+    """
+    Create a new knowledge base
+    """
     def __init__(
         self,
         name,
@@ -14,6 +17,15 @@ class CreateKnowledgeBase(ASTNode):
         *args,
         **kwargs,
     ):
+        """
+        Args:
+            name: Identifier -- name of the knowledge base
+            model: Identifier -- name of the model to use
+            storage: Identifier -- name of the storage to use
+            from_select: SelectStatement -- select statement to use as the source of the knowledge base
+            params: dict -- additional parameters to pass to the knowledge base. E.g., chunking strategy, etc.
+            if_not_exists: bool -- if True, do not raise an error if the knowledge base already exists
+        """
         super().__init__(*args, **kwargs)
         self.name = name
         self.model = model
@@ -47,9 +59,9 @@ class CreateKnowledgeBase(ASTNode):
         out_str = (
             f"CREATE KNOWLEDGE_BASE {'IF NOT EXISTS' if self.if_not_exists else ''}{self.name.to_string()} "
             f"{from_query_str} "
-            f"MODEL {self.model.to_string()} "
-            f"STORAGE {self.storage.to_string()} "
-            f"USING {using_str}"
+            f"USING {using_str},"
+            f"  MODEL = {self.model.to_string()}, "
+            f"  STORAGE {self.storage.to_string()} "
         )
 
         return out_str
@@ -59,7 +71,15 @@ class CreateKnowledgeBase(ASTNode):
 
 
 class DropKnowledgeBase(ASTNode):
+    """
+    Delete a knowledge base
+    """
     def __init__(self, name, if_exists=False, *args, **kwargs):
+        """
+        Args:
+            name: Identifier -- name of the knowledge base
+            if_exists: bool -- if True, do not raise an error if the knowledge base does not exist
+        """
         super().__init__(*args, **kwargs)
         self.name = name
         self.if_exists = if_exists
