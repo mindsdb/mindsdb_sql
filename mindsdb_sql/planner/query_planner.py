@@ -32,9 +32,7 @@ class QueryPlanner():
                  integrations: list = None,
                  predictor_namespace=None,
                  predictor_metadata: list = None,
-                 default_namespace: str = None,
-                 additional_metadata: list = None,
-                 ):
+                 default_namespace: str = None):
         self.query = query
         self.plan = QueryPlan()
 
@@ -92,45 +90,7 @@ class QueryPlanner():
         self.projects = list(_projects)
         self.databases = list(self.integrations.keys()) + self.projects
 
-        # additional metadata -- knowledge base
-        self.additional_metadata = {}
-        additional_metadata = additional_metadata or []
-        for metadata in additional_metadata:
-            if 'integration_name' not in metadata:
-                metadata['integration_name'] = self.predictor_namespace
-            idx = f'{metadata["integration_name"]}.{metadata["name"]}'.lower()
-
-            self._validate_knowledge_base_meta(metadata)
-            self.additional_metadata[idx] = metadata
-
         self.statement = None
-
-    def _validate_knowledge_base_meta(self, metadata):
-        """
-        Verify the entry for knowledge base metadata is valid
-        """
-        TYPE_FIELD = "type"
-        if TYPE_FIELD not in metadata:
-            return 
-        elif metadata[TYPE_FIELD] != "knowledge_base":
-            return
-        MODEL_FIELD = "model"
-        STORAGE_FIELD = "storage"
-        if MODEL_FIELD not in metadata:
-            raise PlanningException(f"Knowledge base metadata must contain a {MODEL_FIELD} field")
-        else:
-            # we enforce to specify a full qualified name for the model
-            # e.g., integration_name.model_name
-            model_name = metadata[MODEL_FIELD]
-            if len(model_name.split(".")) != 2:
-                raise PlanningException(f"Knowledge base model name must be in the format of integration_name.model_name")
-
-        if STORAGE_FIELD not in metadata:
-            raise PlanningException(f"Knowledge base metadata must contain a {STORAGE_FIELD} field")
-        else:
-            storage_name = metadata[STORAGE_FIELD]
-            if len(storage_name.split(".")) != 2:
-                raise PlanningException(f"Knowledge base storage name must be in the format of integration_name.table_name")
 
     def is_predictor(self, identifier):
         return self.get_predictor(identifier) is not None
@@ -163,30 +123,6 @@ class QueryPlanner():
             info['version'] = version
             info['name'] = name
         return info
-
-    def get_knowledge_base(self, identifier):
-        name_parts = list(identifier.parts)
-        name = name_parts[-1]
-        namespace = None
-        if len(name_parts) > 1:
-            namespace = name_parts[-2]
-        else:
-            if self.default_namespace is not None:
-                namespace = self.default_namespace
-
-        idx_ar = [name]
-        if namespace is not None:
-            idx_ar.insert(0, namespace)
-
-        idx = '.'.join(idx_ar).lower()
-        info = self.additional_metadata.get(idx)
-        if info is not None and info.get("type") == "knowledge_base":
-            return info
-        else:
-            return 
-
-    def is_knowledge_base(self, identifier):
-        return self.get_knowledge_base(identifier) is not None
 
     def prepare_integration_select(self, database, query):
         # replacement for 'utils.recursively_disambiguate_*' functions from utils
@@ -1219,10 +1155,6 @@ class QueryPlanner():
 
     def plan_insert(self, query):
         table = query.table
-        if self.is_knowledge_base(table):
-            # knowledgebase table
-            return self.plan_insert_knowledge_base(query)
-
         if query.from_select is not None:
             integration_name = query.table.parts[0]
 
@@ -1258,9 +1190,6 @@ class QueryPlanner():
         ))
 
     def plan_delete(self, query: Delete):
-        if self.is_knowledge_base(query.table):
-            # knowledgebase table
-            return self.plan_delete_knowledge_base(query)
 
         # find subselects
         main_integration, _ = self.resolve_database_table(query.table)
@@ -1281,12 +1210,7 @@ class QueryPlanner():
         from_table = query.from_table
 
         if isinstance(from_table, Identifier):
-            # decide from_table is a knowledgebase table or a table from integration
-            if self.is_knowledge_base(from_table):
-                # knowledgebase table
-                return self.plan_select_knowledege_base(query)
-            else:
-                return self.plan_select_identifier(query)
+            return self.plan_select_identifier(query)
         elif isinstance(from_table, Select):
             return self.plan_nested_select(query)
         elif isinstance(from_table, Join):
@@ -1335,173 +1259,6 @@ class QueryPlanner():
         query2 = self.plan_select(query.right)
 
         return self.plan.add_step(UnionStep(left=query1.result, right=query2.result, unique=query.unique))
-
-
-    def plan_select_knowledege_base(self, query):
-        SEARCH_QUERY = "search_query"  # TODO: need to make it as a constant
-        MODEL_FIELD = "model"  # TODO: need to make it as a constant
-        STORAGE_FIELD = "storage"  # TODO: need to make it as a constant
-
-
-        knowledegebase_metadata = self.get_knowledge_base(query.from_table)
-        vector_database_table = knowledegebase_metadata[STORAGE_FIELD]
-        model_name = knowledegebase_metadata[MODEL_FIELD]
-
-        CONTENT_FIELD = knowledegebase_metadata.get("content_field") or "content"
-        EMBEDDINGS_FIELD = knowledegebase_metadata.get("embeddings_field") or "embeddings"
-        SEARCH_VECTOR_FIELD = knowledegebase_metadata.get("search_vector_field") or "search_vector"
-
-        is_search_query_present = False
-        def find_search_query(node, **kwargs):
-            nonlocal is_search_query_present
-            if isinstance(node, Identifier) and node.parts[-1] == SEARCH_QUERY:
-                is_search_query_present = True
-
-        # decide predictor is needed in the query
-        # by detecting if a where clause involving field SEARCH_QUERY is present
-        # if yes, then we need to add additional step to the plan
-        # to apply the predictor to the search query
-        utils.query_traversal(
-            query.where,
-            callback=find_search_query
-        )
-
-        if not is_search_query_present:
-            # dispatch to the underlying storage table
-            query.from_table = Identifier(vector_database_table)
-            return self.plan_select(query)
-        else:
-            # rewrite the where clause
-            # search_query = 'some text'
-            # ->
-            # search_vector = (select embeddings from model_name where content = 'some text')
-            def rewrite_search_query_clause(node, **kwargs):
-                if isinstance(node, BinaryOperation):
-                    if node.args[0] == Identifier(SEARCH_QUERY):
-                        node.args[0] = Identifier(SEARCH_VECTOR_FIELD)
-                        node.args[1] = Select(
-                            targets=[Identifier(EMBEDDINGS_FIELD)],
-                            from_table=Identifier(model_name),
-                            where=BinaryOperation(
-                                op="=",
-                                args=[
-                                    Identifier(CONTENT_FIELD),
-                                    node.args[1]
-                                ]
-                            )
-                        )
-
-            utils.query_traversal(
-                query.where,
-                callback=rewrite_search_query_clause
-            )
-
-            # dispatch to the underlying storage table
-            query.from_table = Identifier(vector_database_table)
-            return self.plan_select(query)
-
-    def plan_insert_knowledge_base(self, query: Insert):
-        metadata = self.get_knowledge_base(query.table)
-        STORAGE_FIELD = "storage"  # TODO: need to make it as a constant
-        MODEL_FIELD = "model"  # TODO: need to make it as a constant
-        EMBEDDINGS_FIELD = metadata.get("embeddings_field") or "embeddings"
-
-        vector_database_table = metadata[STORAGE_FIELD]
-        model_name = metadata[MODEL_FIELD]
-
-        query.table = Identifier(vector_database_table)
-
-        if query.from_select is not None:
-            # detect if embeddings field is present in the columns list
-            # if so, we do not need to apply the predictor
-            # if not, we need to join the select with the model table
-            is_embeddings_field_present = False
-            def find_embeddings_field(node, **kwargs):
-                nonlocal is_embeddings_field_present
-                if isinstance(node, Identifier) and node.parts[-1] == EMBEDDINGS_FIELD:
-                    is_embeddings_field_present = True
-
-            utils.query_traversal(
-                query.columns,
-                callback=find_embeddings_field
-            )
-
-            if is_embeddings_field_present:
-                return self.plan_insert(query)
-
-            # rewrite the select statement
-            # to join with the model table
-
-            select: Select = query.from_select
-            select.targets.append(Identifier(EMBEDDINGS_FIELD))
-            select.from_table = Select(
-                targets=copy.deepcopy(select.targets),
-                from_table=Join(
-                    left=select.from_table,
-                    right=Identifier(model_name),
-                    join_type="JOIN"
-                )
-            )
-
-            # append the embeddings field to the columns list
-            if query.columns:
-                query.columns.append(Identifier(EMBEDDINGS_FIELD))
-
-            return self.plan_insert(query)
-        else:
-            if not query.columns:
-                raise PlanningException("Columns list is empty when using values")
-
-            keys = [column.name for column in query.columns]
-            is_embeddings_field_present = EMBEDDINGS_FIELD in keys
-
-            query.table = Identifier(vector_database_table)
-            # directly dispatch to the underlying storage table
-            if is_embeddings_field_present:
-                return self.plan_insert(query)
-
-            # if the embeddings field is not present in the columns list
-            # we need to wrap values in ast.Data
-            # join it with a model table
-            # modify the query using from_table
-            # and dispatch to the underlying storage table
-
-            records = []
-            _unwrap_constant_or_self = lambda node: node.value if isinstance(node, Constant) else node
-            for row in query.values:
-                records.append(
-                    dict(
-                        zip(
-                            keys,
-                            map(_unwrap_constant_or_self, row)
-                        )
-                    )
-                )
-
-            data = ast.Data(records, alias=Identifier("data"))
-            predictor_select = Select(
-                targets=[Identifier(col.name) for col in query.columns] + [Identifier(EMBEDDINGS_FIELD)],
-                from_table=Join(
-                    left=data,
-                    right=Identifier(model_name),
-                    join_type="JOIN"
-                )
-            )
-
-            query.columns += [ast.TableColumn(name=EMBEDDINGS_FIELD)]
-            query.from_select = predictor_select
-            query.values = None
-
-            return self.plan_insert(query)
-
-    def plan_delete_knowledge_base(self, query: Delete):
-        metadata = self.get_knowledge_base(query.table)
-        STORAGE_FIELD = "storage"
-
-        vector_database_table = metadata[STORAGE_FIELD]
-        query.table = Identifier(vector_database_table)
-
-        return self.plan_delete(query)
 
     # method for compatibility
     def from_query(self, query=None):
