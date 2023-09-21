@@ -8,8 +8,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        python-version: [3.7]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: [3.7,3.8]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -23,7 +23,7 @@ jobs:
         pip install pytest-cov
         pip install --no-cache-dir -e .[test]
     - name: Run unit tests
-      run:  pytest --cov=mindsdb_sql --cov-report lcov:cov.info tests/
+      run: pytest --cov=mindsdb_sql --cov-report lcov:cov.info tests/
       shell: bash
     - name: Coveralls
       uses: coverallsapp/github-action@v2.2.2
