@@ -261,7 +261,7 @@ class MindsDBLexer(Lexer):
     DIVIDE = r'/'
     MODULO = r'%'
     EQUALS = r'='
-    NEQUALS = r'!='
+    NEQUALS = r'(!=|<>)'
     GEQ = r'>='
     GREATER = r'>'
     LEQ = r'<='

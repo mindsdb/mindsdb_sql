@@ -24,19 +24,3 @@ jobs:
     - name: Run unit tests
       run: pytest -v
       shell: bash
-
-    - name: Coveralls
-      uses: coverallsapp/github-action@v2.2.2
-      with:
-        github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
-        parallel: true
-
-  finish:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Coveralls Finished
-        uses: coverallsapp/github-action@v2.2.2
-        with:
-          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
-          parallel-finished: true
