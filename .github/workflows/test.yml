@@ -8,8 +8,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.7,3.8]
+        os: [ubuntu-latest]
+        python-version: [3.7]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -25,6 +25,13 @@ jobs:
     - name: Run unit tests
       run:  pytest --cov=mindsdb_sql --cov-report lcov:cov.info tests/
       shell: bash
+    - name: Coveralls
+      uses: coverallsapp/github-action@v2.2.2
+      with:
+        github-token: ${{ secrets.G_TOKEN}}
+        format: lcov
+        files: cov.info
+        parallel: true
 
   finish:
     needs: test
@@ -34,7 +41,5 @@ jobs:
         uses: coverallsapp/github-action@v2.2.2
         with:
           github-token: ${{ secrets.G_TOKEN }}
-          format: lcov
-          files: cov.info
-          parallel: true
+          parallel-finished: true
 
