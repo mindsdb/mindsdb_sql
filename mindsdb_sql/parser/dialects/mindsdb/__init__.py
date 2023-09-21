@@ -4,7 +4,6 @@ from .create_predictor import CreatePredictor, CreateAnomalyDetectionModel
 from .drop_predictor import DropPredictor
 from .retrain_predictor import RetrainPredictor
 from .finetune_predictor import FinetunePredictor
-from .drop_integration import DropIntegration
 from .drop_datasource import DropDatasource
 from .drop_dataset import DropDataset
 from .evaluate import Evaluate
