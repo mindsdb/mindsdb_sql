@@ -30,6 +30,7 @@ class MindsDBLexer(Lexer):
         LATEST, HORIZON, USING,
         ENGINE, TRAIN, PREDICT, PARAMETERS, JOB, CHATBOT, EVERY,PROJECT,
         ANOMALY, DETECTION,
+        KNOWLEDGE_BASE, KNOWLEDGE_BASES,
 
         # SHOW/DDL Keywords
 
@@ -114,6 +115,9 @@ class MindsDBLexer(Lexer):
     # Typed models
     ANOMALY = r'\bANOMALY\b'
     DETECTION = r'\bDETECTION\b'
+
+    KNOWLEDGE_BASE = r'\bKNOWLEDGE[_|\s]BASE\b'
+    KNOWLEDGE_BASES = r'\bKNOWLEDGE[_|\s]BASES\b'
 
     # Misc
     SET = r'\bSET\b'
@@ -257,7 +261,7 @@ class MindsDBLexer(Lexer):
     DIVIDE = r'/'
     MODULO = r'%'
     EQUALS = r'='
-    NEQUALS = r'!='
+    NEQUALS = r'(!=|<>)'
     GEQ = r'>='
     GREATER = r'>'
     LEQ = r'<='

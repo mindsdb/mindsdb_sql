@@ -127,6 +127,7 @@ class TestLexer:
             ('%', 'MODULO'),
             ('=', 'EQUALS'),
             ('!=', 'NEQUALS'),
+            ('<>', 'NEQUALS'),
             ('>', 'GREATER'),
             ('>=', 'GEQ'),
             ('<', 'LESS'),
