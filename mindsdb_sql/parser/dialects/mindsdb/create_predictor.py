@@ -18,6 +18,8 @@ class CreatePredictorBase(ASTNode):
                  horizon=None,
                  using=None,
                  is_replace=False,
+                 if_not_exists=False,
+                 task=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
@@ -31,6 +33,8 @@ class CreatePredictorBase(ASTNode):
         self.horizon = horizon
         self.using = using
         self.is_replace = is_replace
+        self.if_not_exists = if_not_exists
+        self.task = task
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -69,7 +73,10 @@ class CreatePredictorBase(ASTNode):
         horizon_str = f'\n{ind1}horizon={repr(self.horizon)},'
         using_str = f'\n{ind1}using={repr(self.using)},'
 
+        if_not_exists_str = f'\n{ind1}if_not_exists={self.if_not_exists},' if self.if_not_exists else ''
+
         out_str = f'{ind}{self.__class__.__name__}(' \
+                  f'{if_not_exists_str}' \
                   f'{name_str}' \
                   f'{integration_name_str}' \
                   f'{query_str}' \
@@ -119,7 +126,9 @@ class CreatePredictorBase(ASTNode):
         if self.integration_name is not None:
             integration_name_str = f'FROM {self.integration_name.to_string()} '
 
-        out_str = f'{self._command} {self.name.to_string()} {integration_name_str}{query_str}' \
+        if_not_exists_str = 'IF NOT EXISTS ' if self.if_not_exists else ''
+
+        out_str = f'{self._command} {if_not_exists_str}{self.name.to_string()} {integration_name_str}{query_str}' \
                   f'{datasource_name_str}' \
                   f'{targets_str} ' \
                   f'{order_by_str}' \
@@ -135,3 +144,11 @@ class CreatePredictor(CreatePredictorBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._command = 'CREATE PREDICTOR'
+
+
+# Models by task type
+class CreateAnomalyDetectionModel(CreatePredictorBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._command = 'CREATE ANOMALY DETECTION MODEL'
+        self.task = Identifier('AnomalyDetection')

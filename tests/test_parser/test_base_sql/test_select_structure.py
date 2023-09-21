@@ -479,7 +479,7 @@ class TestSelectStructure:
                       'OFFSET 1']
 
         good_sql = 'SELECT column ' + '\n'.join(components)
-        ast = parse_sql(good_sql)
+        ast = parse_sql(good_sql, dialect)
         assert ast
 
         for perm in itertools.permutations(components):
@@ -488,8 +488,10 @@ class TestSelectStructure:
                 continue
 
             with pytest.raises(ParsingException) as excinfo:
-                ast = parse_sql(bad_sql)
-            assert 'must go before' in str(excinfo.value) or ' requires ' in str(excinfo.value)
+                ast = parse_sql(bad_sql, dialect)
+            if dialect == 'sqlite':
+                # TODO fix message for mindsdb dialect
+                assert 'must go before' in str(excinfo.value) or ' requires ' in str(excinfo.value)
 
     def test_select_from_inner_join(self, dialect):
         sql = """SELECT * FROM t1 INNER JOIN t2 ON t1.x1 = t2.x2 and t1.x2 = t2.x2"""

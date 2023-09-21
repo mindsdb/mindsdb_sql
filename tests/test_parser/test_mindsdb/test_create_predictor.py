@@ -60,7 +60,7 @@ class TestCreatePredictor:
         assert ast.to_tree() == ast2.to_tree()
 
     def test_create_predictor_minimal(self):
-        sql = """CREATE PREDICTOR pred
+        sql = """CREATE PREDICTOR IF NOT EXISTS pred
                 FROM integration_name 
                 (select * FROM table_name)
                 PREDICT f1 as f1_alias, f2
@@ -68,6 +68,7 @@ class TestCreatePredictor:
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreatePredictor(
             name=Identifier('pred'),
+            if_not_exists=True,
             integration_name=Identifier('integration_name'),
             query_str="select * FROM table_name",
             targets=[Identifier('f1', alias=Identifier('f1_alias')),
@@ -160,3 +161,27 @@ class TestCreatePredictor:
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()
 
+    def test_create_anomaly_detection_model(self):
+        for predict_clause in ["", " PREDICT alert "]:
+            create_clause = """CREATE ANOMALY DETECTION MODEL alert_model """
+            rest_clause = """
+            FROM integration_name (select * FROM table)
+            USING
+                confidence=0.5
+            """
+            sql = create_clause + predict_clause + rest_clause
+            ast = parse_sql(sql, dialect='mindsdb')
+
+            expected_ast = CreateAnomalyDetectionModel(
+                name=Identifier('alert_model'),
+                task=Identifier('AnomalyDetection'),
+                integration_name=Identifier('integration_name'),
+                query_str='select * FROM table',
+                targets=[Identifier('alert')] if predict_clause else None,
+                using={
+                    'confidence': 0.5
+                }
+            )
+
+            assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+            assert ast.to_tree() == expected_ast.to_tree()

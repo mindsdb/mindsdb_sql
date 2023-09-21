@@ -1254,7 +1254,8 @@ class TestJoinTimeseriesPredictor:
               FROM mindsdb.pr as tb 
               JOIN ds.HR_MA as t
              WHERE t.saledate > LATEST AND t.type = 'house' AND t.bedrooms = 2
-             LIMIT 4;
+             LIMIT 4
+             USING param1 = 1, param2 = 'a';
         '''
         predictor_window = 3
         query = parse_sql(sql,  dialect='mindsdb')
@@ -1295,7 +1296,9 @@ class TestJoinTimeseriesPredictor:
                     output_time_filter=BinaryOperation('>', args=[Identifier('t.saledate'), Latest()]),
                     namespace='mindsdb',
                     predictor=Identifier('pr', alias=Identifier('tb')),
-                    dataframe=Result(1)),
+                    dataframe=Result(1),
+                    params={'param1': 1, 'param2': 'a'},
+                ),
                 JoinStep(left=Result(2),
                          right=Result(1),
                          query=Join(

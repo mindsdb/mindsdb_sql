@@ -22,9 +22,10 @@ class TestCreateView:
                 ast = parse_sql(sql, dialect=dialect)
 
     def test_create_view_full(self):
-        sql = "CREATE VIEW my_view FROM integr AS ( SELECT * FROM pred )"
+        sql = "CREATE VIEW IF NOT EXISTS my_view FROM integr AS ( SELECT * FROM pred )"
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateView(name=Identifier('my_view'),
+                                  if_not_exists=True,
                                   from_table=Identifier('integr'),
                                   query_str="SELECT * FROM pred")
 

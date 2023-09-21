@@ -33,6 +33,20 @@ class TestCreateMLEngine:
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()
 
+        # test if not exists
+        sql = """
+            CREATE ML_ENGINE IF NOT EXISTS name FROM ml_handler_name
+        """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreateMLEngine(
+            name=Identifier('name'),
+            handler='ml_handler_name',
+            params=None,
+            if_not_exists=True
+        )
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+
 
 class TestDropMLEngine:
     def test_create_predictor_full(self):
@@ -43,5 +57,17 @@ class TestDropMLEngine:
         expected_ast = DropMLEngine(
             name=Identifier('name'),
         )
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        # test if exists
+        sql = """
+            DROP ML_ENGINE IF EXISTS name
+        """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = DropMLEngine(
+            name=Identifier('name'),
+            if_exists=True
+        )   
         assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
         assert ast.to_tree() == expected_ast.to_tree()

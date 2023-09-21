@@ -22,7 +22,7 @@ def get_lexer_parser(dialect):
     return lexer, parser
 
 
-def parse_sql(sql, dialect='sqlite'):
+def parse_sql(sql, dialect='mindsdb'):
     # remove ending semicolon and spaces
     sql = re.sub(r'[\s;]+$', '', sql)
 

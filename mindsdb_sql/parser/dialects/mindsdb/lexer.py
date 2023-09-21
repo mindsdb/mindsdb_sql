@@ -29,6 +29,8 @@ class MindsDBLexer(Lexer):
         FINETUNE, EVALUATE,
         LATEST, HORIZON, USING,
         ENGINE, TRAIN, PREDICT, PARAMETERS, JOB, CHATBOT, EVERY,PROJECT,
+        ANOMALY, DETECTION,
+        KNOWLEDGE_BASE, KNOWLEDGE_BASES,
 
         # SHOW/DDL Keywords
 
@@ -39,7 +41,7 @@ class MindsDBLexer(Lexer):
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
         PERSIST, PERSIST_ONLY, DEFAULT,
-        IF_EXISTS, COLUMNS, FIELDS, COLLATE, SEARCH_PATH,
+        IF_EXISTS, IF_NOT_EXISTS, COLUMNS, FIELDS, COLLATE, SEARCH_PATH,
         # SELECT Keywords
         WITH, SELECT, DISTINCT, FROM, WHERE, AS,
         LIMIT, OFFSET, ASC, DESC, NULLS_FIRST, NULLS_LAST,
@@ -110,6 +112,13 @@ class MindsDBLexer(Lexer):
     PROJECT = r'\bPROJECT\b'
     EVALUATE = r'\bEVALUATE\b'
 
+    # Typed models
+    ANOMALY = r'\bANOMALY\b'
+    DETECTION = r'\bDETECTION\b'
+
+    KNOWLEDGE_BASE = r'\bKNOWLEDGE[_|\s]BASE\b'
+    KNOWLEDGE_BASES = r'\bKNOWLEDGE[_|\s]BASES\b'
+
     # Misc
     SET = r'\bSET\b'
     START = r'\bSTART\b'
@@ -158,6 +167,7 @@ class MindsDBLexer(Lexer):
     PERSIST_ONLY = r'\bPERSIST_ONLY\b'
     DEFAULT = r'\bDEFAULT\b'
     IF_EXISTS = r'\bIF[\s]+EXISTS\b'
+    IF_NOT_EXISTS = r'\bIF[\s]+NOT[\s]+EXISTS\b'
     COLUMNS = r'\bCOLUMNS\b'
     FIELDS = r'\bFIELDS\b'
     EXTENDED = r'\bEXTENDED\b'
@@ -251,7 +261,7 @@ class MindsDBLexer(Lexer):
     DIVIDE = r'/'
     MODULO = r'%'
     EQUALS = r'='
-    NEQUALS = r'!='
+    NEQUALS = r'(!=|<>)'
     GEQ = r'>='
     GREATER = r'>'
     LEQ = r'<='

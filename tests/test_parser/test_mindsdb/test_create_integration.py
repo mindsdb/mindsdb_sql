@@ -7,18 +7,19 @@ from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 
 class TestCreateDatabase:
     def test_create_database_lexer(self):
-        sql = "CREATE DATABASE db WITH ENGINE = 'mysql', PARAMETERS = {\"user\": \"admin\", \"password\": \"admin\"}"
+        sql = "CREATE DATABASE IF NOT EXISTS db WITH ENGINE = 'mysql', PARAMETERS = {\"user\": \"admin\", \"password\": \"admin\"}"
         tokens = list(MindsDBLexer().tokenize(sql))
         assert tokens[0].type == 'CREATE'
         assert tokens[1].type == 'DATABASE'
-        assert tokens[2].type == 'ID'
-        assert tokens[3].type == 'WITH'
-        assert tokens[4].type == 'ENGINE'
-        assert tokens[5].type == 'EQUALS'
-        assert tokens[6].type == 'QUOTE_STRING'
-        assert tokens[7].type == 'COMMA'
-        assert tokens[8].type == 'PARAMETERS'
-        assert tokens[9].type == 'EQUALS'
+        assert tokens[2].type == 'IF_NOT_EXISTS'
+        assert tokens[3].type == 'ID'
+        assert tokens[4].type == 'WITH'
+        assert tokens[5].type == 'ENGINE'
+        assert tokens[6].type == 'EQUALS'
+        assert tokens[7].type == 'QUOTE_STRING'
+        assert tokens[8].type == 'COMMA'
+        assert tokens[9].type == 'PARAMETERS'
+        assert tokens[10].type == 'EQUALS'
         # next tokens come separately, not just single JSON
         # assert tokens[10].type == 'JSON'
 
@@ -76,6 +77,18 @@ class TestCreateDatabase:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+        # test with if not exists
+        sql = """
+            CREATE DATABASE IF NOT EXISTS db
+            WITH ENGINE='mysql'
+            """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreateDatabase(name=Identifier('db'),
+                                        engine='mysql',
+                                        if_not_exists=True,
+                                        parameters=None)
+        assert str(ast) == str(expected_ast)
+
     def test_create_database_invalid_json(self):
         sql = "CREATE DATABASE db WITH ENGINE = 'mysql', PARAMETERS = 'wow'"
         with pytest.raises(ParsingException):
@@ -90,4 +103,15 @@ class TestCreateDatabase:
 
         assert str(ast).lower() == str(expected_ast).lower()
         assert ast.to_tree() == expected_ast.to_tree()
+
+        # test with if not exists
+        sql = """
+            CREATE PROJECT IF NOT EXISTS db
+            """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreateDatabase(name=Identifier('db'),
+                                        engine=None,
+                                        if_not_exists=True,
+                                        parameters=None)
+
 

@@ -5,7 +5,7 @@ from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
 from mindsdb_sql.parser.dialects.mindsdb.drop_ml_engine import DropMLEngine
-from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
+from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor, CreateAnomalyDetectionModel
 from mindsdb_sql.parser.dialects.mindsdb.create_database import CreateDatabase
 from mindsdb_sql.parser.dialects.mindsdb.create_ml_engine import CreateMLEngine
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
@@ -16,6 +16,7 @@ from mindsdb_sql.parser.dialects.mindsdb.trigger import CreateTrigger, DropTrigg
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
 from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
+from mindsdb_sql.parser.dialects.mindsdb.knowledge_base import CreateKnowledgeBase, DropKnowledgeBase
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.parser.dialects.mindsdb.retrain_predictor import RetrainPredictor
@@ -58,6 +59,7 @@ class MindsDBParser(Parser):
        'create_predictor',
        'create_integration',
        'create_view',
+       'create_anomaly_detection_model',
        'drop_predictor',
        'drop_datasource',
        'drop_dataset',
@@ -79,9 +81,51 @@ class MindsDBParser(Parser):
        'update_chat_bot',
        'create_trigger',
        'drop_trigger',
+       'create_kb',
+       'drop_kb',
        )
     def query(self, p):
         return p[0]
+
+    # -- Knowledge Base --
+    @_(
+        'CREATE KNOWLEDGE_BASE if_not_exists_or_empty identifier USING kw_parameter_list',
+        # from select
+        'CREATE KNOWLEDGE_BASE if_not_exists_or_empty identifier FROM LPAREN select RPAREN USING kw_parameter_list',
+        'CREATE KNOWLEDGE_BASE if_not_exists_or_empty identifier FROM LPAREN select RPAREN',
+    )
+    def create_kb(self, p):
+        params = getattr(p, 'kw_parameter_list', {})
+        from_query = getattr(p, 'select', None)
+        name = p.identifier
+        # check model and storage are in params
+        model = params.pop('model', None) or params.pop('MODEL', None)  # case insensitive
+        storage = params.pop('storage', None) or params.pop('STORAGE', None)  # case insensitive
+        if not model:
+            if isinstance(model, str):
+                # convert to identifier
+                model = Identifier(model)
+            raise ParsingException('Missing model parameter')
+        if not storage:
+            if isinstance(storage, str):
+                # convert to identifier
+                storage = Identifier(storage)
+            raise ParsingException('Missing storage parameter')
+        if_not_exists = p.if_not_exists_or_empty
+
+        return CreateKnowledgeBase(
+            name=name,
+            model=model,
+            storage=storage,
+            from_select=from_query,
+            params=params,
+            if_not_exists=if_not_exists
+        )
+
+
+    @_('DROP KNOWLEDGE_BASE if_exists_or_empty identifier')
+    def drop_kb(self, p):
+        return DropKnowledgeBase(name=p.identifier, if_exists=p.if_exists_or_empty)
 
     # -- ChatBot --
     @_('CREATE CHATBOT identifier USING kw_parameter_list')
@@ -129,10 +173,10 @@ class MindsDBParser(Parser):
 
 
     # -- Jobs --
-    @_('CREATE JOB identifier LPAREN raw_query RPAREN job_schedule',
-       'CREATE JOB identifier AS LPAREN raw_query RPAREN job_schedule',
-       'CREATE JOB identifier LPAREN raw_query RPAREN',
-       'CREATE JOB identifier AS LPAREN raw_query RPAREN')
+    @_('CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN job_schedule',
+       'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN job_schedule',
+       'CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN',
+       'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN')
     def create_job(self, p):
         query_str = tokens_to_string(p.raw_query)
 
@@ -158,7 +202,8 @@ class MindsDBParser(Parser):
             query_str=query_str,
             start_str=start_str,
             end_str=end_str,
-            repeat_str=repeat_str
+            repeat_str=repeat_str,
+            if_not_exists=p.if_not_exists_or_empty
         )
 
     @_('START string',
@@ -190,9 +235,9 @@ class MindsDBParser(Parser):
         schedule = {param: value}
         return schedule
 
-    @_('DROP JOB identifier')
+    @_('DROP JOB if_exists_or_empty identifier')
     def drop_job(self, p):
-        return DropJob(name=p.identifier)
+        return DropJob(name=p.identifier, if_exists=p.if_exists_or_empty)
 
 
     # Explain
@@ -207,27 +252,20 @@ class MindsDBParser(Parser):
                           arg=' '.join([p.id0, p.id1]))
 
     # DROP VEW
-    @_('DROP VIEW identifier',
-       'DROP VIEW IF_EXISTS identifier')
+    @_('DROP VIEW if_exists_or_empty identifier')
     def drop_view(self, p):
-        if_exists = hasattr(p, 'IF_EXISTS')
-        return DropView([p.identifier], if_exists=if_exists)
+        return DropView([p.identifier], if_exists=p.if_exists_or_empty)
 
-    @_('DROP VIEW enumeration',
-       'DROP VIEW IF_EXISTS enumeration')
+    @_('DROP VIEW if_exists_or_empty enumeration')
     def drop_view(self, p):
-        if_exists = hasattr(p, 'IF_EXISTS')
-        return DropView(p.enumeration, if_exists=if_exists)
+        return DropView(p.enumeration, if_exists=p.if_exists_or_empty)
 
     # DROP DATABASE
-    @_('DROP DATABASE identifier',
-       'DROP DATABASE IF_EXISTS identifier',
-       'DROP PROJECT identifier',
-       'DROP SCHEMA identifier',
-       'DROP SCHEMA IF_EXISTS identifier')
+    @_('DROP DATABASE if_exists_or_empty identifier',
+       'DROP PROJECT if_exists_or_empty identifier',
+       'DROP SCHEMA if_exists_or_empty identifier')
     def drop_database(self, p):
-        if_exists = hasattr(p, 'IF_EXISTS')
-        return DropDatabase(name=p.identifier, if_exists=if_exists)
+        return DropDatabase(name=p.identifier, if_exists=p.if_exists_or_empty)
 
     # Transactions
 
@@ -454,6 +492,7 @@ class MindsDBParser(Parser):
        'ML_ENGINES',
        'HANDLERS',
        'SEARCH_PATH',
+       'KNOWLEDGE_BASES',
        'ALL')
     def show_category(self, p):
         return ' '.join([x for x in p])
@@ -577,14 +616,15 @@ class MindsDBParser(Parser):
         return Use(value=p.identifier)
 
     # CREATE VIEW
-    @_('CREATE VIEW identifier create_view_from_table_or_nothing AS LPAREN raw_query RPAREN',
-       'CREATE VIEW identifier create_view_from_table_or_nothing LPAREN raw_query RPAREN')
+    @_('CREATE VIEW if_not_exists_or_empty identifier create_view_from_table_or_nothing AS LPAREN raw_query RPAREN',
+       'CREATE VIEW if_not_exists_or_empty identifier create_view_from_table_or_nothing LPAREN raw_query RPAREN')
     def create_view(self, p):
         query_str = tokens_to_string(p.raw_query)
 
         return CreateView(name=p.identifier,
                           from_table=p.create_view_from_table_or_nothing,
-                          query_str=query_str)
+                          query_str=query_str,
+                          if_not_exists=p.if_not_exists_or_empty)
 
     @_('FROM identifier')
     def create_view_from_table_or_nothing(self, p):
@@ -595,33 +635,30 @@ class MindsDBParser(Parser):
         pass
 
     # DROP PREDICTOR
-    @_('DROP PREDICTOR identifier',
-       'DROP MODEL identifier',
-       'DROP PREDICTOR IF_EXISTS identifier')
+    @_('DROP PREDICTOR if_exists_or_empty identifier',
+       'DROP MODEL if_exists_or_empty identifier')
     def drop_predictor(self, p):
-        if_exists = hasattr(p, 'IF_EXISTS')
-        return DropPredictor(p.identifier, if_exists=if_exists)
+        return DropPredictor(p.identifier, if_exists=p.if_exists_or_empty)
 
     # DROP DATASOURCE
-    @_('DROP DATASOURCE identifier')
+    @_('DROP DATASOURCE if_exists_or_empty identifier')
     def drop_datasource(self, p):
-        return DropDatasource(p.identifier)
+        return DropDatasource(p.identifier, if_exists=p.if_exists_or_empty)
 
     # DROP DATASET
-    @_('DROP DATASET identifier')
+    @_('DROP DATASET if_exists_or_empty identifier')
     def drop_dataset(self, p):
-        return DropDataset(p.identifier)
+        return DropDataset(p.identifier, if_exists=p.if_exists_or_empty)
 
     # DROP TABLE
-    @_('DROP TABLE IF_EXISTS identifier',
-       'DROP TABLE identifier')
+    @_('DROP TABLE if_exists_or_empty identifier')
     def drop_table(self, p):
-        if_exists = hasattr(p, 'IF_EXISTS')
-        return DropTables(tables=[p.identifier], if_exists=if_exists)
+        return DropTables(tables=[p.identifier], if_exists=p.if_exists_or_empty)
 
     # create table
-    @_('CREATE TABLE identifier select',
-       'CREATE TABLE identifier LPAREN select RPAREN',
+    @_('CREATE TABLE identifier select', # TODO tests failing without it
+       'CREATE TABLE if_not_exists_or_empty identifier select',
+       'CREATE TABLE if_not_exists_or_empty identifier LPAREN select RPAREN',
        'CREATE OR REPLACE TABLE identifier select',
        'CREATE OR REPLACE TABLE identifier LPAREN select RPAREN')
     def create_table(self, p):
@@ -632,7 +669,8 @@ class MindsDBParser(Parser):
         return CreateTable(
             name=p.identifier,
             is_replace=is_replace,
-            from_select=p.select
+            from_select=p.select,
+            if_not_exists=getattr(p, 'if_not_exists_or_empty', False)
         )
 
     @_('CREATE TABLE identifier USING kw_parameter_list')
@@ -671,10 +709,10 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
-       'CREATE PREDICTOR identifier PREDICT result_columns',
-       'CREATE MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
-       'CREATE MODEL identifier PREDICT result_columns')
+    @_('CREATE PREDICTOR if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE PREDICTOR if_not_exists_or_empty identifier PREDICT result_columns',
+       'CREATE MODEL if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE MODEL if_not_exists_or_empty identifier PREDICT result_columns')
     def create_predictor(self, p):
         query_str = None
         if hasattr(p, 'raw_query'):
@@ -690,8 +728,44 @@ class MindsDBParser(Parser):
             name=name,
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
-            targets=p.result_columns
+            targets=p.result_columns,
+            if_not_exists=p.if_not_exists_or_empty
         )
+
+    # Typed models
+    ## Anomaly detection
+    @_(
+        'CREATE ANOMALY DETECTION MODEL identifier',  # for methods that do not require training (e.g. TimeGPT)
+        'CREATE ANOMALY DETECTION MODEL identifier FROM identifier LPAREN raw_query RPAREN',
+        'CREATE ANOMALY DETECTION MODEL identifier PREDICT result_columns',
+        'CREATE ANOMALY DETECTION MODEL identifier PREDICT result_columns FROM identifier LPAREN raw_query RPAREN',
+        # TODO add IF_NOT_EXISTS elegantly (should be low level BNF expansion)
+    )
+    def create_anomaly_detection_model(self, p):
+
+        query_str = None
+        if hasattr(p, 'raw_query'):
+            query_str = tokens_to_string(p.raw_query)
+
+        if hasattr(p, 'identifier'):
+            # single identifier field
+            name = p.identifier
+        else:
+            name = p.identifier0
+
+        return CreateAnomalyDetectionModel(
+            name=name,
+            targets=getattr(p, 'result_columns', None),
+            integration_name=getattr(p, 'identifier1', None),
+            query_str=query_str,
+            if_not_exists=hasattr(p, 'IF_NOT_EXISTS')
+        )
+
+    @_('create_anomaly_detection_model USING kw_parameter_list')
+    def create_anomaly_detection_model(self, p):
+        p.create_anomaly_detection_model.using = p.kw_parameter_list
+        return p.create_anomaly_detection_model
+
 
     # RETRAIN PREDICTOR
 
@@ -759,17 +833,18 @@ class MindsDBParser(Parser):
 
     # ML ENGINE
     # CREATE
-    @_('CREATE ML_ENGINE identifier FROM id USING kw_parameter_list',
-       'CREATE ML_ENGINE identifier FROM id')
+    @_('CREATE ML_ENGINE if_not_exists_or_empty identifier FROM id USING kw_parameter_list',
+       'CREATE ML_ENGINE if_not_exists_or_empty identifier FROM id')
     def create_integration(self, p):
         return CreateMLEngine(name=p.identifier,
                               handler=p.id,
-                              params=getattr(p, 'kw_parameter_list', None))
+                              params=getattr(p, 'kw_parameter_list', None),
+                              if_not_exists=p.if_not_exists_or_empty)
 
     # DROP
-    @_('DROP ML_ENGINE identifier')
+    @_('DROP ML_ENGINE if_exists_or_empty identifier')
     def create_integration(self, p):
-        return DropMLEngine(name=p.identifier)
+        return DropMLEngine(name=p.identifier, if_exists=p.if_exists_or_empty)
 
     # CREATE INTEGRATION
     @_('CREATE database_engine',
@@ -793,19 +868,20 @@ class MindsDBParser(Parser):
         return CreateDatabase(name=p.database_engine['identifier'],
                                 engine=p.database_engine['engine'],
                                 is_replace=is_replace,
-                                parameters=parameters)
+                                parameters=parameters,
+                                if_not_exists=p.database_engine['if_not_exists'])
 
-    @_('DATABASE identifier',
-       'PROJECT identifier',
-       'DATABASE identifier ENGINE string',
-       'DATABASE identifier ENGINE EQUALS string',
-       'DATABASE identifier WITH ENGINE string',
-       'DATABASE identifier WITH ENGINE EQUALS string')
+    @_('DATABASE if_not_exists_or_empty identifier',
+       'DATABASE if_not_exists_or_empty identifier ENGINE string',
+       'DATABASE if_not_exists_or_empty identifier ENGINE EQUALS string',
+       'DATABASE if_not_exists_or_empty identifier WITH ENGINE string',
+       'DATABASE if_not_exists_or_empty identifier WITH ENGINE EQUALS string',
+       'PROJECT if_not_exists_or_empty identifier')
     def database_engine(self, p):
         engine = None
         if hasattr(p, 'string'):
             engine = p.string
-        return {'identifier': p.identifier, 'engine': engine}
+        return {'identifier': p.identifier, 'engine': engine, 'if_not_exists': p.if_not_exists_or_empty}
 
     # UNION / UNION ALL
     @_('select UNION select')
@@ -1283,6 +1359,10 @@ class MindsDBParser(Parser):
     def expr(self, p):
         return UnaryOperation(op=p[0], args=(p.expr,))
 
+    @_('MINUS constant %prec UMINUS')
+    def constant(self, p):
+        return Constant(-p.constant.value)
+
     # update fields list
     @_('update_parameter',
        'update_parameter_list COMMA update_parameter')
@@ -1355,9 +1435,12 @@ class MindsDBParser(Parser):
         return params
 
     @_('identifier EQUALS object',
-       'identifier EQUALS json_value')
+       'identifier EQUALS json_value',
+       'identifier EQUALS identifier')
     def kw_parameter(self, p):
-        key = '.'.join(p.identifier.parts)
+        key = getattr(p, 'identifier', None) or getattr(p, 'identifier0', None)
+        assert key is not None
+        key = '.'.join(key.parts)
         return {key: p[2]}
 
     # json
@@ -1550,6 +1633,24 @@ class MindsDBParser(Parser):
     @_('raw_query raw_query')
     def raw_query(self, p):
         return p[0] + p[1]
+
+    @_(
+        'IF_NOT_EXISTS',
+        'empty'
+    )
+    def if_not_exists_or_empty(self, p):
+        if hasattr(p, 'IF_NOT_EXISTS'):
+            return True
+        return False
+
+    @_(
+        'IF_EXISTS',
+        'empty'
+    )
+    def if_exists_or_empty(self, p):
+        if hasattr(p, 'IF_EXISTS'):
+            return True
+        return False
 
     @_(*all_tokens_list)
     def raw_query(self, p):
