@@ -24,7 +24,7 @@ class TestSql:
                 op='<>',
                 args=[
                     Identifier('a'),
-                    Constant(11)
+                    Constant(1)
                 ]
             )
         )
