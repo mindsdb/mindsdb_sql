@@ -26,10 +26,15 @@ jobs:
       run:  pytest --cov=mindsdb_sql --cov-report lcov:cov.info tests/
       shell: bash
 
-    - name: Coveralls
-      uses: coverallsapp/github-action@v2.2.2
-      with:
-        github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
-        format: lcov
-        files: cov.info
-        parallel: true
+  finish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Coveralls Finished
+        uses: coverallsapp/github-action@v2.2.2
+        with:
+          github-token: ${{ secrets.G_TOKEN }}
+          format: lcov
+          files: cov.info
+          parallel: true
+
