@@ -32,7 +32,7 @@ class CreateMLEngine(ASTNode):
     def get_string(self, *args, **kwargs):
         using_str = ''
         if self.params is not None:
-            using_ar = [f'{k}={str(v)}' for k, v in self.params.items()]
+            using_ar = [f'{k}={repr(v)}' for k, v in self.params.items()]
 
             using_str = 'USING ' + ', '.join(using_ar)
 
