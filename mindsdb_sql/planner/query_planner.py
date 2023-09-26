@@ -93,6 +93,8 @@ class QueryPlanner():
         self.statement = None
 
     def is_predictor(self, identifier):
+        if not isinstance(identifier, Identifier):
+            return False
         return self.get_predictor(identifier) is not None
 
     def get_predictor(self, identifier):
@@ -926,7 +928,8 @@ class QueryPlanner():
             if isinstance(target, Identifier) \
                     or isinstance(target, Star) \
                     or isinstance(target, Function) \
-                    or isinstance(target, Constant):
+                    or isinstance(target, Constant) \
+                    or isinstance(target, BinaryOperation):
                 out_identifiers.append(target)
             else:
                 new_identifier = Identifier(str(target.to_string(alias=False)), alias=target.alias)
