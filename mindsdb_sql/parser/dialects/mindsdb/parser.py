@@ -1398,6 +1398,10 @@ class MindsDBParser(Parser):
     def latest(self, p):
         return Latest()
 
+    @_('LAST')
+    def latest(self, p):
+        return Last()
+
     @_('NULL')
     def constant(self, p):
         return NullConstant()

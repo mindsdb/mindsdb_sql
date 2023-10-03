@@ -87,6 +87,8 @@ class SqlalchemyRender:
 
         if isinstance(t, ast.Star):
             col = sa.text('*')
+        elif isinstance(t, ast.Last):
+            col = self.to_column(['last'])
         elif isinstance(t, ast.Constant):
             col = sa.literal(t.value)
             if t.alias:
