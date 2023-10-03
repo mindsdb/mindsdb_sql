@@ -35,7 +35,7 @@ class TestChatbots:
             name=Identifier('mybot'),
             database=Identifier('my_rocket_chat'),
             model=Identifier('chat_model'),
-            agent=NullConstant(),
+            agent=None,
             params={'key': 'value'}
         )
         assert str(ast) == str(expected_ast)

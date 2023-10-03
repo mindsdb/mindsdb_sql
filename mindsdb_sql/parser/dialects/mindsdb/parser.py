@@ -93,9 +93,9 @@ class MindsDBParser(Parser):
         model_param = params.pop('model', None)
         agent_param = params.pop('agent', None)
         model = Identifier(
-            model_param) if model_param is not None else NullConstant()
+            model_param) if model_param is not None else None
         agent = Identifier(
-            agent_param) if agent_param is not None else NullConstant()
+            agent_param) if agent_param is not None else None
         return CreateChatBot(
             name=p.identifier,
             database=database,
