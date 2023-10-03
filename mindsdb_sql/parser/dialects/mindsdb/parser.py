@@ -876,6 +876,7 @@ class MindsDBParser(Parser):
        'DATABASE if_not_exists_or_empty identifier ENGINE EQUALS string',
        'DATABASE if_not_exists_or_empty identifier WITH ENGINE string',
        'DATABASE if_not_exists_or_empty identifier WITH ENGINE EQUALS string',
+       'DATABASE if_not_exists_or_empty identifier USING ENGINE EQUALS string',
        'PROJECT if_not_exists_or_empty identifier')
     def database_engine(self, p):
         engine = None
