@@ -1341,6 +1341,8 @@ class MindsDBParser(Parser):
        'expr NEQUALS expr',
        'expr GEQ expr',
        'expr GREATER expr',
+       'expr GEQ LAST',
+       'expr GREATER LAST',
        'expr LEQ expr',
        'expr LESS expr',
        'expr AND expr',
@@ -1352,7 +1354,11 @@ class MindsDBParser(Parser):
        'expr CONCAT expr',
        'expr IN expr')
     def expr(self, p):
-        return BinaryOperation(op=p[1], args=(p.expr0, p.expr1))
+        if hasattr(p, 'LAST'):
+            arg1 = Last()
+        else:
+            arg1 = p.expr1
+        return BinaryOperation(op=p[1], args=(p[0], arg1))
 
 
     @_('MINUS expr %prec UMINUS',
@@ -1397,10 +1403,6 @@ class MindsDBParser(Parser):
     @_('LATEST')
     def latest(self, p):
         return Latest()
-
-    @_('LAST')
-    def latest(self, p):
-        return Last()
 
     @_('NULL')
     def constant(self, p):
