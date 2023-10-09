@@ -2,11 +2,18 @@ from mindsdb_sql.parser.ast.base import ASTNode
 from mindsdb_sql.parser.utils import indent
 from typing import List
 
+try:
+    from sqlalchemy import types as sa_types
+except ImportError:
+    sa_types = None
+
 
 class TableColumn():
     def __init__(self, name, type='integer'):
         self.name = name
         self.type = type
+        self.is_primary_key = False
+        self.default = None
 
 
 class CreateTable(ASTNode):
@@ -63,10 +70,17 @@ class CreateTable(ASTNode):
 
         columns_str = ''
         if self.columns is not None:
-            columns = [
-                f'{col.name} {col.type}'
-                for col in self.columns
-            ]
+            columns = []
+            for col in self.columns:
+                type = str(col.type)
+                if sa_types is not None:
+                    if issubclass(col.type, sa_types.Integer):
+                        type = 'int'
+                    elif issubclass(col.type, sa_types.Float):
+                        type = 'float'
+                    elif issubclass(col.type, sa_types.Text):
+                        type = 'text'
+                columns.append( f'{col.name} {type}')
 
             columns_str = '({})'.format(', '.join(columns))
 

@@ -87,6 +87,8 @@ class SqlalchemyRender:
 
         if isinstance(t, ast.Star):
             col = sa.text('*')
+        elif isinstance(t, ast.Last):
+            col = self.to_column(['last'])
         elif isinstance(t, ast.Constant):
             col = sa.literal(t.value)
             if t.alias:
@@ -108,27 +110,12 @@ class SqlalchemyRender:
                 alias = self.get_alias(t.alias)
                 col = col.label(alias)
         elif isinstance(t, ast.Function):
-            op = getattr(sa.func, t.op)
-            if t.from_arg is not None:
-                arg = t.args[0].to_string()
-                from_arg = self.to_expression(t.from_arg)
-
-                col = op(arg, from_arg)
-            else:
-                args = [
-                    self.to_expression(i)
-                    for i in t.args
-                ]
-                if t.distinct:
-                    # set first argument to distinct
-                    args[0] = args[0].distinct()
-                col = op(*args)
-
+            fnc = self.to_function(t)
             if t.alias:
                 alias = self.get_alias(t.alias)
             else:
                 alias = str(t.op)
-            col = col.label(alias)
+            col = fnc.label(alias)
         elif isinstance(t, ast.BinaryOperation):
             methods = {
                 "+": "__add__",
@@ -250,6 +237,24 @@ class SqlalchemyRender:
             raise NotImplementedError(f'Column {t}')
 
         return col
+
+    def to_function(self, t):
+        op = getattr(sa.func, t.op)
+        if t.from_arg is not None:
+            arg = t.args[0].to_string()
+            from_arg = self.to_expression(t.from_arg)
+
+            fnc = op(arg, from_arg)
+        else:
+            args = [
+                self.to_expression(i)
+                for i in t.args
+            ]
+            if t.distinct:
+                # set first argument to distinct
+                args[0] = args[0].distinct()
+            fnc = op(*args)
+        return fnc
 
     def get_type(self, typename):
         # TODO how to get type
@@ -456,13 +461,23 @@ class SqlalchemyRender:
         return query
 
     def prepare_create_table(self, ast_query):
-        columns = [
-            sa.Column(
-                col.name,
-                self.get_type(col.type)
+        columns = []
+
+        for col in ast_query.columns:
+            default = None
+            if col.default is not None:
+                if isinstance(col.default, ast.Function):
+                    default = self.to_function(col.default)
+
+            columns.append(
+                sa.Column(
+                    col.name,
+                    self.get_type(col.type),
+                    primary_key=col.is_primary_key,
+                    default=default,
+                )
             )
-            for col in ast_query.columns
-        ]
+
         schema, table_name = self.get_table_name(ast_query.name)
 
         metadata = sa.MetaData()

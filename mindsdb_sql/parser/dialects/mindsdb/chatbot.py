@@ -62,7 +62,7 @@ class UpdateChatBot(ASTNode):
         set_ar = [f'{k}={repr(v)}' for k, v in params.items()]
         set_str = ', '.join(set_ar)
 
-        out_str = f'UPDATE CHATBOT {self.name.to_string()} USING {set_str}'
+        out_str = f'UPDATE CHATBOT {self.name.to_string()} SET {set_str}'
         return out_str
 
 
