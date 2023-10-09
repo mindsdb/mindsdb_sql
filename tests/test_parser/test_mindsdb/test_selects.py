@@ -142,3 +142,20 @@ class TestSpecificSelects:
         assert str(ast) == str(expected_ast)
 
 
+        sql = """SELECT last(a) FROM t1"""
+
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = Select(
+            targets=[Function(
+                op='last',
+                args=[Identifier('a')]
+            )],
+            from_table=Identifier(parts=['t1']),
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+
+
+

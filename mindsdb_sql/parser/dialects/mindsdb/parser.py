@@ -1562,6 +1562,7 @@ class MindsDBParser(Parser):
        'ISOLATION',
        'KEYS',
        'LATEST',
+       'LAST',
        'LEVEL',
        'LOGS',
        'MASTER',
