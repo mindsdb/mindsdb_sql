@@ -35,6 +35,7 @@ class NullConstant(Constant):
         return 'NULL'
 
 
+# TODO replace it to just Constant?
 # DEFAULT
 class SpecialConstant(ASTNode):
     def __init__(self, name, *args, **kwargs):
@@ -46,3 +47,15 @@ class SpecialConstant(ASTNode):
 
     def get_string(self, *args, **kwargs):
         return self.name
+
+
+class Last(Constant):
+    def __init__(self, *args, **kwargs):
+        self.value = 'last'
+        super().__init__(self.value)
+
+    def to_tree(self, *args, level=0, **kwargs):
+        return indent(level) + f'{self.__class__.__name__}()'
+
+    def get_string(self, *args, **kwargs):
+        return self.value

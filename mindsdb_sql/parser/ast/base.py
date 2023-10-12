@@ -49,4 +49,4 @@ class ASTNode:
         sql = self.to_string().replace('\n', ' ')
         if len(sql) > 500:
             sql = sql[:500] + '...'
-        return f'{self.__class__.__name__}({sql})'
+        return f'{self.__class__.__name__}:<{sql}>'

@@ -114,4 +114,17 @@ class TestCreateDatabase:
                                         if_not_exists=True,
                                         parameters=None)
 
+        assert str(ast).lower() == str(expected_ast).lower()
+        assert ast.to_tree() == expected_ast.to_tree()
+
+
+    def test_create_database_using(self):
+
+        sql = "CREATE DATABASE db using ENGINE = 'mysql', PARAMETERS = {'A': 1}"
+        ast = parse_sql(sql, dialect='mindsdb')
+
+        expected_ast = CreateDatabase(name=Identifier('db'), engine='mysql', parameters={'A': 1})
+
+        assert str(ast).lower() == str(expected_ast).lower()
+        assert ast.to_tree() == expected_ast.to_tree()
 

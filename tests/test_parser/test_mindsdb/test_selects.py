@@ -121,3 +121,41 @@ class TestSpecificSelects:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+
+    def test_last(self):
+        sql = """SELECT * FROM t1 t where t.id>last"""
+
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = Select(
+            targets=[Star()],
+            from_table=Identifier(parts=['t1'], alias=Identifier('t')),
+            where=BinaryOperation(
+              op='>',
+              args=[
+                  Identifier(parts=['t', 'id']),
+                  Last()
+              ]
+            )
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+
+        sql = """SELECT last(a) FROM t1"""
+
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = Select(
+            targets=[Function(
+                op='last',
+                args=[Identifier('a')]
+            )],
+            from_table=Identifier(parts=['t1']),
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+
+
+
