@@ -10,30 +10,36 @@ class CreateChatBot(ASTNode):
                  name,
                  database,
                  model,
+                 agent,
                  params=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.database=database
         self.model = model
+        self.agent = agent
         if params is None:
             params = {}
         self.params = params
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
+        model_str = self.model.to_string() if self.model else 'NULL'
+        agent_str = self.agent.to_string() if self.agent else 'NULL'
         out_str = f'{ind}CreateChatBot(' \
                   f'name={self.name.to_string()}, ' \
                   f'database={self.database.to_string()}, ' \
-                  f'model={self.model.to_string()}, ' \
+                  f'model={model_str}, ' \
+                  f'agent={agent_str}, ' \
                   f'params={self.params})'
         return out_str
 
     def get_string(self, *args, **kwargs):
 
         params = self.params.copy()
-        params['model'] = self.model.to_string()
+        params['model'] = self.model.to_string() if self.model else 'NULL'
         params['database'] = self.database.to_string()
+        params['agent'] = self.agent.to_string() if self.agent else 'NULL'
 
         using_ar = [f'{k}={repr(v)}' for k, v in params.items()]
 
