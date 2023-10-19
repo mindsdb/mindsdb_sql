@@ -105,15 +105,24 @@ def test_create_knowledeg_base():
         ast = parse_sql(sql, dialect="mindsdb")
 
     # create without STORAGE
-    # TODO: this should be an error
-    # we may allow this in the future when we have a default storage
     sql = """
         CREATE KNOWLEDGE_BASE my_knowledge_base
         USING
             MODEL = mindsdb.my_embedding_model
     """
-    with pytest.raises(Exception):
-        ast = parse_sql(sql, dialect="mindsdb")
+
+    expected_ast = CreateKnowledgeBase(
+        name=Identifier("my_knowledge_base"),
+        if_not_exists=False,
+        model=Identifier(parts=["mindsdb", "my_embedding_model"]),
+        storage=Identifier(parts=["_default", "_vector_store"]),
+        from_select=None,
+        params={},
+    )
+
+    ast = parse_sql(sql, dialect="mindsdb")
+
+    assert ast == expected_ast
 
     # create if not exists
     sql = """
