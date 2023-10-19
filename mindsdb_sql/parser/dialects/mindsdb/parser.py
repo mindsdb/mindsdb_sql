@@ -100,7 +100,7 @@ class MindsDBParser(Parser):
         name = p.identifier
         # check model and storage are in params
         model = params.pop('model', None) or params.pop('MODEL', None)  # case insensitive
-        storage = params.pop('storage', '_default._vector_store') or params.pop('STORAGE', '_default._vector_store')  # case insensitive
+        storage = params.pop('storage', None) or params.pop('STORAGE', None)  # case insensitive
         if not model:
             if isinstance(model, str):
                 # convert to identifier
@@ -110,6 +110,7 @@ class MindsDBParser(Parser):
             if isinstance(storage, str):
                 # convert to identifier
                 storage = Identifier(storage)
+            raise ParsingException('Missing storage parameter')
         if_not_exists = p.if_not_exists_or_empty
 
         return CreateKnowledgeBase(
