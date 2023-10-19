@@ -105,10 +105,9 @@ class MindsDBParser(Parser):
         model = params.pop('model', None)
         storage = params.pop('storage', None)
 
-        if not storage:
+        if isinstance(model, str):
             # convert to identifier
-            if isinstance(model, str):
-                storage = Identifier(storage)
+            storage = Identifier(storage)
 
         if not model:
             if isinstance(model, str):
