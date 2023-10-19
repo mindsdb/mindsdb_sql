@@ -107,7 +107,8 @@ class MindsDBParser(Parser):
 
         if not storage:
             # convert to identifier
-            storage = Identifier('_default._vector_store')
+            if isinstance(model, str):
+                storage = Identifier(storage)
 
         if not model:
             if isinstance(model, str):

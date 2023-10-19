@@ -115,7 +115,6 @@ def test_create_knowledeg_base():
         name=Identifier("my_knowledge_base"),
         if_not_exists=False,
         model=Identifier(parts=["mindsdb", "my_embedding_model"]),
-        storage=Identifier(parts=["_default", "_vector_store"]),
         from_select=None,
         params={},
     )
