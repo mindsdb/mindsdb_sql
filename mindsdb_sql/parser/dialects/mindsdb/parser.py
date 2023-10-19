@@ -31,6 +31,8 @@ all_tokens_list.remove('LPAREN')
 """
 Unfortunately the rules are not iherited from base SQLParser, because it just doesn't work with Sly due to metaclass magic.
 """
+
+
 class MindsDBParser(Parser):
     log = ParserLogger()
     tokens = MindsDBLexer.tokens
@@ -99,18 +101,20 @@ class MindsDBParser(Parser):
         from_query = getattr(p, 'select', None)
         name = p.identifier
         # check model and storage are in params
-        model = params.pop('model', None) or params.pop('MODEL', None)  # case insensitive
-        storage = params.pop('storage', None) or params.pop('STORAGE', None)  # case insensitive
+        params = {k.lower(): v for k, v in params.items()}  # case insensitive
+        model = params.pop('model', None)
+        storage = params.pop('storage', None)
+
+        if isinstance(model, str):
+            # convert to identifier
+            storage = Identifier(storage)
+
         if not model:
             if isinstance(model, str):
                 # convert to identifier
                 model = Identifier(model)
             raise ParsingException('Missing model parameter')
-        if not storage:
-            if isinstance(storage, str):
-                # convert to identifier
-                storage = Identifier(storage)
-            raise ParsingException('Missing storage parameter')
+
         if_not_exists = p.if_not_exists_or_empty
 
         return CreateKnowledgeBase(
@@ -121,7 +125,6 @@ class MindsDBParser(Parser):
             params=params,
             if_not_exists=if_not_exists
         )
-
 
     @_('DROP KNOWLEDGE_BASE if_exists_or_empty identifier')
     def drop_kb(self, p):
@@ -151,7 +154,6 @@ class MindsDBParser(Parser):
     def update_chat_bot(self, p):
         return UpdateChatBot(name=p.identifier, updated_params=p.kw_parameter_list)
 
-
     @_('DROP CHATBOT identifier')
     def drop_chat_bot(self, p):
         return DropChatBot(name=p.identifier)
@@ -176,7 +178,6 @@ class MindsDBParser(Parser):
     @_('DROP TRIGGER identifier')
     def drop_trigger(self, p):
         return DropTrigger(name=p.identifier)
-
 
     # -- Jobs --
     @_('CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN job_schedule',
@@ -221,7 +222,6 @@ class MindsDBParser(Parser):
        'job_schedule job_schedule')
     def job_schedule(self, p):
 
-
         if isinstance(p[0], dict):
             schedule = p[0]
             for k in p[1].keys():
@@ -238,13 +238,12 @@ class MindsDBParser(Parser):
             if hasattr(p, 'integer'):
                 value = f'{p[1]} {p[2]}'
 
-        schedule = {param: value}
+        schedule = {param:value}
         return schedule
 
     @_('DROP JOB if_exists_or_empty identifier')
     def drop_job(self, p):
         return DropJob(name=p.identifier, if_exists=p.if_exists_or_empty)
-
 
     # Explain
     @_('EXPLAIN identifier')
@@ -368,9 +367,9 @@ class MindsDBParser(Parser):
        'transact_access_mode')
     def transact_property(self, p):
         if hasattr(p, 'transact_level'):
-            return {'type': 'iso_level', 'value': p.transact_level}
+            return {'type':'iso_level', 'value':p.transact_level}
         else:
-            return {'type': 'access_mode', 'value': p.transact_access_mode}
+            return {'type':'access_mode', 'value':p.transact_access_mode}
 
     @_('REPEATABLE READ',
        'READ COMMITTED',
@@ -525,11 +524,11 @@ class MindsDBParser(Parser):
     @_('SHOW REPLICA STATUS FOR CHANNEL id',
        'SHOW SLAVE STATUS FOR CHANNEL id',
        'SHOW REPLICA STATUS',
-       'SHOW SLAVE STATUS',)
+       'SHOW SLAVE STATUS', )
     def show(self, p):
         name = getattr(p, 'id', None)
         return Show(
-            category='REPLICA STATUS', # slave = replica
+            category='REPLICA STATUS',  # slave = replica
             name=name
         )
 
@@ -662,7 +661,7 @@ class MindsDBParser(Parser):
         return DropTables(tables=[p.identifier], if_exists=p.if_exists_or_empty)
 
     # create table
-    @_('CREATE TABLE identifier select', # TODO tests failing without it
+    @_('CREATE TABLE identifier select',  # TODO tests failing without it
        'CREATE TABLE if_not_exists_or_empty identifier select',
        'CREATE TABLE if_not_exists_or_empty identifier LPAREN select RPAREN',
        'CREATE OR REPLACE TABLE identifier select',
@@ -772,7 +771,6 @@ class MindsDBParser(Parser):
         p.create_anomaly_detection_model.using = p.kw_parameter_list
         return p.create_anomaly_detection_model
 
-
     # RETRAIN PREDICTOR
 
     @_('RETRAIN identifier',
@@ -816,7 +814,7 @@ class MindsDBParser(Parser):
         )
 
     @_('EVALUATE identifier FROM LPAREN raw_query RPAREN',
-       'EVALUATE identifier FROM LPAREN raw_query RPAREN USING kw_parameter_list',)
+       'EVALUATE identifier FROM LPAREN raw_query RPAREN USING kw_parameter_list', )
     def evaluate(self, p):
         if hasattr(p, 'identifier'):
             # single identifier field
@@ -872,10 +870,10 @@ class MindsDBParser(Parser):
             parameters = p.json
 
         return CreateDatabase(name=p.database_engine['identifier'],
-                                engine=p.database_engine['engine'],
-                                is_replace=is_replace,
-                                parameters=parameters,
-                                if_not_exists=p.database_engine['if_not_exists'])
+                              engine=p.database_engine['engine'],
+                              is_replace=is_replace,
+                              parameters=parameters,
+                              if_not_exists=p.database_engine['if_not_exists'])
 
     @_('DATABASE if_not_exists_or_empty identifier',
        'DATABASE if_not_exists_or_empty identifier ENGINE string',
@@ -888,7 +886,7 @@ class MindsDBParser(Parser):
         engine = None
         if hasattr(p, 'string'):
             engine = p.string
-        return {'identifier': p.identifier, 'engine': engine, 'if_not_exists': p.if_not_exists_or_empty}
+        return {'identifier':p.identifier, 'engine':engine, 'if_not_exists':p.if_not_exists_or_empty}
 
     # UNION / UNION ALL
     @_('select UNION select')
@@ -1090,7 +1088,7 @@ class MindsDBParser(Parser):
 
     @_('from_table_aliased COMMA from_table_aliased',
        'join_tables_implicit COMMA from_table_aliased')
-    def join_tables_implicit (self, p):
+    def join_tables_implicit(self, p):
         return Join(left=p[0],
                     right=p[2],
                     join_type=JoinType.INNER_JOIN,
@@ -1198,7 +1196,6 @@ class MindsDBParser(Parser):
     @_('star')
     def result_column(self, p):
         return p.star
-
 
     @_('expr',
        'function',
@@ -1366,7 +1363,6 @@ class MindsDBParser(Parser):
             arg1 = p.expr1
         return BinaryOperation(op=p[1], args=(p[0], arg1))
 
-
     @_('MINUS expr %prec UMINUS',
        'NOT expr %prec UNOT', )
     def expr(self, p):
@@ -1386,7 +1382,7 @@ class MindsDBParser(Parser):
 
     @_('id EQUALS expr')
     def update_parameter(self, p):
-        return {p.id: p.expr}
+        return {p.id:p.expr}
 
     # EXPRESSIONS
 
@@ -1454,7 +1450,7 @@ class MindsDBParser(Parser):
         key = getattr(p, 'identifier', None) or getattr(p, 'identifier0', None)
         assert key is not None
         key = '.'.join(key.parts)
-        return {key: p[2]}
+        return {key:p[2]}
 
     # json
 
@@ -1473,7 +1469,7 @@ class MindsDBParser(Parser):
 
     @_('string COLON json_value')
     def json_element(self, p):
-        return {p.string: p.json_value}
+        return {p.string:p.json_value}
 
     # json_array
 
@@ -1508,7 +1504,6 @@ class MindsDBParser(Parser):
             return False
         return p[0]
 
-
     @_('identifier DOT identifier',
        'identifier DOT integer',
        'identifier DOT star')
@@ -1536,7 +1531,7 @@ class MindsDBParser(Parser):
     def parameter(self, p):
         return Parameter(value=p.PARAMETER)
 
-   # convert to types
+    # convert to types
     @_('ID',
        'BEGIN',
        'CAST',
@@ -1614,7 +1609,7 @@ class MindsDBParser(Parser):
        'WARNINGS',
        'MODEL',
        'MODELS',
-    )
+       )
     def id(self, p):
         return p[0]
 
@@ -1638,11 +1633,11 @@ class MindsDBParser(Parser):
 
     @_('LPAREN raw_query RPAREN')
     def raw_query(self, p):
-        return [ p._slice[0] ] + p[1] + [ p._slice[2] ]
+        return [p._slice[0]] + p[1] + [p._slice[2]]
 
     @_('raw_query LPAREN RPAREN')
     def raw_query(self, p):
-        return p[0] + [ p._slice[1], p._slice[2] ]
+        return p[0] + [p._slice[1], p._slice[2]]
 
     @_('raw_query raw_query')
     def raw_query(self, p):
