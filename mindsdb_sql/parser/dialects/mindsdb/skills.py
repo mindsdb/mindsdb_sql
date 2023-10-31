@@ -31,10 +31,11 @@ class CreateSkill(ASTNode):
         return out_str
 
     def get_string(self, *args, **kwargs):
-        using_ar = [f'{k}={repr(v)}' for k, v in self.params.items()]
+        using_ar = [f'type={repr(self.type)}']
+        using_ar += [f'{k}={repr(v)}' for k, v in self.params.items()]
         using_str = ', '.join(using_ar)
 
-        out_str = f'CREATE SKILL {"IF NOT EXISTS" if self.if_not_exists else ""}{self.name.to_string()} USING {using_str}'
+        out_str = f'CREATE SKILL {"IF NOT EXISTS " if self.if_not_exists else ""}{self.name.to_string()} USING {using_str}'
         return out_str
 
 
@@ -89,5 +90,5 @@ class DropSkill(ASTNode):
         return out_str
 
     def get_string(self, *args, **kwargs):
-        out_str = f'DROP SKILL {"IF EXISTS" if self.if_exists else ""}{str(self.name.to_string())}'
+        out_str = f'DROP SKILL {"IF EXISTS " if self.if_exists else ""}{str(self.name.to_string())}'
         return out_str

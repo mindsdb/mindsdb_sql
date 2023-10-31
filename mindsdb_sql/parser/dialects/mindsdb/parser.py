@@ -142,7 +142,8 @@ class MindsDBParser(Parser):
         return CreateSkill(
             name=p.identifier,
             type=params.pop('type'),
-            params=params
+            params=params,
+            if_not_exists=p.if_not_exists_or_empty
         )
 
     @_('DROP SKILL if_exists_or_empty identifier')

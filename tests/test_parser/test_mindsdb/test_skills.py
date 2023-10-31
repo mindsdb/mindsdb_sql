@@ -6,7 +6,7 @@ from mindsdb_sql.parser.ast import *
 class TestSkills:
     def test_create_skill(self):
         sql = '''
-            create skill my_skill
+            create skill if not exists my_skill
             using 
             type = 'knowledge_base', 
             source ='my_knowledge_base'
@@ -15,10 +15,15 @@ class TestSkills:
         expected_ast = CreateSkill(
             name=Identifier('my_skill'),
             type='knowledge_base',
-            params={'source': 'my_knowledge_base'}
+            params={'source': 'my_knowledge_base'},
+            if_not_exists=True
         )
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+        
+        # Parse again after rendering to catch problems with rendering.
+        ast = parse_sql(str(ast), dialect='mindsdb')
+        assert str(ast) == str(expected_ast)
 
     def test_update_skill(self):
         sql = '''
@@ -37,13 +42,21 @@ class TestSkills:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+        # Parse again after rendering to catch problems with rendering.
+        ast = parse_sql(str(ast), dialect='mindsdb')
+        assert str(ast) == str(expected_ast)
+
     def test_drop_skill(self):
         sql = '''
-            drop skill my_skill
+            drop skill if exists my_skill
         '''
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = DropSkill(
-            name=Identifier('my_skill'),
+            name=Identifier('my_skill'), if_exists=True
         )
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+        # Parse again after rendering to catch problems with rendering.
+        ast = parse_sql(str(ast), dialect='mindsdb')
+        assert str(ast) == str(expected_ast)
