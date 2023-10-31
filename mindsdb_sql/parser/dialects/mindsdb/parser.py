@@ -1,6 +1,7 @@
 from sly import Parser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.ast.drop import DropDatabase, DropView
+from mindsdb_sql.parser.dialects.mindsdb.agents import CreateAgent, DropAgent, UpdateAgent
 from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
@@ -88,7 +89,10 @@ class MindsDBParser(Parser):
        'drop_kb',
        'create_skill',
        'drop_skill',
-       'update_skill'
+       'update_skill',
+       'create_agent',
+       'drop_agent',
+       'update_agent'
        )
     def query(self, p):
         return p[0]
@@ -153,6 +157,26 @@ class MindsDBParser(Parser):
     @_('UPDATE SKILL identifier SET kw_parameter_list')
     def update_skill(self, p):
         return UpdateSkill(name=p.identifier, updated_params=p.kw_parameter_list)
+
+    # -- Agent --
+    @_('CREATE AGENT if_not_exists_or_empty identifier USING kw_parameter_list')
+    def create_agent(self, p):
+        params = p.kw_parameter_list
+
+        return CreateAgent(
+            name=p.identifier,
+            model=params.pop('model'),
+            params=params,
+            if_not_exists=p.if_not_exists_or_empty
+        )
+    
+    @_('DROP AGENT if_exists_or_empty identifier')
+    def drop_agent(self, p):
+        return DropAgent(name=p.identifier, if_exists=p.if_exists_or_empty)
+    
+    @_('UPDATE AGENT identifier SET kw_parameter_list')
+    def update_agent(self, p):
+        return UpdateAgent(name=p.identifier, updated_params=p.kw_parameter_list)
 
     # -- ChatBot --
     @_('CREATE CHATBOT identifier USING kw_parameter_list')
