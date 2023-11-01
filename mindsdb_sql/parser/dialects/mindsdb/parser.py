@@ -17,6 +17,7 @@ from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
 from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
 from mindsdb_sql.parser.dialects.mindsdb.knowledge_base import CreateKnowledgeBase, DropKnowledgeBase
+from mindsdb_sql.parser.dialects.mindsdb.skills import CreateSkill, DropSkill, UpdateSkill
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb.lexer import MindsDBLexer
 from mindsdb_sql.parser.dialects.mindsdb.retrain_predictor import RetrainPredictor
@@ -85,6 +86,9 @@ class MindsDBParser(Parser):
        'drop_trigger',
        'create_kb',
        'drop_kb',
+       'create_skill',
+       'drop_skill',
+       'update_skill'
        )
     def query(self, p):
         return p[0]
@@ -129,6 +133,26 @@ class MindsDBParser(Parser):
     @_('DROP KNOWLEDGE_BASE if_exists_or_empty identifier')
     def drop_kb(self, p):
         return DropKnowledgeBase(name=p.identifier, if_exists=p.if_exists_or_empty)
+
+    # -- Skills --
+    @_('CREATE SKILL if_not_exists_or_empty identifier USING kw_parameter_list')
+    def create_skill(self, p):
+        params = p.kw_parameter_list
+
+        return CreateSkill(
+            name=p.identifier,
+            type=params.pop('type'),
+            params=params,
+            if_not_exists=p.if_not_exists_or_empty
+        )
+
+    @_('DROP SKILL if_exists_or_empty identifier')
+    def drop_skill(self, p):
+        return DropSkill(name=p.identifier, if_exists=p.if_exists_or_empty)
+
+    @_('UPDATE SKILL identifier SET kw_parameter_list')
+    def update_skill(self, p):
+        return UpdateSkill(name=p.identifier, updated_params=p.kw_parameter_list)
 
     # -- ChatBot --
     @_('CREATE CHATBOT identifier USING kw_parameter_list')
