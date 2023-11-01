@@ -185,7 +185,7 @@ class MindsDBParser(Parser):
 
         database = Identifier(params.pop('database'))
         model_param = params.pop('model', None)
-        agent_param = params.pop('agent', None)
+        agent_param = params.pop('agent_name', None)
         model = Identifier(
             model_param) if model_param is not None else None
         agent = Identifier(

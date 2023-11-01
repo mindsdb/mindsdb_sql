@@ -10,7 +10,7 @@ class TestChatbots:
             using 
             model = 'chat_model', 
             database ='my_rocket_chat',
-            agent = 'my_agent'
+            agent_name = 'my_agent'
         '''
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = CreateChatBot(
