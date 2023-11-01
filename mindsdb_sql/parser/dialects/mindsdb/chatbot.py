@@ -30,7 +30,7 @@ class CreateChatBot(ASTNode):
                   f'name={self.name.to_string()}, ' \
                   f'database={self.database.to_string()}, ' \
                   f'model={model_str}, ' \
-                  f'agent_name={agent_str}, ' \
+                  f'agent={agent_str}, ' \
                   f'params={self.params})'
         return out_str
 
@@ -39,7 +39,7 @@ class CreateChatBot(ASTNode):
         params = self.params.copy()
         params['model'] = self.model.to_string() if self.model else 'NULL'
         params['database'] = self.database.to_string()
-        params['agent_name'] = self.agent.to_string() if self.agent else 'NULL'
+        params['agent'] = self.agent.to_string() if self.agent else 'NULL'
 
         using_ar = [f'{k}={repr(v)}' for k, v in params.items()]
 
