@@ -1657,6 +1657,7 @@ class MindsDBParser(Parser):
        'WARNINGS',
        'MODEL',
        'MODELS',
+       'AGENT'
        )
     def id(self, p):
         return p[0]
