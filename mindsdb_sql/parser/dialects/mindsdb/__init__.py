@@ -1,3 +1,4 @@
+from .agents import CreateAgent, DropAgent, UpdateAgent
 from .create_view import CreateView
 from .create_database import CreateDatabase
 from .create_predictor import CreatePredictor, CreateAnomalyDetectionModel
@@ -16,6 +17,7 @@ from .drop_job import DropJob
 from .chatbot import CreateChatBot, UpdateChatBot, DropChatBot
 from .trigger import CreateTrigger, DropTrigger
 from .knowledge_base import CreateKnowledgeBase, DropKnowledgeBase
+from .skills import CreateSkill, DropSkill, UpdateSkill
 
 # remove it in next release
 CreateDatasource = CreateDatabase
