@@ -1,3 +1,4 @@
+from mindsdb_sql.parser.dialects.mindsdb.rag import CreateRAG, DropRAG
 from sly import Parser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.ast.drop import DropDatabase, DropView
@@ -137,6 +138,26 @@ class MindsDBParser(Parser):
     @_('DROP KNOWLEDGE_BASE if_exists_or_empty identifier')
     def drop_kb(self, p):
         return DropKnowledgeBase(name=p.identifier, if_exists=p.if_exists_or_empty)
+
+    # -- RAG --
+    @_('CREATE RAG if_not_exists_or_empty identifier USING kw_parameter_list')
+    def create_rag(self, p):
+        params = p.kw_parameter_list
+
+        llm = params.pop('llm')
+        knowledge_base = params.pop('knowledge_base')
+
+        return CreateRAG(
+            name=p.identifier,
+            llm=Identifier(llm),
+            knowledge_base=Identifier(knowledge_base),
+            params=params,
+            if_not_exists=p.if_not_exists_or_empty
+        )
+
+    @_('DROP RAG if_exists_or_empty identifier')
+    def drop_rag(self, p):
+        return DropRAG(name=p.identifier, if_exists=p.if_exists_or_empty)
 
     # -- Skills --
     @_('CREATE SKILL if_not_exists_or_empty identifier USING kw_parameter_list')
