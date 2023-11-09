@@ -10,7 +10,7 @@ class CreateRAG(ASTNode):
         self,
         name,
         llm,
-        knowledge_base=None,
+        knowledge_base_store=None,
         from_select=None,
         params=None,
         if_not_exists=False,
@@ -21,7 +21,7 @@ class CreateRAG(ASTNode):
         Args:
             name: Identifier -- name of the RAG
             llm: Identifier -- name of the LLM to use
-            knowledge_base: Identifier -- name of the knowledge_base to use
+            knowledge_base_store: Identifier -- name of the knowledge_base_store to use
             from_select: SelectStatement -- select statement to use as the source of the RAG
             params: dict -- additional parameters to pass to the RAG.
             if_not_exists: bool -- if True, do not raise an error if the RAG already exists
@@ -29,14 +29,14 @@ class CreateRAG(ASTNode):
         super().__init__(*args, **kwargs)
         self.name = name
         self.llm = llm
-        self.knowledge_base = knowledge_base
+        self.knowledge_base_store = knowledge_base_store
         self.params = params
         self.if_not_exists = if_not_exists
         self.from_query = from_select
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
-        kb_str = f"{ind} knowledge_base={self.knowledge_base.to_string()},\n" if self.knowledge_base else ""
+        kb_str = f"{ind} knowledge_base_store={self.knowledge_base_store.to_string()},\n" if self.knowledge_base_store else ""
         out_str = f"""
         {ind}CreateRAG(
         {ind}    if_not_exists={self.if_not_exists},
@@ -56,7 +56,7 @@ class CreateRAG(ASTNode):
             f"FROM ({self.from_query.get_string()})" if self.from_query else ""
         )
         # only add knowledge base if it is provided, else we will use the default
-        knowledge_base_str = f"  STORAGE = {self.knowledge_base.to_string()}" if self.knowledge_base else ""
+        knowledge_base_str = f"  knowledge_base_store = {self.knowledge_base_store.to_string()}" if self.knowledge_base_store else ""
 
         out_str = (
             f"CREATE RAG {'IF NOT EXISTS' if self.if_not_exists else ''}{self.name.to_string()} "

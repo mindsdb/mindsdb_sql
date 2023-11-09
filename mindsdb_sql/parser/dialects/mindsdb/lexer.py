@@ -31,6 +31,7 @@ class MindsDBLexer(Lexer):
         ENGINE, TRAIN, PREDICT, PARAMETERS, JOB, CHATBOT, EVERY,PROJECT,
         ANOMALY, DETECTION,
         KNOWLEDGE_BASE, KNOWLEDGE_BASES,
+        RAG, RAGS,
         SKILL,
         AGENT,
 
@@ -121,6 +122,8 @@ class MindsDBLexer(Lexer):
 
     KNOWLEDGE_BASE = r'\bKNOWLEDGE[_|\s]BASE\b'
     KNOWLEDGE_BASES = r'\bKNOWLEDGE[_|\s]BASES\b'
+    RAG = r'\bRAG\b'
+    RAGS = r'\bRAGS\b'
     SKILL = r'\bSKILL\b'
     AGENT = r'\bAGENT\b'
 

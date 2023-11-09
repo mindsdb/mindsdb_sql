@@ -88,6 +88,8 @@ class MindsDBParser(Parser):
        'drop_trigger',
        'create_kb',
        'drop_kb',
+       'create_rag',
+       'drop_rag',
        'create_skill',
        'drop_skill',
        'update_skill',
@@ -144,13 +146,24 @@ class MindsDBParser(Parser):
     def create_rag(self, p):
         params = p.kw_parameter_list
 
-        llm = params.pop('llm')
-        knowledge_base = params.pop('knowledge_base')
+        llm = params.pop('llm', None)
+        knowledge_base_store = params.pop('knowledge_base_store', None)
+
+        if not llm:
+            raise ParsingException('Missing llm parameter')
+
+        if isinstance(llm, str):
+            # convert to identifier
+            llm = Identifier(llm)
+
+        if isinstance(knowledge_base_store, str):
+            # convert to identifier
+            knowledge_base_store = Identifier(knowledge_base_store)
 
         return CreateRAG(
             name=p.identifier,
-            llm=Identifier(llm),
-            knowledge_base=Identifier(knowledge_base),
+            llm=llm,
+            knowledge_base_store=knowledge_base_store,
             params=params,
             if_not_exists=p.if_not_exists_or_empty
         )
