@@ -11,5 +11,5 @@ from .operation import Operation, BinaryOperation, UnaryOperation, BetweenOperat
 from .order_by import OrderBy
 from .parameter import Parameter
 from .case import Case
-from .native_query import NativeQuery
+from .native_query import NativeQuery, StrQuery
 from .data import Data

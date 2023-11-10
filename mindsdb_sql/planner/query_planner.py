@@ -4,7 +4,7 @@ from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, OrderBy,
                                     BetweenOperation, Union, NullConstant, CreateTable, Function, Insert,
-                                    Update, NativeQuery, Parameter, Delete)
+                                    Update, NativeQuery, StrQuery, Parameter, Delete)
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
@@ -170,7 +170,13 @@ class QueryPlanner():
         utils.query_traversal(query, _prepare_integration_select)
 
     def get_integration_select_step(self, select):
-        integration_name, table = self.resolve_database_table(select.from_table)
+        if isinstance(select.from_table, NativeQuery):
+            integration_name = select.from_table.integration.parts[-1]
+            alias = select.from_table.alias
+            select.from_table = StrQuery(select.from_table.query)
+            select.from_table.alias = alias
+        else:
+            integration_name, table = self.resolve_database_table(select.from_table)
 
         fetch_df_select = copy.deepcopy(select)
         self.prepare_integration_select(integration_name, fetch_df_select)
@@ -1051,7 +1057,14 @@ class QueryPlanner():
                 # left is predictor too
 
                 raise PlanningException(f'Can\'t join two predictors {str(join_left.parts[0])} and {str(join_left.parts[1])}')
-            elif isinstance(join_left, Identifier):
+            elif (
+                isinstance(join_left, Identifier) or
+                (
+                    isinstance(join_left, NativeQuery)
+                    and self.is_predictor(join_right)
+                    and self.get_predictor(join_right).get('timeseries')
+                )
+            ):
                 # the left is table
                 predictor_namespace, predictor = self.get_predictor_namespace_and_name_from_identifier(join_right)
 

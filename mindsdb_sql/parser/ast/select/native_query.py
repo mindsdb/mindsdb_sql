@@ -19,3 +19,22 @@ class NativeQuery(ASTNode):
 
     def get_string(self, *args, **kwargs):
         return f'{self.integration.to_string()} ({self.query})'
+
+
+class StrQuery(ASTNode):
+    def __init__(self, query: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.query = query
+
+    def to_tree(self, *args, level=0, **kwargs):
+        return indent(level) + \
+               f'StrQuery(query="{self.query}")'
+
+    def get_string(self, *args, **kwargs):
+        return f'({self.query})'
+
+    def to_string(self, alias=True):
+        s = self.get_string()
+        if self.alias is not None:
+            s = f'{s} as {self.alias.parts[0]}'
+        return s
