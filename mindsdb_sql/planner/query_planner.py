@@ -672,8 +672,8 @@ class QueryPlanner():
             'saved_limit': saved_limit,
         }
 
-    def plan_join_tables(self, query):
-        query = copy.deepcopy(query)
+    def plan_join_tables(self, query_in):
+        query = copy.deepcopy(query_in)
 
         # replace sub selects, with identifiers with links to original selects
         def replace_subselects(node, **args):
@@ -805,6 +805,7 @@ class QueryPlanner():
                     # keep only column name
                     arg1.parts = [arg1.parts[-1]]
 
+                    node2._orig_node = node
                     tables_idx[parts]['conditions'].append(node2)
 
         query_traversal(query.where, _check_condition)
@@ -850,11 +851,22 @@ class QueryPlanner():
                     if predictor_info.get('timeseries'):
                         raise NotImplementedError("TS predictor is not supported here yet")
                     data_step = step_stack[-1]
+                    row_dict = None
+                    if item['conditions']:
+                        row_dict = {}
+                        for el in item['conditions']:
+                            if isinstance(el.args[0], Identifier) and isinstance(el.args[1], Constant) and el.op == '=':
+                                row_dict[el.args[0].parts[-1]] = el.args[1].value
+
+                                # exclude condition
+                                item['conditions'][0]._orig_node.args = [Constant(0), Constant(0)]
+
                     predictor_step = self.plan.add_step(ApplyPredictorStep(
                         namespace=item['integration'],
                         dataframe=data_step.result,
                         predictor=table_name,
-                        params=query.using
+                        params=query.using,
+                        row_dict=row_dict,
                     ))
                     step_stack.append(predictor_step)
                 else:
@@ -890,7 +902,7 @@ class QueryPlanner():
 
                 step_stack.append(step)
 
-
+        query_in.where = query.where
         return step_stack.pop()
 
     def plan_group(self, query, last_step):
