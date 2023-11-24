@@ -18,7 +18,7 @@ from mindsdb_sql.parser.ast import (
 )
 
 
-def test_create_knowledeg_base():
+def test_create_knowledge_base():
     # create without select
     sql = """
         CREATE KNOWLEDGE_BASE my_knowledge_base
