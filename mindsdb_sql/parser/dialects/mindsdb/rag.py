@@ -98,3 +98,33 @@ class DropRAG(ASTNode):
     def get_string(self, *args, **kwargs):
         out_str = f'DROP RAG {"IF EXISTS" if self.if_exists else ""}{self.name.to_string()}'
         return out_str
+
+
+class UpdateRAG(ASTNode):
+    """
+    Node for updating a RAG
+    """
+
+    def __init__(self, name, updated_params, *args, **kwargs):
+        """
+        Parameters:
+            name (Identifier): name of the RAG to update
+            updated_params (dict): new SET parameters of the RAG to update
+        """
+        super().__init__(*args, **kwargs)
+        self.name = name
+        self.params = updated_params
+
+    def to_tree(self, level=0, *args, **kwargs):
+        ind = indent(level)
+        out_str = f'{ind}UpdateRAG(' \
+                  f'name={self.name.to_string()}, ' \
+                  f'updated_params={self.params})'
+        return out_str
+
+    def get_string(self, *args, **kwargs):
+        set_ar = [f'{k}={repr(v)}' for k, v in self.params.items()]
+        set_str = ', '.join(set_ar)
+
+        out_str = f'UPDATE RAG {self.name.to_string()} SET {set_str}'
+        return out_str
