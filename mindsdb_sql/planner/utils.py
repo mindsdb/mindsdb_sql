@@ -1,4 +1,5 @@
 import copy
+from typing import List
 
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryOperation, Constant,
@@ -6,20 +7,20 @@ from mindsdb_sql.parser.ast import (Identifier, Operation, Star, Select, BinaryO
 from mindsdb_sql.parser import ast
 
 
-def get_integration_path_from_identifier(identifier):
-    parts = identifier.parts
-    integration_name = parts[0]
-    new_parts = parts[1:]
-
-    if len(parts) == 1:
-        raise PlanningException(f'No integration specified for table: {str(identifier)}')
-    elif len(parts) > 4:
-        raise PlanningException(f'Too many parts (dots) in table identifier: {str(identifier)}')
-
-    new_identifier = copy.deepcopy(identifier)
-    new_identifier.parts = new_parts
-
-    return integration_name, new_identifier
+# def get_integration_path_from_identifier(identifier):
+#     parts = identifier.parts
+#     integration_name = parts[0]
+#     new_parts = parts[1:]
+#
+#     if len(parts) == 1:
+#         raise PlanningException(f'No integration specified for table: {str(identifier)}')
+#     elif len(parts) > 4:
+#         raise PlanningException(f'Too many parts (dots) in table identifier: {str(identifier)}')
+#
+#     new_identifier = copy.deepcopy(identifier)
+#     new_identifier.parts = new_parts
+#
+#     return integration_name, new_identifier
 
 
 def get_predictor_name_identifier(identifier):
@@ -354,3 +355,13 @@ def fill_query_params(query, params):
 
     return query
 
+
+def filters_to_bin_op(filters: List[BinaryOperation]):
+    # make a new where clause without params
+    where = None
+    for flt in filters:
+        if where is None:
+            where = flt
+        else:
+            where = BinaryOperation(op='and', args=[where, flt])
+    return where

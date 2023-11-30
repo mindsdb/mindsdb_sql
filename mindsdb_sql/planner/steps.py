@@ -138,12 +138,13 @@ class FetchDataframeStep(PlanStep):
 
 class ApplyPredictorStep(PlanStep):
     """Applies a mindsdb predictor on some dataframe and returns a new dataframe with predictions"""
-    def __init__(self, namespace, predictor, dataframe, params=None,  *args, **kwargs):
+    def __init__(self, namespace, predictor, dataframe, params=None, row_dict=None,  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.namespace = namespace
         self.predictor = predictor
         self.dataframe = dataframe
         self.params = params
+        self.row_dict = row_dict
 
         if isinstance(dataframe, Result):
             self.references.append(dataframe)
