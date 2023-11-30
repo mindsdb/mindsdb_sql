@@ -18,7 +18,7 @@ from mindsdb_sql.planner.utils import (disambiguate_predictor_column_identifier,
                                        get_deepest_select,
                                        recursively_extract_column_values,
                                        recursively_check_join_identifiers_for_ambiguity,
-                                       query_traversal)
+                                       query_traversal, filters_to_bin_op)
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner import utils
 from .query_prepare import PreparedStatementPlanner
@@ -167,7 +167,7 @@ class QueryPlanner():
                         if isinstance(last_part, str):
                             node.alias = Identifier(parts=[node.parts[-1]])
 
-        utils.query_traversal(query, _prepare_integration_select)
+        query_traversal(query, _prepare_integration_select)
 
     def get_integration_select_step(self, select):
         integration_name, table = self.resolve_database_table(select.from_table)
@@ -230,7 +230,7 @@ class QueryPlanner():
                 if isinstance(node, ast.NativeQuery) or isinstance(node, ast.Data):
                     mdb_entities.append(node)
 
-        utils.query_traversal(query, find_predictors)
+        query_traversal(query, find_predictors)
         return {'mdb_entities': mdb_entities, 'integrations': integrations, 'predictors': predictors}
 
     def get_nested_selects_plan_fnc(self, main_integration, force=False):
@@ -273,8 +273,8 @@ class QueryPlanner():
         is_api_db = self.integrations.get(main_integration, {}).get('class_type') == 'api'
 
         find_selects = self.get_nested_selects_plan_fnc(main_integration, force=is_api_db)
-        query.targets = utils.query_traversal(query.targets, find_selects)
-        utils.query_traversal(query.where, find_selects)
+        query.targets = query_traversal(query.targets, find_selects)
+        query_traversal(query.where, find_selects)
 
         # get info of updated query
         query_info = self.get_query_info(query)
@@ -427,7 +427,7 @@ class QueryPlanner():
                 if not isinstance(arg1, Identifier):
                     arg1, arg2 = arg2, arg1
 
-                if isinstance(arg1, Identifier) and isinstance(arg2, Constant) and len(arg1.parts) > 1:
+                if isinstance(arg1, Identifier) and isinstance(arg2, (Constant, Parameter)) and len(arg1.parts) > 1:
                     model = Identifier(parts=arg1.parts[:-1])
 
                     if (
@@ -440,22 +440,16 @@ class QueryPlanner():
                         return
                 table_filters.append(node)
 
+        # find subselects
+        main_integration, _ = self.resolve_database_table(table)
+        find_selects = self.get_nested_selects_plan_fnc(main_integration, force=True)
+        query_traversal(int_select.where, find_selects)
+
+        # split conditions
         query_traversal(int_select.where, split_filters)
 
-        def filters_to_bin_op(filters):
-            # make a new where clause without params
-            where = None
-            for flt in filters:
-                if where is None:
-                    where = flt
-                else:
-                    where = BinaryOperation(op='and', args=[where, flt])
-            return where
-
-        model_where = None
         if len(model_filters) > 0 and 'or' not in binary_ops:
             int_select.where = filters_to_bin_op(table_filters)
-            model_where = filters_to_bin_op(model_filters)
 
         integration_select_step = self.plan_integration_select(int_select)
 
@@ -463,17 +457,26 @@ class QueryPlanner():
 
         if len(params) == 0:
             params = None
+
+        row_dict = None
+        if model_filters:
+            row_dict = {}
+            for el in model_filters:
+                if isinstance(el.args[0], Identifier) and el.op == '=':
+                    if isinstance(el.args[1], (Constant, Parameter)):
+                        row_dict[el.args[0].parts[-1]] = el.args[1].value
+
         last_step = self.plan.add_step(ApplyPredictorStep(
             namespace=predictor_namespace,
             dataframe=integration_select_step.result,
             predictor=predictor_identifier,
-            params=params
+            params=params,
+            row_dict=row_dict
         ))
 
         return {
             'predictor': last_step,
             'data': integration_select_step,
-            'model_filters': model_where,
         }
 
     def plan_fetch_timeseries_partitions(self, query, table, predictor_group_by_names):
@@ -795,7 +798,7 @@ class QueryPlanner():
                 if not isinstance(arg1, Identifier):
                     arg1, arg2 = arg2, arg1
 
-                if isinstance(arg1, Identifier) and isinstance(arg2, Constant):
+                if isinstance(arg1, Identifier) and isinstance(arg2, (Constant, Parameter)):
                     if len(arg1.parts) < 2:
                         return
 
@@ -809,6 +812,9 @@ class QueryPlanner():
 
                     node2._orig_node = node
                     tables_idx[parts]['conditions'].append(node2)
+
+        find_selects = self.get_nested_selects_plan_fnc(self.default_namespace, force=True)
+        query_traversal(query.where, find_selects)
 
         query_traversal(query.where, _check_condition)
 
@@ -826,12 +832,7 @@ class QueryPlanner():
                     item['sub_select'].parentheses = False
                     step = self.plan_select(item['sub_select'])
 
-                    where = None
-                    for cond in item['conditions']:
-                        if where is None:
-                            where = cond
-                        else:
-                            where = BinaryOperation(op='and', args=[where, cond])
+                    where = filters_to_bin_op(item['conditions'])
 
                     # apply table alias
                     query2 = Select(targets=[Star()], where=where)
@@ -857,8 +858,10 @@ class QueryPlanner():
                     if item['conditions']:
                         row_dict = {}
                         for el in item['conditions']:
-                            if isinstance(el.args[0], Identifier) and isinstance(el.args[1], Constant) and el.op == '=':
-                                row_dict[el.args[0].parts[-1]] = el.args[1].value
+                            if isinstance(el.args[0], Identifier) and el.op == '=':
+
+                                if isinstance(el.args[1], (Constant, Parameter)):
+                                    row_dict[el.args[0].parts[-1]] = el.args[1].value
 
                                 # exclude condition
                                 item['conditions'][0]._orig_node.args = [Constant(0), Constant(0)]
@@ -873,7 +876,6 @@ class QueryPlanner():
                     step_stack.append(predictor_step)
                 else:
                     # is table
-
                     query2 = Select(from_table=table_name, targets=[Star()])
                     # parts = tuple(map(str.lower, table_name.parts))
                     conditions = item['conditions']
@@ -887,6 +889,7 @@ class QueryPlanner():
                         else:
                             query2.where = cond
 
+                    # TODO use self.get_integration_select_step(query2)
                     step = FetchDataframeStep(integration=item['integration'], query=query2)
                     self.plan.add_step(step)
                     step_stack.append(step)
@@ -899,6 +902,7 @@ class QueryPlanner():
                 # TODO
                 new_join.left = Identifier('tab1')
                 new_join.right = Identifier('tab2')
+                new_join.implicit = False
 
                 step = self.plan.add_step(JoinStep(left=step_left.result, right=step_right.result, query=new_join))
 
@@ -1042,26 +1046,21 @@ class QueryPlanner():
 
         aliased_fields = self.get_aliased_fields(query.targets)
 
-        recursively_check_join_identifiers_for_ambiguity(query.where)
-        recursively_check_join_identifiers_for_ambiguity(query.group_by, aliased_fields=aliased_fields)
-        recursively_check_join_identifiers_for_ambiguity(query.having)
-        recursively_check_join_identifiers_for_ambiguity(query.order_by, aliased_fields=aliased_fields)
-
         # check predictor
         predictor = None
         table = None
         predictor_namespace = None
         predictor_is_left = False
 
-        if not (isinstance(join_right, Identifier) and self.is_predictor(join_right)):
+        if not self.is_predictor(join_right):
             # predictor not in the right, swap
             join_left, join_right = join_right, join_left
             predictor_is_left = True
 
-        if isinstance(join_right, Identifier) and self.is_predictor(join_right):
+        if self.is_predictor(join_right):
             # predictor is in the right now
 
-            if isinstance(join_left, Identifier) and self.is_predictor(join_left):
+            if self.is_predictor(join_left):
                 # left is predictor too
 
                 raise PlanningException(f'Can\'t join two predictors {str(join_left.parts[0])} and {str(join_left.parts[1])}')
@@ -1076,6 +1075,11 @@ class QueryPlanner():
                 # One argument is a table, another is a predictor
                 # Apply mindsdb model to result of last dataframe fetch
                 # Then join results of applying mindsdb with table
+
+                recursively_check_join_identifiers_for_ambiguity(query.where)
+                recursively_check_join_identifiers_for_ambiguity(query.group_by, aliased_fields=aliased_fields)
+                recursively_check_join_identifiers_for_ambiguity(query.having)
+                recursively_check_join_identifiers_for_ambiguity(query.order_by, aliased_fields=aliased_fields)
 
                 if self.get_predictor(predictor).get('timeseries'):
                     predictor_steps = self.plan_timeseries_predictor(query, table, predictor_namespace, predictor)
@@ -1100,10 +1104,6 @@ class QueryPlanner():
                     left, right = right, left
 
                 last_step = self.plan.add_step(JoinStep(left=left, right=right, query=new_join))
-
-                if predictor_steps.get('model_filters'):
-                    last_step = self.plan.add_step(FilterStep(dataframe=last_step.result,
-                                                              query=predictor_steps['model_filters']))
 
                 # limit from timeseries
                 if predictor_steps.get('saved_limit'):
@@ -1222,7 +1222,7 @@ class QueryPlanner():
         is_api_db = self.integrations.get(main_integration, {}).get('class_type') == 'api'
 
         find_selects = self.get_nested_selects_plan_fnc(main_integration, force=is_api_db)
-        utils.query_traversal(query.where, find_selects)
+        query_traversal(query.where, find_selects)
 
         self.prepare_integration_select(main_integration, query.where)
 
