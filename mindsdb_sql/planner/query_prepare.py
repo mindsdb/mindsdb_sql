@@ -186,8 +186,8 @@ class PreparedStatementPlanner():
         utils.query_traversal(query, find_predictors)
 
         # only 1 predictor is allowed
-        if len(query_predictors) > 1:
-            raise PlanningException(f'To many predictors in query: {len(query_predictors)}')
+        # if len(query_predictors) > 1:
+        #     raise PlanningException(f'To many predictors in query: {len(query_predictors)}')
 
         # === get all tables from 1st level of query ===
         stmt.tables_map = {}

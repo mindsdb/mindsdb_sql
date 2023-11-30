@@ -35,12 +35,14 @@ class FakeExecutor:
                 {'id': 2, 'name': 'jkl;'}
             ]
         if isinstance(step, steps.GetTableColumns):
-            if step.table in ('tab', 'tab1', 'data.ny_output', 'data', 'yyy.zzz', 'sweat', 'schem.sweat', 'predictors', 'v1'):
+            if step.table in ('tab', 'tab1', 'tab2', 'tab3', 'data.ny_output', 'data', 'yyy.zzz', 'sweat', 'schem.sweat', 'predictors', 'v1'):
                 cols = [
                     {'name': 'id', 'type': 'int'},
                     {'name': 'name', 'type': 'str'},
                     {'name': 'a column with spaces', 'type': 'str'},
                     {'name': 'column1', 'type': 'str'},
+                    {'name': 'column2', 'type': 'str'},
+                    {'name': 'column3', 'type': 'str'},
                     {'name': 'asset', 'type': 'float'},
                     {'name': 'time', 'type': 'datetime'},
                     {'name': 'predicted', 'type': 'float'},

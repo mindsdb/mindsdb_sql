@@ -236,37 +236,38 @@ class TestPlanJoinTables:
         assert plan.steps == expected_plan.steps
         
 
-    def test_join_tables_where_ambigous_column_error(self):
-        query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
-                       from_table=Join(left=Identifier('int.tab1'),
-                                       right=Identifier('int.tab2'),
-                                       condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'),
-                                                                               Identifier('tab2.column1')]),
-                                       join_type=JoinType.INNER_JOIN
-                                       ),
-                       where=BinaryOperation('and',
-                                             args=[
-                                                 BinaryOperation('and',
-                                                                 args=[
-                                                                     BinaryOperation('=',
-                                                                                     args=[Identifier('tab1.column1'),
-                                                                                           Constant(1)]),
-                                                                     BinaryOperation('=',
-                                                                                     args=[Identifier('tab2.column1'),
-                                                                                           Constant(0)]),
-
-                                                                 ]
-                                                                 ),
-                                                 BinaryOperation('=',
-                                                                 args=[Identifier('column3'),
-                                                                       Constant(0)]),
-                                                 # Ambigous column: no idea what table column3 comes from
-                                             ]
-                                             )
-                       )
-
-        with pytest.raises(PlanningException) as e:
-            plan_query(query, integrations=['int'])
+    # This quiery should be sent to integration without raising exception
+    # def test_join_tables_where_ambigous_column_error(self):
+    #     query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
+    #                    from_table=Join(left=Identifier('int.tab1'),
+    #                                    right=Identifier('int.tab2'),
+    #                                    condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'),
+    #                                                                            Identifier('tab2.column1')]),
+    #                                    join_type=JoinType.INNER_JOIN
+    #                                    ),
+    #                    where=BinaryOperation('and',
+    #                                          args=[
+    #                                              BinaryOperation('and',
+    #                                                              args=[
+    #                                                                  BinaryOperation('=',
+    #                                                                                  args=[Identifier('tab1.column1'),
+    #                                                                                        Constant(1)]),
+    #                                                                  BinaryOperation('=',
+    #                                                                                  args=[Identifier('tab2.column1'),
+    #                                                                                        Constant(0)]),
+    #
+    #                                                              ]
+    #                                                              ),
+    #                                              BinaryOperation('=',
+    #                                                              args=[Identifier('column3'),
+    #                                                                    Constant(0)]),
+    #                                              # Ambigous column: no idea what table column3 comes from
+    #                                          ]
+    #                                          )
+    #                    )
+    #
+    #     with pytest.raises(PlanningException) as e:
+    #         plan_query(query, integrations=['int'])
 
     def test_join_tables_disambiguate_identifiers_in_condition(self):
         query = parse_sql('''
