@@ -506,7 +506,9 @@ class QueryPlanner():
             raise PlanningException(
                 f'Can\'t provide ORDER BY to time series predictor, it will be taken from predictor settings. Found: {query.order_by}')
 
-        saved_limit = query.limit
+        saved_limit = None
+        if query.limit is not None:
+            saved_limit = query.limit.value
 
         if query.group_by or query.having or query.offset:
             raise PlanningException(f'Unsupported query to timeseries predictor: {str(query)}')

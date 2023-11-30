@@ -205,7 +205,7 @@ class TestJoinTimeseriesPredictor:
                              left=Identifier('result_1'),
                              join_type=JoinType.LEFT_JOIN)
                          ),
-                LimitOffsetStep(dataframe=Result(3), limit=query.limit),
+                LimitOffsetStep(dataframe=Result(3), limit=query.limit.value),
                 ProjectStep(dataframe=Result(4), columns=[Star()]),
             ],
         )
@@ -1308,7 +1308,7 @@ class TestJoinTimeseriesPredictor:
                          ),
                 LimitOffsetStep(step_num=4,
                                 dataframe=Result(3),
-                                limit=Constant(4)),
+                                limit=4),
                 ProjectStep(dataframe=Result(4),
                             columns=[Identifier(parts=['tb', 'saledate'], alias=Identifier('date')),
                                      Identifier(parts=['tb', 'MA'], alias=Identifier('forecast'))])
