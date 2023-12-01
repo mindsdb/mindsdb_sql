@@ -848,6 +848,30 @@ class MindsDBParser(Parser):
             if_not_exists=hasattr(p, 'IF_NOT_EXISTS')
         )
 
+    @_('create_forecasting_model WINDOW integer')
+    def create_forecasting_model(self, p):
+        p.create_forecasting_model.window = p.integer
+        return p.create_forecasting_model
+
+    @_('create_forecasting_model HORIZON integer')
+    def create_forecasting_model(self, p):
+        p.create_forecasting_model.horizon = p.integer
+        return p.create_forecasting_model
+
+    @_('create_forecasting_model GROUP_BY expr_list')
+    def create_forecasting_model(self, p):
+        group_by = p.expr_list
+        if not isinstance(group_by, list):
+            group_by = [group_by]
+
+        p.create_forecasting_model.group_by = group_by
+        return p.create_forecasting_model
+
+    @_('create_forecasting_model ORDER_BY ordering_terms')
+    def create_forecasting_model(self, p):
+        p.create_forecasting_model.order_by = p.ordering_terms
+        return p.create_forecasting_model
+
     @_('create_forecasting_model USING kw_parameter_list')
     def create_forecasting_model(self, p):
         p.create_forecasting_model.using = p.kw_parameter_list

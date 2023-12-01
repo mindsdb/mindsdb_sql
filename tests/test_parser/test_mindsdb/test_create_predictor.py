@@ -191,8 +191,12 @@ class TestCreatePredictor:
             create_clause = """CREATE FORECASTING MODEL forecasting_model """
             rest_clause = """
             FROM integration_name (select * FROM table)
+            WINDOW 10
+            HORIZON 5
+            ORDER BY time
+            GROUP BY group
             USING
-                window2=10
+                param='a'
             """
             sql = create_clause + predict_clause + rest_clause
             ast = parse_sql(sql, dialect='mindsdb')
@@ -203,8 +207,12 @@ class TestCreatePredictor:
                 integration_name=Identifier('integration_name'),
                 query_str='select * FROM table',
                 targets=[Identifier('y')] if predict_clause else None,
+                window=10,
+                horizon=5,
+                order_by=[OrderBy(Identifier('time'), direction='default')],
+                group_by=[Identifier('group')],
                 using={
-                    'window2': 10  # TODO: make it work with `window`
+                    'param': 'a'
                 }
             )
 
