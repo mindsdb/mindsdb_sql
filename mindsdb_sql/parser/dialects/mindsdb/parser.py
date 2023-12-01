@@ -823,10 +823,8 @@ class MindsDBParser(Parser):
 
     ## Forecasting
     @_(
-        'CREATE FORECASTING MODEL identifier',  # for methods that do not require training (e.g. TimeGPT)
-        'CREATE FORECASTING MODEL identifier FROM identifier LPAREN raw_query RPAREN',
-        'CREATE FORECASTING MODEL identifier PREDICT result_columns',
-        'CREATE FORECASTING MODEL identifier PREDICT result_columns FROM identifier LPAREN raw_query RPAREN',
+        'CREATE FORECASTING MODEL identifier PREDICT result_columns',  # for pre-trained models (e.g. TimeGPT)
+        'CREATE FORECASTING MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
         # TODO add IF_NOT_EXISTS elegantly (should be low level BNF expansion)
     )
     def create_forecasting_model(self, p):

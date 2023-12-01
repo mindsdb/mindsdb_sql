@@ -187,34 +187,34 @@ class TestCreatePredictor:
             assert ast.to_tree() == expected_ast.to_tree()
 
     def test_create_forecasting_model(self):
-        for predict_clause in ["", " PREDICT y "]:
-            create_clause = """CREATE FORECASTING MODEL forecasting_model """
-            rest_clause = """
-            FROM integration_name (select * FROM table)
-            WINDOW 10
-            HORIZON 5
-            ORDER BY time
-            GROUP BY group
-            USING
-                param='a'
-            """
-            sql = create_clause + predict_clause + rest_clause
-            ast = parse_sql(sql, dialect='mindsdb')
+        create_clause = "CREATE FORECASTING MODEL forecasting_model"
+        rest_clause = """
+        FROM integration_name (select * FROM table)
+        PREDICT y
+        WINDOW 10
+        HORIZON 5
+        ORDER BY time
+        GROUP BY group
+        USING
+            param='a'
+        """
+        sql = create_clause + rest_clause
+        ast = parse_sql(sql, dialect='mindsdb')
 
-            expected_ast = CreateForecastingModel(
-                name=Identifier('forecasting_model'),
-                task=Identifier('Forecasting'),
-                integration_name=Identifier('integration_name'),
-                query_str='select * FROM table',
-                targets=[Identifier('y')] if predict_clause else None,
-                window=10,
-                horizon=5,
-                order_by=[OrderBy(Identifier('time'), direction='default')],
-                group_by=[Identifier('group')],
-                using={
-                    'param': 'a'
-                }
-            )
+        expected_ast = CreateForecastingModel(
+            name=Identifier('forecasting_model'),
+            task=Identifier('Forecasting'),
+            integration_name=Identifier('integration_name'),
+            query_str='select * FROM table',
+            targets=[Identifier('y')],
+            window=10,
+            horizon=5,
+            order_by=[OrderBy(Identifier('time'), direction='default')],
+            group_by=[Identifier('group')],
+            using={
+                'param': 'a'
+            }
+        )
 
-            assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
-            assert ast.to_tree() == expected_ast.to_tree()
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
