@@ -30,6 +30,7 @@ class MindsDBLexer(Lexer):
         LATEST, LAST, HORIZON, USING,
         ENGINE, TRAIN, PREDICT, PARAMETERS, JOB, CHATBOT, EVERY,PROJECT,
         ANOMALY, DETECTION,
+        FORECASTING,
         KNOWLEDGE_BASE, KNOWLEDGE_BASES,
         SKILL,
         AGENT,
@@ -118,6 +119,7 @@ class MindsDBLexer(Lexer):
     # Typed models
     ANOMALY = r'\bANOMALY\b'
     DETECTION = r'\bDETECTION\b'
+    FORECASTING = r'\bFORECASTING\b'
 
     KNOWLEDGE_BASE = r'\bKNOWLEDGE[_|\s]BASE\b'
     KNOWLEDGE_BASES = r'\bKNOWLEDGE[_|\s]BASES\b'

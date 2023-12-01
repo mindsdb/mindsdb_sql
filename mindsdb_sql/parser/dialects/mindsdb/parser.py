@@ -6,7 +6,8 @@ from mindsdb_sql.parser.dialects.mindsdb.drop_datasource import DropDatasource
 from mindsdb_sql.parser.dialects.mindsdb.drop_predictor import DropPredictor
 from mindsdb_sql.parser.dialects.mindsdb.drop_dataset import DropDataset
 from mindsdb_sql.parser.dialects.mindsdb.drop_ml_engine import DropMLEngine
-from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor, CreateAnomalyDetectionModel
+from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreatePredictor
+from mindsdb_sql.parser.dialects.mindsdb.create_predictor import CreateAnomalyDetectionModel, CreateForecastingModel
 from mindsdb_sql.parser.dialects.mindsdb.create_database import CreateDatabase
 from mindsdb_sql.parser.dialects.mindsdb.create_ml_engine import CreateMLEngine
 from mindsdb_sql.parser.dialects.mindsdb.create_view import CreateView
@@ -64,6 +65,7 @@ class MindsDBParser(Parser):
        'create_integration',
        'create_view',
        'create_anomaly_detection_model',
+       'create_forecasting_model',
        'drop_predictor',
        'drop_datasource',
        'drop_dataset',
@@ -818,6 +820,38 @@ class MindsDBParser(Parser):
     def create_anomaly_detection_model(self, p):
         p.create_anomaly_detection_model.using = p.kw_parameter_list
         return p.create_anomaly_detection_model
+
+    ## Forecasting
+    @_(
+        'CREATE FORECASTING MODEL identifier',  # for methods that do not require training (e.g. TimeGPT)
+        'CREATE FORECASTING MODEL identifier FROM identifier LPAREN raw_query RPAREN',
+        'CREATE FORECASTING MODEL identifier PREDICT result_columns',
+        'CREATE FORECASTING MODEL identifier PREDICT result_columns FROM identifier LPAREN raw_query RPAREN',
+        # TODO add IF_NOT_EXISTS elegantly (should be low level BNF expansion)
+    )
+    def create_forecasting_model(self, p):
+        query_str = None
+        if hasattr(p, 'raw_query'):
+            query_str = tokens_to_string(p.raw_query)
+
+        if hasattr(p, 'identifier'):
+            # single identifier field
+            name = p.identifier
+        else:
+            name = p.identifier0
+
+        return CreateForecastingModel(
+            name=name,
+            targets=getattr(p, 'result_columns', None),
+            integration_name=getattr(p, 'identifier1', None),
+            query_str=query_str,
+            if_not_exists=hasattr(p, 'IF_NOT_EXISTS')
+        )
+
+    @_('create_forecasting_model USING kw_parameter_list')
+    def create_forecasting_model(self, p):
+        p.create_forecasting_model.using = p.kw_parameter_list
+        return p.create_forecasting_model
 
     # RETRAIN PREDICTOR
 
