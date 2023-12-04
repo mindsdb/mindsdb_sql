@@ -94,15 +94,24 @@ def test_create_knowledge_base():
     assert ast == expected_ast
 
     # create without MODEL
-    # TODO: this should be an error
-    # we may allow this in the future when we have a default model
     sql = """
         CREATE KNOWLEDGE_BASE my_knowledge_base
         USING
             STORAGE = my_vector_database.some_table
     """
-    with pytest.raises(Exception):
-        ast = parse_sql(sql, dialect="mindsdb")
+
+    expected_ast = CreateKnowledgeBase(
+        name=Identifier("my_knowledge_base"),
+        if_not_exists=False,
+        model=None,
+        storage=Identifier(parts=["my_vector_database", "some_table"]),
+        from_select=None,
+        params={},
+    )
+
+    ast = parse_sql(sql, dialect="mindsdb")
+
+    assert ast == expected_ast
 
     # create without STORAGE
     sql = """
@@ -136,6 +145,21 @@ def test_create_knowledge_base():
         if_not_exists=True,
         model=Identifier(parts=["mindsdb", "my_embedding_model"]),
         storage=Identifier(parts=["my_vector_database", "some_table"]),
+        from_select=None,
+        params={},
+    )
+    assert ast == expected_ast
+
+    # create without USING ie no storage or model
+    sql = """
+        CREATE KNOWLEDGE_BASE my_knowledge_base
+    """
+    ast = parse_sql(sql, dialect="mindsdb")
+    expected_ast = CreateKnowledgeBase(
+        name=Identifier("my_knowledge_base"),
+        if_not_exists=False,
+        model=None,
+        storage=None,
         from_select=None,
         params={},
     )
