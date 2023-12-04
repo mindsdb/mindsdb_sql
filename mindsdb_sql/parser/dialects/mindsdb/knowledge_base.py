@@ -9,7 +9,7 @@ class CreateKnowledgeBase(ASTNode):
     def __init__(
         self,
         name,
-        model,
+        model=None,
         storage=None,
         from_select=None,
         params=None,
@@ -37,13 +37,13 @@ class CreateKnowledgeBase(ASTNode):
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
         storage_str = f"{ind} storage={self.storage.to_string()},\n" if self.storage else ""
+        model_str = f"{ind} model={self.model.to_string()},\n" if self.model else ""
         out_str = f"""
         {ind}CreateKnowledgeBase(
         {ind}    if_not_exists={self.if_not_exists},
         {ind}    name={self.name.to_string()},
         {ind}    from_query={self.from_query.to_tree(level=level + 1) if self.from_query else None},
-        {ind}    model={self.model.to_string()},
-        {storage_str}{ind}    params={self.params}
+        {model_str}{storage_str}{ind}    params={self.params}
         {ind})
         """
         return out_str
@@ -56,13 +56,13 @@ class CreateKnowledgeBase(ASTNode):
             f"FROM ({self.from_query.get_string()})" if self.from_query else ""
         )
         storage_str = f"  STORAGE = {self.storage.to_string()}" if self.storage else ""
+        model_str = f"  MODEL = {self.model.to_string()},\n" if self.model else ""
 
         out_str = (
             f"CREATE KNOWLEDGE_BASE {'IF NOT EXISTS' if self.if_not_exists else ''}{self.name.to_string()} "
             f"{from_query_str} "
             f"USING {using_str},"
-            f"  MODEL = {self.model.to_string()}, "
-            f"{storage_str}"
+            f"{model_str}{storage_str}"
         )
 
         return out_str
