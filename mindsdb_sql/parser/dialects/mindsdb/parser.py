@@ -117,11 +117,9 @@ class MindsDBParser(Parser):
             # convert to identifier
             storage = Identifier(storage)
 
-        if not model:
-            if isinstance(model, str):
-                # convert to identifier
-                model = Identifier(model)
-            raise ParsingException('Missing model parameter')
+        if isinstance(model, str):
+            # convert to identifier
+            model = Identifier(model)
 
         if_not_exists = p.if_not_exists_or_empty
 
