@@ -293,6 +293,20 @@ def query_traversal(node, callback, is_table=False, is_target=False, parent_quer
             if node_out is not None:
                 node.field = node_out
 
+    elif isinstance(node, ast.Case):
+        rules = []
+        for condition, result in node.rules:
+            condition2 = query_traversal(condition, callback, parent_query=parent_query)
+            result2 = query_traversal(result, callback, parent_query=parent_query)
+
+            condition = condition if condition2 is None else condition2
+            result = result if result2 is None else result2
+            rules.append([condition, result])
+        node.rules = rules
+        default = query_traversal(node.default, callback, parent_query=parent_query)
+        if default is not None:
+            node.default = default
+
     elif isinstance(node, list):
         array = []
         for node2 in node:
