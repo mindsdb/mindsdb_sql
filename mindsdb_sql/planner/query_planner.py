@@ -7,6 +7,8 @@ from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperat
                                     Update, NativeQuery, Parameter, Delete)
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
+
+from mindsdb_sql.planner import steps
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
                                        UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep,
@@ -21,8 +23,67 @@ from mindsdb_sql.planner.utils import (disambiguate_predictor_column_identifier,
                                        query_traversal, filters_to_bin_op)
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner import utils
-from .query_prepare import PreparedStatementPlanner
 
+
+def to_string(identifier):
+    # alternative to AST.to_string() but without quoting
+    return '.'.join(identifier.parts)
+
+
+class Table:
+    def __init__(self, node=None, ds=None, is_predictor=None):
+        self.node = node
+        self.is_predictor = is_predictor
+        self.ds = ds
+        self.name = to_string(node)
+        self.columns = None
+        # None is unknown
+        self.columns_map = None
+        self.keys = None
+        if node.alias:
+            self.alias = to_string(node.alias)
+        else:
+            self.alias = None
+            # self.alias = self.name
+
+
+class Column:
+    def __init__(self, node=None, table=None, name=None, type=None):
+        alias = None
+        if node is not None:
+
+            if isinstance(node, ast.Identifier):
+                # set name
+                name = node.parts[-1]  # ???
+
+        else:
+            if table is not None and name is not None:
+                node = ast.Identifier(parts=[table.name, name])
+
+        self.node = node  # link to AST
+        self.alias = alias  # for ProjectStep
+
+        self.is_star = False
+
+        self.table = table  # link to AST table
+        self.name = name  # column name
+        self.type = type
+
+
+class Statement:
+    def __init__(self):
+        self.columns = []
+        # self.query = None
+        self.params = None
+        self.result = None
+
+        # Tables on first level of select
+        self.tables_lvl1 = None
+
+        # mapping tables by name {'ta.ble': Table()}
+        self.tables_map = None
+
+        self.offset = 0
 
 
 class QueryPlanner():
@@ -254,7 +315,6 @@ class QueryPlanner():
 
         return find_selects
 
-
     def plan_select_identifier(self, query):
         query_info = self.get_query_info(query)
 
@@ -292,14 +352,13 @@ class QueryPlanner():
         # get all predictors
 
         if (
-            len(query_info['mdb_entities']) == 0
-            and len(query_info['integrations']) == 1
-            and 'files' not in query_info['integrations']
-            and 'views' not in query_info['integrations']
+                len(query_info['mdb_entities']) == 0
+                and len(query_info['integrations']) == 1
+                and 'files' not in query_info['integrations']
+                and 'views' not in query_info['integrations']
         ):
             int_name = list(query_info['integrations'])[0]
             if self.integrations.get(int_name, {}).get('class_type') != 'api':
-
                 # if no predictor inside = run as is
                 return self.plan_integration_nested_select(select)
 
@@ -316,8 +375,8 @@ class QueryPlanner():
         # plan nested select
 
         # if select.limit == 0:
-            # TODO don't run predictor if limit is 0
-            # ...
+        # TODO don't run predictor if limit is 0
+        # ...
 
         # subselect_alias = select.from_table.alias
         # if subselect_alias is not None:
@@ -357,7 +416,7 @@ class QueryPlanner():
             predictor_identifier = utils.get_predictor_name_identifier(predictor)
             predictor_step = self.plan.add_step(
                 GetPredictorColumns(namespace=predictor_namespace,
-                                      predictor=predictor_identifier)
+                                    predictor=predictor_identifier)
             )
         else:
             new_query_targets = []
@@ -371,7 +430,8 @@ class QueryPlanner():
                     raise PlanningException(f'Unknown select target {type(target)}')
 
             if select.group_by or select.having:
-                raise PlanningException(f'Unsupported operation when querying predictor. Only WHERE is allowed and required.')
+                raise PlanningException(
+                    f'Unsupported operation when querying predictor. Only WHERE is allowed and required.')
 
             row_dict = {}
             where_clause = select.where
@@ -431,10 +491,10 @@ class QueryPlanner():
                     model = Identifier(parts=arg1.parts[:-1])
 
                     if (
-                        self.is_predictor(model)
-                        or (
+                            self.is_predictor(model)
+                            or (
                             len(model.parts) == 1 and model.parts[0] == predictor_alias
-                        )
+                    )
                     ):
                         model_filters.append(node)
                         return
@@ -553,11 +613,11 @@ class QueryPlanner():
             preparation_time_filter = BinaryOperation('<', args=[Identifier(predictor_time_column_name), between_from])
             preparation_where2 = replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
             integration_select_1 = Select(targets=[Star()],
-                                        from_table=table,
-                                        where=add_order_not_null(preparation_where2),
-                                        modifiers=query_modifiers,
-                                        order_by=order_by,
-                                        limit=Constant(predictor_window))
+                                          from_table=table,
+                                          where=add_order_not_null(preparation_where2),
+                                          modifiers=query_modifiers,
+                                          order_by=order_by,
+                                          limit=Constant(predictor_window))
 
             integration_select_2 = Select(targets=[Star()],
                                           from_table=table,
@@ -590,7 +650,8 @@ class QueryPlanner():
             time_filter_date = time_filter.args[1]
             preparation_time_filter_op = {'>': '<=', '>=': '<'}[time_filter.op]
 
-            preparation_time_filter = BinaryOperation(preparation_time_filter_op, args=[Identifier(predictor_time_column_name), time_filter_date])
+            preparation_time_filter = BinaryOperation(preparation_time_filter_op,
+                                                      args=[Identifier(predictor_time_column_name), time_filter_date])
             preparation_where2 = replace_time_filter(preparation_where2, time_filter, preparation_time_filter)
             integration_select_1 = Select(targets=[Star()],
                                           from_table=table,
@@ -650,10 +711,12 @@ class QueryPlanner():
             # get groping values
             no_time_filter_query = copy.deepcopy(query)
             no_time_filter_query.where = find_and_remove_time_filter(no_time_filter_query.where, time_filter)
-            select_partitions_step = self.plan_fetch_timeseries_partitions(no_time_filter_query, table, predictor_group_by_names)
+            select_partitions_step = self.plan_fetch_timeseries_partitions(no_time_filter_query, table,
+                                                                           predictor_group_by_names)
 
             # sub-query by every grouping value
-            map_reduce_step = self.plan.add_step(MapReduceStep(values=select_partitions_step.result, reduce='union', step=select_partition_step))
+            map_reduce_step = self.plan.add_step(
+                MapReduceStep(values=select_partitions_step.result, reduce='union', step=select_partition_step))
             data_step = map_reduce_step
 
         predictor_identifier = utils.get_predictor_name_identifier(predictor)
@@ -837,12 +900,13 @@ class QueryPlanner():
                     # apply table alias
                     query2 = Select(targets=[Star()], where=where)
                     if item['table'].alias is None:
-                        raise PlanningException(f'Subselect in join have to be aliased: {item["sub_select"].to_string()}')
+                        raise PlanningException(
+                            f'Subselect in join have to be aliased: {item["sub_select"].to_string()}')
                     table_name = item['table'].alias.parts[-1]
 
                     add_absent_cols = False
-                    if hasattr (item['sub_select'], 'from_table') and\
-                         isinstance(item['sub_select'].from_table, ast.Data):
+                    if hasattr(item['sub_select'], 'from_table') and \
+                            isinstance(item['sub_select'].from_table, ast.Data):
                         add_absent_cols = True
 
                     step2 = SubSelectStep(query2, step.result, table_name=table_name, add_absent_cols=add_absent_cols)
@@ -934,7 +998,6 @@ class QueryPlanner():
             # last_step = self.plan.steps[-1]
             return GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets)
 
-
     def plan_project(self, query, dataframe, ignore_doubles=False):
         out_identifiers = []
 
@@ -952,7 +1015,8 @@ class QueryPlanner():
             else:
                 new_identifier = Identifier(str(target.to_string(alias=False)), alias=target.alias)
                 out_identifiers.append(new_identifier)
-        return self.plan.add_step(ProjectStep(dataframe=dataframe, columns=out_identifiers, ignore_doubles=ignore_doubles))
+        return self.plan.add_step(
+            ProjectStep(dataframe=dataframe, columns=out_identifiers, ignore_doubles=ignore_doubles))
 
     def get_aliased_fields(self, targets):
         # get aliases from select target
@@ -1017,8 +1081,8 @@ class QueryPlanner():
             # DBT workaround: allow use tables without integration.
             #   if table.part[0] not in integration - take integration name from create table command
             if (
-                integration is not None
-                and query.from_table.parts[0] not in self.databases
+                    integration is not None
+                    and query.from_table.parts[0] not in self.databases
             ):
                 # add integration name to table
                 query.from_table.parts.insert(0, integration)
@@ -1063,7 +1127,8 @@ class QueryPlanner():
             if self.is_predictor(join_left):
                 # left is predictor too
 
-                raise PlanningException(f'Can\'t join two predictors {str(join_left.parts[0])} and {str(join_left.parts[1])}')
+                raise PlanningException(
+                    f'Can\'t join two predictors {str(join_left.parts[0])} and {str(join_left.parts[1])}')
             elif isinstance(join_left, Identifier):
                 # the left is table
                 predictor_namespace, predictor = self.get_predictor_namespace_and_name_from_identifier(join_right)
@@ -1108,7 +1173,7 @@ class QueryPlanner():
                 # limit from timeseries
                 if predictor_steps.get('saved_limit'):
                     last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result,
-                                                              limit=predictor_steps['saved_limit']))
+                                                                   limit=predictor_steps['saved_limit']))
 
         if predictor is None:
 
@@ -1137,7 +1202,7 @@ class QueryPlanner():
             if query.where:
                 # FIXME: Tableau workaround, INFORMATION_SCHEMA with Where
                 if isinstance(join.right, Identifier) \
-                   and self.resolve_database_table(join.right)[0] == 'INFORMATION_SCHEMA':
+                        and self.resolve_database_table(join.right)[0] == 'INFORMATION_SCHEMA':
                     pass
                 else:
                     last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.where))
@@ -1148,7 +1213,8 @@ class QueryPlanner():
                     target_copy = copy.deepcopy(t)
                     target_copy.alias = None
                     group_by_targets.append(target_copy)
-                last_step = self.plan.add_step(GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets))
+                last_step = self.plan.add_step(
+                    GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets))
 
             if query.having:
                 last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.having))
@@ -1260,15 +1326,15 @@ class QueryPlanner():
 
     def sub_select_step(self, query, prev_step, add_absent_cols=False):
         if (
-            query.group_by is not None
-            or query.order_by is not None
-            or query.having is not None
-            or query.distinct is True
-            or query.where is not None
-            or query.limit is not None
-            or query.offset is not None
-            or len(query.targets) != 1
-            or not isinstance(query.targets[0], Star)
+                query.group_by is not None
+                or query.order_by is not None
+                or query.having is not None
+                or query.distinct is True
+                or query.where is not None
+                or query.limit is not None
+                or query.offset is not None
+                or len(query.targets) != 1
+                or not isinstance(query.targets[0], Star)
         ):
             if query.from_table.alias is not None:
                 table_name = query.from_table.alias.parts[-1]
@@ -1308,29 +1374,393 @@ class QueryPlanner():
         return self.plan
 
     def prepare_steps(self, query):
-        statement_planner = PreparedStatementPlanner(self)
+        stmt = Statement()
+        self.statement = stmt
 
-        # return generator
-        return statement_planner.prepare_steps(query)
+        self.query = query
+
+        query = copy.deepcopy(query)
+
+        params = utils.get_query_params(query)
+
+        stmt.params = params
+
+        # get columns
+        if isinstance(query, ast.Select):
+            # prepare select
+            return self.prepare_select(query)
+        if isinstance(query, ast.Union):
+            # get column definition only from select
+            return self.prepare_select(query.left)
+        if isinstance(query, ast.Insert):
+            # return self.prepare_insert(query)
+            # TODO do we need columns?
+            return []
+        if isinstance(query, ast.Delete):
+            ...
+            # TODO do we need columns?
+            return []
+        if isinstance(query, ast.Show):
+            return self.prepare_show(query)
+        else:
+
+            # do nothing
+            return []
+            # raise NotImplementedError(query.__name__)
+
+    def prepare_select(self, query):
+        # prepare select with or without predictor
+
+        stmt = self.statement
+
+        # get all predictors
+        query_predictors = []
+
+        def find_predictors(node, is_table, **kwargs):
+            if is_table and isinstance(node, ast.Identifier):
+                if self.is_predictor(node):
+                    query_predictors.append(node)
+
+        utils.query_traversal(query, find_predictors)
+
+        # only 1 predictor is allowed
+        # if len(query_predictors) > 1:
+        #     raise PlanningException(f'To many predictors in query: {len(query_predictors)}')
+
+        # === get all tables from 1st level of query ===
+        stmt.tables_map = {}
+        stmt.tables_lvl1 = []
+        if query.from_table is not None:
+
+            if isinstance(query.from_table, ast.Join):
+                # get all tables
+                join_tables = utils.convert_join_to_list(query.from_table)
+            else:
+                join_tables = [dict(table=query.from_table)]
+
+            if isinstance(query.from_table, ast.Select):
+                # nested select, get only last select
+                join_tables = [
+                    dict(
+                        table=utils.get_deepest_select(query.from_table).from_table
+                    )
+                ]
+
+            for i, join_table in enumerate(join_tables):
+                table = join_table['table']
+                if isinstance(table, ast.Identifier):
+                    tbl = self.table_from_identifier(table)
+
+                    if tbl.is_predictor:
+                        # Is the last table?
+                        if i + 1 < len(join_tables):
+                            raise PlanningException(f'Predictor must be last table in query')
+
+                    stmt.tables_lvl1.append(tbl)
+                    for key in tbl.keys:
+                        stmt.tables_map[key] = tbl
+
+                else:
+                    # don't add unknown table to looking list
+                    continue
+
+        # is there any predictors at other levels?
+        lvl1_predictors = [i for i in stmt.tables_lvl1 if i.is_predictor]
+        if len(query_predictors) != len(lvl1_predictors):
+            raise PlanningException('Predictor is not at first level')
+
+        # === get targets ===
+        columns = []
+        get_all_tables = False
+        for t in query.targets:
+
+            column = Column(t)
+
+            # column alias
+            alias = None
+            if t.alias is not None:
+                alias = to_string(t.alias)
+
+            if isinstance(t, ast.Star):
+                if len(stmt.tables_lvl1) == 0:
+                    # if "from" is emtpy we can't make plan
+                    raise PlanningException("Can't find table")
+
+                column.is_star = True
+                get_all_tables = True
+
+            elif isinstance(t, ast.Identifier):
+                if alias is None:
+                    alias = t.parts[-1]
+
+                table = self.get_table_of_column(t)
+                if table is None:
+                    # table is not known
+                    get_all_tables = True
+                else:
+                    column.table = table
+
+            elif isinstance(t, ast.Constant):
+                if alias is None:
+                    alias = str(t.value)
+                column.type = self.get_type_of_var(t.value)
+            elif isinstance(t, ast.Function):
+                # mysql function
+                if t.op == 'connection_id':
+                    column.type = 'integer'
+                else:
+                    column.type = 'str'
+            else:
+                # TODO go down into lower level.
+                #  It can be function, operation, select.
+                #  But now show it as string
+
+                # TODO add several known types for function, i.e ABS-int
+
+                # TODO TypeCast - as casted type
+                column.type = 'str'
+
+            if alias is not None:
+                column.alias = alias
+            columns.append(column)
+
+        # === get columns from tables ===
+        request_tables = set()
+        for column in columns:
+            if column.table is not None:
+                request_tables.add(column.table.name)
+
+        for table in stmt.tables_lvl1:
+            if get_all_tables or table.name in request_tables:
+                if table.is_predictor:
+                    step = steps.GetPredictorColumns(namespace=table.ds, predictor=table.node)
+                else:
+                    step = steps.GetTableColumns(namespace=table.ds, table=table.name)
+                yield step
+
+                if step.result_data is not None:
+                    # save results
+
+                    if len(step.result_data['tables']) > 0:
+                        table_info = step.result_data['tables'][0]
+                        columns_info = step.result_data['columns'][table_info]
+
+                        table.columns = []
+                        table.ds = table_info[0]
+                        for col in columns_info:
+                            if isinstance(col, tuple):
+                                # is predictor
+                                col = dict(name=col[0], type='str')
+                            table.columns.append(
+                                Column(
+                                    name=col['name'],
+                                    type=col['type'],
+                                )
+                            )
+
+                    # map by names
+                    table.columns_map = {
+                        i.name.upper(): i
+                        for i in table.columns
+                    }
+
+        # === create columns list ===
+        columns_result = []
+        for i, column in enumerate(columns):
+            if column.is_star:
+                # add data from all tables
+                for table in stmt.tables_lvl1:
+                    if table.columns is None:
+                        raise PlanningException(f'Table is not found {table.name}')
+
+                    for col in table.columns:
+                        # col = {name: 'col', type: 'str'}
+                        column2 = Column(table=table, name=col.name)
+                        column2.alias = col.name
+                        column2.type = col.type
+
+                        columns_result.append(column2)
+
+                # to next column
+                continue
+
+            elif column.name is not None:
+                # is Identifier
+                col_name = column.name.upper()
+                if column.table is not None:
+                    table = column.table
+                    if table.columns_map is not None:
+                        if col_name in table.columns_map:
+                            column.type = table.columns_map[col_name].type
+                        else:
+                            # print(col_name, table.name, query.to_string())
+                            # continue
+                            raise PlanningException(f'Column not found {col_name}')
+
+
+                else:
+                    # table is not found, looking for in all tables
+                    for table in stmt.tables_lvl1:
+                        if table.columns_map is not None:
+                            col = table.columns_map.get(col_name)
+                            if col is not None:
+                                column.type = col.type
+                                column.table = table
+                                break
+
+            # forcing alias
+            if column.alias is None:
+                column.alias = f'column_{i}'
+
+            # forcing type
+            if column.type is None:
+                column.type = 'str'
+
+            columns_result.append(column)
+
+        # save columns
+        stmt.columns = columns_result
+
+    def table_from_identifier(self, table):
+        # disambiguate
+        if self.is_predictor(table):
+            ds, table = self.get_predictor_namespace_and_name_from_identifier(table)
+            is_predictor = True
+
+        else:
+            ds, table = self.resolve_database_table(table)
+            is_predictor = False
+
+        if table.alias is not None:
+            # access by alias if table is having alias
+            keys = [to_string(table.alias)]
+
+        else:
+            # access by table name, in all variants
+            keys = []
+            parts = []
+            # in reverse order
+            for p in table.parts[::-1]:
+                parts.insert(0, p)
+                keys.append('.'.join(parts))
+
+        # remember table
+        tbl = Table(
+            ds=ds,
+            node=table,
+            is_predictor=is_predictor
+        )
+        tbl.keys = keys
+
+        return tbl
+
+    def get_table_of_column(self, t):
+
+        tables_map = self.statement.tables_map
+
+        # get tables to check
+        if len(t.parts) > 1:
+            # try to find table
+            table_parts = t.parts[:-1]
+            table_name = '.'.join(table_parts)
+            if table_name in tables_map:
+                return tables_map[table_name]
+
+            elif len(table_parts) > 1:
+                # maybe datasource is 1st part
+                table_parts = table_parts[1:]
+                table_name = '.'.join(table_parts)
+                if table_name in tables_map:
+                    return tables_map[table_name]
+
+    def get_type_of_var(self, v):
+        if isinstance(v, str):
+            return 'str'
+        elif isinstance(v, float):
+            return 'float'
+        elif isinstance(v, int):
+            return 'integer'
+
+        return 'str'
 
     def execute_steps(self, params=None):
-        statement_planner = PreparedStatementPlanner(self)
+        # find all parameters
+        stmt = self.statement
 
-        # return generator
-        return statement_planner.execute_steps(params)
+        # is already executed
+        if stmt is None:
+            if params is not None:
+                raise PlanningException("Can't execute statement")
+            stmt = Statement()
 
-    # def fetch(self, row_count):
-    #     statement_planner = PreparedStatementPlanner(self)
-    #     return statement_planner.fetch(row_count)
-    #
-    # def close(self):
-    #     statement_planner = PreparedStatementPlanner(self)
-    #     return statement_planner.close()
+        # === form query with new target ===
+
+        query = self.query
+
+        if params is not None:
+
+            if len(params) != len(stmt.params):
+                raise PlanningException("Count of execution parameters don't match prepared statement")
+
+            query = utils.fill_query_params(query, params)
+
+            self.query = query
+
+        # prevent from second execution
+        stmt.params = None
+
+        if (
+                isinstance(query, ast.Select)
+                or isinstance(query, ast.Union)
+                or isinstance(query, ast.CreateTable)
+                or isinstance(query, ast.Insert)
+                or isinstance(query, ast.Update)
+                or isinstance(query, ast.Delete)
+        ):
+            return self.plan_query(query)
+        else:
+            return []
+
+    def plan_query(self, query):
+        # use v1 planner
+        self.from_query(query)
+        step = None
+        for step in self.plan.steps:
+            # print(step)
+            yield step
 
     def get_statement_info(self):
-        statement_planner = PreparedStatementPlanner(self)
+        stmt = self.statement
 
-        return statement_planner.get_statement_info()
+        if stmt is None:
+            raise PlanningException('Statement is not prepared')
 
+        columns_result = []
 
+        for column in stmt.columns:
+            table, ds = None, None
+            if column.table is not None:
+                table = column.table.name
+                ds = column.table.ds
+            columns_result.append(dict(
+                alias=column.alias,
+                type=column.type,
+                name=column.name,
+                table_name=table,
+                table_alias=table,
+                ds=ds,
+            ))
 
+        parameters = []
+        for param in stmt.params:
+            name = '?'
+            parameters.append(dict(
+                alias=name,
+                type='str',
+                name=name,
+            ))
+
+        return {
+            'parameters': parameters,
+            'columns': columns_result
+        }
