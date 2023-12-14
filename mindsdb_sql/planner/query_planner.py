@@ -1295,10 +1295,14 @@ class QueryPlanner():
         return prev_step
 
     def plan_union(self, query):
-        query1 = self.plan_select(query.left)
-        query2 = self.plan_select(query.right)
+        if isinstance(query.left, Union):
+            step1 = self.plan_union(query.left)
+        else:
+            # it is select
+            step1 = self.plan_select(query.left)
+        step2 = self.plan_select(query.right)
 
-        return self.plan.add_step(UnionStep(left=query1.result, right=query2.result, unique=query.unique))
+        return self.plan.add_step(UnionStep(left=step1.result, right=step2.result, unique=query.unique))
 
     # method for compatibility
     def from_query(self, query=None):

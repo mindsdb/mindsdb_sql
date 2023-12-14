@@ -937,13 +937,15 @@ class MindsDBParser(Parser):
         return {'identifier':p.identifier, 'engine':engine, 'if_not_exists':p.if_not_exists_or_empty}
 
     # UNION / UNION ALL
-    @_('select UNION select')
+    @_('select UNION select',
+       'union UNION select')
     def union(self, p):
-        return Union(left=p.select0, right=p.select1, unique=True)
+        return Union(left=p[0], right=p[2], unique=True)
 
-    @_('select UNION ALL select')
+    @_('select UNION ALL select',
+       'union UNION ALL select',)
     def union(self, p):
-        return Union(left=p.select0, right=p.select1, unique=False)
+        return Union(left=p[0], right=p[3], unique=False)
 
     # tableau
     @_('LPAREN select RPAREN')

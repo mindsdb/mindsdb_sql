@@ -392,17 +392,17 @@ class SqlalchemyRender:
                             full=is_full
                         )
             elif isinstance(from_table, ast.Union):
-                if not(isinstance(from_table.left, ast.Select) and isinstance(from_table.right, ast.Select)):
-                    raise NotImplementedError(f'Unknown UNION {from_table.left.__name__}, {from_table.right.__name__}')
-
-                left = self.prepare_select(from_table.left)
-                right = self.prepare_select(from_table.right)
+                tables = self.extract_union_list(from_table)
 
                 alias = None
                 if from_table.alias:
                     alias = self.get_alias(from_table.alias)
 
-                table = left.union(right).subquery(alias)
+                table1 = tables[1]
+                tables_x = tables[1:]
+
+                table = table1.union(*tables_x).subquery(alias)
+
                 query = query.select_from(table)
 
             elif isinstance(from_table, ast.Select):
@@ -459,6 +459,20 @@ class SqlalchemyRender:
                 raise NotImplementedError(f'Select mode: {node.mode}')
 
         return query
+
+    def extract_union_list(self, node):
+        if not (isinstance(node.left, (ast.Select, ast.Union)) and isinstance(node.right, ast.Select)):
+            raise NotImplementedError(
+                f'Unknown UNION {node.left.__class__.__name__}, {node.right.__class__.__name__}')
+
+        tables = []
+        if isinstance(node.left, ast.Union):
+            tables.extend(self.extract_union_list(node.left))
+        else:
+            tables.append(self.prepare_select(node.left))
+        tables.append(self.prepare_select(node.right))
+        return tables
+
 
     def prepare_create_table(self, ast_query):
         columns = []
