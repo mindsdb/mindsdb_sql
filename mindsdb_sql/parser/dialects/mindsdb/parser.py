@@ -1247,8 +1247,7 @@ class MindsDBParser(Parser):
 
     @_('expr',
        'function',
-       'window_function',
-       'case')
+       'window_function')
     def result_column(self, p):
         return p[0]
 
@@ -1446,6 +1445,7 @@ class MindsDBParser(Parser):
        'parameter',
        'constant',
        'latest',
+       'case',
        'function')
     def expr(self, p):
         return p[0]
