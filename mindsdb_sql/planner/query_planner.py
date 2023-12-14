@@ -282,9 +282,28 @@ class QueryPlanner():
         if len(query_info['predictors']) >= 1:
             # select from predictor
             return self.plan_select_from_predictor(query)
+        elif is_api_db:
+            return self.plan_api_db_select(query)
         else:
             # fallback to integration
             return self.plan_integration_select(query)
+
+    def plan_api_db_select(self, query):
+        # split to select from api database
+        #     keep only limit and where
+        #     the rest goes to outer select
+        query2 = Select(
+            targets=[Star()],
+            from_table=query.from_table,
+            where=query.where,
+            limit=query.limit,
+        )
+        prev_step = self.plan_integration_select(query2)
+
+        # clear limit and where
+        query.limit = None
+        query.where = None
+        return self.plan_sub_select(query, prev_step)
 
     def plan_nested_select(self, select):
 
@@ -329,12 +348,7 @@ class QueryPlanner():
         self.plan_select(select2)
         last_step = self.plan.steps[-1]
 
-        sup_select = self.sub_select_step(select, last_step)
-        if sup_select is not None:
-            self.plan.add_step(sup_select)
-            last_step = sup_select
-
-        return last_step
+        return self.plan_sub_select(select, last_step)
 
     def get_predictor_namespace_and_name_from_identifier(self, identifier):
         new_identifier = copy.deepcopy(identifier)
@@ -1244,21 +1258,17 @@ class QueryPlanner():
             integration = from_table.integration.parts[0].lower()
             step = FetchDataframeStep(integration=integration, raw_query=from_table.query)
             last_step = self.plan.add_step(step)
-            sup_select = self.sub_select_step(query, step)
-            if sup_select is not None:
-                last_step = self.plan.add_step(sup_select)
-            return last_step
+            return self.plan_sub_select(query, last_step)
+
         elif isinstance(from_table, ast.Data):
             step = DataStep(from_table.data)
             last_step = self.plan.add_step(step)
-            sup_select = self.sub_select_step(query, step, add_absent_cols=True)
-            if sup_select is not None:
-                last_step = self.plan.add_step(sup_select)
-            return last_step
+            return self.plan_sub_select(query, last_step, add_absent_cols=True)
+
         else:
             raise PlanningException(f'Unsupported from_table {type(from_table)}')
 
-    def sub_select_step(self, query, prev_step, add_absent_cols=False):
+    def plan_sub_select(self, query, prev_step, add_absent_cols=False):
         if (
             query.group_by is not None
             or query.order_by is not None
@@ -1272,12 +1282,17 @@ class QueryPlanner():
         ):
             if query.from_table.alias is not None:
                 table_name = query.from_table.alias.parts[-1]
+            elif isinstance(query.from_table, Identifier):
+                table_name = query.from_table.parts[-1]
             else:
                 table_name = None
 
             query2 = copy.deepcopy(query)
             query2.from_table = None
-            return SubSelectStep(query2, prev_step.result, table_name=table_name, add_absent_cols=add_absent_cols)
+            sup_select = SubSelectStep(query2, prev_step.result, table_name=table_name, add_absent_cols=add_absent_cols)
+            self.plan.add_step(sup_select)
+            return sup_select
+        return prev_step
 
     def plan_union(self, query):
         query1 = self.plan_select(query.left)
