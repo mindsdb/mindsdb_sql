@@ -126,7 +126,10 @@ def query_traversal(node, callback, is_table=False, is_target=False, parent_quer
         array = []
         for node2 in node.targets:
             node_out = query_traversal(node2, callback, parent_query=node, is_target=True) or node2
-            array.append(node_out)
+            if isinstance(node_out, list):
+                array.extend(node_out)
+            else:
+                array.append(node_out)
         node.targets = array
 
         if node.cte is not None:

@@ -8,10 +8,10 @@ from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperat
 
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
-                                       ApplyPredictorRowStep, FilterStep, GroupByStep, LimitOffsetStep, OrderByStep,
+                                       ApplyPredictorRowStep, LimitOffsetStep,
                                        UnionStep, MapReduceStep, MultipleSteps, ApplyTimeseriesPredictorStep,
                                        GetPredictorColumns, SaveToTable, InsertToTable, UpdateToTable, SubSelectStep,
-                                       DeleteStep, DataStep)
+                                       DeleteStep, DataStep, QueryStep)
 from mindsdb_sql.planner.ts_utils import (validate_ts_where_condition, find_time_filter, replace_time_filter,
                                           find_and_remove_time_filter)
 from mindsdb_sql.planner.utils import (disambiguate_predictor_column_identifier,
@@ -21,6 +21,7 @@ from mindsdb_sql.planner.utils import (disambiguate_predictor_column_identifier,
                                        query_traversal, filters_to_bin_op)
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner import utils
+from .plan_join import PlanJoin
 from .query_prepare import PreparedStatementPlanner
 
 
@@ -691,262 +692,28 @@ class QueryPlanner():
             'saved_limit': saved_limit,
         }
 
-    def plan_join_tables(self, query_in):
-        query = copy.deepcopy(query_in)
-
-        # replace sub selects, with identifiers with links to original selects
-        def replace_subselects(node, **args):
-            if isinstance(node, Select) or isinstance(node, NativeQuery) or isinstance(node, ast.Data):
-                name = f't_{id(node)}'
-                node2 = Identifier(name, alias=node.alias)
-
-                # save in attribute
-                if isinstance(node, NativeQuery) or isinstance(node, ast.Data):
-                    # wrap to select
-                    node = Select(targets=[Star()], from_table=node)
-                node2.sub_select = node
-                return node2
-
-        query_traversal(query.from_table, replace_subselects)
-
-        def resolve_table(table):
-            # gets integration for table and name to access to it
-            table = copy.deepcopy(table)
-            # get possible table aliases
-            aliases = []
-            if table.alias is not None:
-                # to lowercase
-                parts = tuple(map(str.lower, table.alias.parts))
-                aliases.append(parts)
-            else:
-                for i in range(0, len(table.parts)):
-                    parts = table.parts[i:]
-                    parts = tuple(map(str.lower, parts))
-                    aliases.append(parts)
-
-            # try to use default namespace
-            integration = self.default_namespace
-            if len(table.parts) > 0:
-                if table.parts[0] in self.databases:
-                    integration = table.parts.pop(0)
-                else:
-                    integration = self.default_namespace
-
-            if integration is None and not hasattr(table, 'sub_select'):
-                raise PlanningException(f'Integration not found for: {table}')
-
-            sub_select = getattr(table, 'sub_select', None)
-
-            return dict(
-                integration=integration,
-                table=table,
-                aliases=aliases,
-                conditions=[],
-                sub_select=sub_select,
-            )
-
-        # get all join tables, form join sequence
-
-        tables_idx = {}
-
-        def get_join_sequence(node):
-            sequence = []
-            if isinstance(node, Identifier):
-                # resolve identifier
-
-                table_info = resolve_table(node)
-                for alias in table_info['aliases']:
-                    tables_idx[alias] = table_info
-
-                table_info['predictor_info'] = self.get_predictor(node)
-
-                sequence.append(table_info)
-
-            elif isinstance(node, Join):
-                # create sequence: 1)table1, 2)table2, 3)join 1 2, 4)table 3, 5)join 3 4
-
-                # put all tables before
-                sequence2 = get_join_sequence(node.left)
-                for item in sequence2:
-                    sequence.append(item)
-
-                sequence2 = get_join_sequence(node.right)
-                if len(sequence2) != 1:
-                    raise PlanningException('Unexpected join nesting behavior')
-
-                # put next table
-                sequence.append(sequence2[0])
-
-                # put join
-                sequence.append(node)
-
-            else:
-                raise NotImplementedError()
-            return sequence
-
-        join_sequence = get_join_sequence(query.from_table)
-
-        # get conditions for tables
-        binary_ops = []
-
-        def _check_identifiers(node, is_table, **kwargs):
-            if not is_table and isinstance(node, Identifier):
-                if len(node.parts) > 1:
-                    parts = tuple(map(str.lower, node.parts[:-1]))
-                    if parts not in tables_idx:
-                        raise PlanningException(f'Table not found for identifier: {node.to_string()}')
-
-                    # # replace identifies name
-                    col_parts = list(tables_idx[parts]['aliases'][-1])
-                    col_parts.append(node.parts[-1])
-                    node.parts = col_parts
-
-        query_traversal(query, _check_identifiers)
-
-        def _check_condition(node, **kwargs):
-            if isinstance(node, BinaryOperation):
-                binary_ops.append(node.op)
-
-                node2 = copy.deepcopy(node)
-                arg1, arg2 = node2.args
-                if not isinstance(arg1, Identifier):
-                    arg1, arg2 = arg2, arg1
-
-                if isinstance(arg1, Identifier) and isinstance(arg2, (Constant, Parameter)):
-                    if len(arg1.parts) < 2:
-                        return
-
-                    # to lowercase
-                    parts = tuple(map(str.lower, arg1.parts[:-1]))
-                    if parts not in tables_idx:
-                        raise PlanningException(f'Table not found for identifier: {arg1.to_string()}')
-
-                    # keep only column name
-                    arg1.parts = [arg1.parts[-1]]
-
-                    node2._orig_node = node
-                    tables_idx[parts]['conditions'].append(node2)
-
-        find_selects = self.get_nested_selects_plan_fnc(self.default_namespace, force=True)
-        query_traversal(query.where, find_selects)
-
-        query_traversal(query.where, _check_condition)
-
-        # create plan
-        # TODO add optimization: one integration without predictor
-        step_stack = []
-        for item in join_sequence:
-            if isinstance(item, dict):
-                table_name = item['table']
-                predictor_info = item['predictor_info']
-
-                if item['sub_select'] is not None:
-                    # is sub select
-                    item['sub_select'].alias = None
-                    item['sub_select'].parentheses = False
-                    step = self.plan_select(item['sub_select'])
-
-                    where = filters_to_bin_op(item['conditions'])
-
-                    # apply table alias
-                    query2 = Select(targets=[Star()], where=where)
-                    if item['table'].alias is None:
-                        raise PlanningException(f'Subselect in join have to be aliased: {item["sub_select"].to_string()}')
-                    table_name = item['table'].alias.parts[-1]
-
-                    add_absent_cols = False
-                    if hasattr (item['sub_select'], 'from_table') and\
-                         isinstance(item['sub_select'].from_table, ast.Data):
-                        add_absent_cols = True
-
-                    step2 = SubSelectStep(query2, step.result, table_name=table_name, add_absent_cols=add_absent_cols)
-                    step2 = self.plan.add_step(step2)
-                    step_stack.append(step2)
-                elif predictor_info is not None:
-                    if len(step_stack) == 0:
-                        raise NotImplementedError("Predictor can't be first element of join syntax")
-                    if predictor_info.get('timeseries'):
-                        raise NotImplementedError("TS predictor is not supported here yet")
-                    data_step = step_stack[-1]
-                    row_dict = None
-                    if item['conditions']:
-                        row_dict = {}
-                        for el in item['conditions']:
-                            if isinstance(el.args[0], Identifier) and el.op == '=':
-
-                                if isinstance(el.args[1], (Constant, Parameter)):
-                                    row_dict[el.args[0].parts[-1]] = el.args[1].value
-
-                                # exclude condition
-                                item['conditions'][0]._orig_node.args = [Constant(0), Constant(0)]
-
-                    predictor_step = self.plan.add_step(ApplyPredictorStep(
-                        namespace=item['integration'],
-                        dataframe=data_step.result,
-                        predictor=table_name,
-                        params=query.using,
-                        row_dict=row_dict,
-                    ))
-                    step_stack.append(predictor_step)
-                else:
-                    # is table
-                    query2 = Select(from_table=table_name, targets=[Star()])
-                    # parts = tuple(map(str.lower, table_name.parts))
-                    conditions = item['conditions']
-                    if 'or' in binary_ops:
-                        # not use conditions
-                        conditions = []
-
-                    for cond in conditions:
-                        if query2.where is not None:
-                            query2.where = BinaryOperation('and', args=[query2.where, cond])
-                        else:
-                            query2.where = cond
-
-                    # TODO use self.get_integration_select_step(query2)
-                    step = FetchDataframeStep(integration=item['integration'], query=query2)
-                    self.plan.add_step(step)
-                    step_stack.append(step)
-            elif isinstance(item, Join):
-                step_right = step_stack.pop()
-                step_left = step_stack.pop()
-
-                new_join = copy.deepcopy(item)
-
-                # TODO
-                new_join.left = Identifier('tab1')
-                new_join.right = Identifier('tab2')
-                new_join.implicit = False
-
-                step = self.plan.add_step(JoinStep(left=step_left.result, right=step_right.result, query=new_join))
-
-                step_stack.append(step)
-
-        query_in.where = query.where
-        return step_stack.pop()
-
-    def plan_group(self, query, last_step):
-        # ! is not using yet
-
-        # check group
-        funcs = []
-        for t in query.targets:
-            if isinstance(t, Function):
-                funcs.append(t.op.lower())
-        agg_funcs = ['sum', 'min', 'max', 'avg', 'count', 'std']
-
-        if (
-                query.having is not None
-                or query.group_by is not None
-                or set(agg_funcs) & set(funcs)
-        ):
-            # is aggregate
-            group_by_targets = []
-            for t in query.targets:
-                target_copy = copy.deepcopy(t)
-                group_by_targets.append(target_copy)
-            # last_step = self.plan.steps[-1]
-            return GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets)
+    # def plan_group(self, query, last_step):
+    #     # ! is not using yet
+    #
+    #     # check group
+    #     funcs = []
+    #     for t in query.targets:
+    #         if isinstance(t, Function):
+    #             funcs.append(t.op.lower())
+    #     agg_funcs = ['sum', 'min', 'max', 'avg', 'count', 'std']
+    #
+    #     if (
+    #             query.having is not None
+    #             or query.group_by is not None
+    #             or set(agg_funcs) & set(funcs)
+    #     ):
+    #         # is aggregate
+    #         group_by_targets = []
+    #         for t in query.targets:
+    #             target_copy = copy.deepcopy(t)
+    #             group_by_targets.append(target_copy)
+    #         # last_step = self.plan.steps[-1]
+    #         return GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets)
 
 
     def plan_project(self, query, dataframe, ignore_doubles=False):
@@ -1084,8 +851,7 @@ class QueryPlanner():
 
                 table = join_left
 
-            last_step = None
-            if predictor:
+            if predictor and self.get_predictor(predictor).get('timeseries'):
                 # One argument is a table, another is a predictor
                 # Apply mindsdb model to result of last dataframe fetch
                 # Then join results of applying mindsdb with table
@@ -1095,10 +861,7 @@ class QueryPlanner():
                 recursively_check_join_identifiers_for_ambiguity(query.having)
                 recursively_check_join_identifiers_for_ambiguity(query.order_by, aliased_fields=aliased_fields)
 
-                if self.get_predictor(predictor).get('timeseries'):
-                    predictor_steps = self.plan_timeseries_predictor(query, table, predictor_namespace, predictor)
-                else:
-                    predictor_steps = self.plan_predictor(query, table, predictor_namespace, predictor)
+                predictor_steps = self.plan_timeseries_predictor(query, table, predictor_namespace, predictor)
 
                 # add join
                 # Update reference
@@ -1124,58 +887,53 @@ class QueryPlanner():
                     last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result,
                                                               limit=predictor_steps['saved_limit']))
 
-        if predictor is None:
+                return self.plan_project(orig_query, last_step.result)
 
-            query_info = self.get_query_info(query)
+        query_info = self.get_query_info(query)
 
-            # can we send all query to integration?
-            if (
-                    len(query_info['mdb_entities']) == 0
-                    and len(query_info['integrations']) == 1
-                    and 'files' not in query_info['integrations']
-                    and 'views' not in query_info['integrations']
-            ):
-                int_name = list(query_info['integrations'])[0]
-                if self.integrations.get(int_name, {}).get('class_type') != 'api':
-                    # if no predictor inside = run as is
-                    self.prepare_integration_select(int_name, query)
+        # can we send all query to integration?
+        if (
+                len(query_info['mdb_entities']) == 0
+                and len(query_info['integrations']) == 1
+                and 'files' not in query_info['integrations']
+                and 'views' not in query_info['integrations']
+        ):
+            int_name = list(query_info['integrations'])[0]
+            if self.integrations.get(int_name, {}).get('class_type') != 'api':
+                # if no predictor inside = run as is
+                self.prepare_integration_select(int_name, query)
 
-                    last_step = self.plan.add_step(FetchDataframeStep(integration=int_name, query=query))
+                last_step = self.plan.add_step(FetchDataframeStep(integration=int_name, query=query))
 
-                    return last_step
+                return last_step
 
-            # Both arguments are tables, join results of 2 dataframe fetches
+        # Both arguments are tables, join results of 2 dataframe fetches
+        plan_join = PlanJoin(self)
+        join_step = plan_join.plan(query)
 
-            join_step = self.plan_join_tables(query)
-            last_step = join_step
-            if query.where:
-                # FIXME: Tableau workaround, INFORMATION_SCHEMA with Where
-                if isinstance(join.right, Identifier) \
-                   and self.resolve_database_table(join.right)[0] == 'INFORMATION_SCHEMA':
-                    pass
-                else:
-                    last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.where))
+        if (
+            query.group_by is not None
+            or query.order_by is not None
+            or query.having is not None
+            or query.distinct is True
+            or query.where is not None
+            or query.limit is not None
+            or query.offset is not None
+            or len(query.targets) != 1
+            or not isinstance(query.targets[0], Star)
+        ):
+            query2 = copy.deepcopy(query)
+            query2.from_table = None
+            sup_select = QueryStep(query2, join_step.result)
+            self.plan.add_step(sup_select)
+            return sup_select
+        return join_step
 
-            if query.group_by:
-                group_by_targets = []
-                for t in query.targets:
-                    target_copy = copy.deepcopy(t)
-                    target_copy.alias = None
-                    group_by_targets.append(target_copy)
-                last_step = self.plan.add_step(GroupByStep(dataframe=last_step.result, columns=query.group_by, targets=group_by_targets))
+        # FIXME: Tableau workaround, INFORMATION_SCHEMA with Where
+        # if isinstance(join.right, Identifier) \
+        #         and self.resolve_database_table(join.right)[0] == 'INFORMATION_SCHEMA':
+        #     pass
 
-            if query.having:
-                last_step = self.plan.add_step(FilterStep(dataframe=last_step.result, query=query.having))
-
-            if query.order_by:
-                last_step = self.plan.add_step(OrderByStep(dataframe=last_step.result, order_by=query.order_by))
-
-            if query.limit is not None or query.offset is not None:
-                limit = query.limit.value if query.limit is not None else None
-                offset = query.offset.value if query.offset is not None else None
-                last_step = self.plan.add_step(LimitOffsetStep(dataframe=last_step.result, limit=limit, offset=offset))
-
-        return self.plan_project(orig_query, last_step.result)
 
     def plan_create_table(self, query):
         if query.from_select is None:
