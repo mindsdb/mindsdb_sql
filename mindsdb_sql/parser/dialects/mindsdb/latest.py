@@ -6,8 +6,7 @@ class Latest(ASTNode):
         super().__init__(*args, alias=None, parentheses=False, **kwargs)
 
     def to_tree(self, *args, level=0, **kwargs):
-        return '\t'*level +  'Latest()'
+        return '\t'*level + 'Latest()'
 
     def get_string(self, *args, **kwargs):
         return 'LATEST'
-

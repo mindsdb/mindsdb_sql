@@ -576,7 +576,7 @@ class QueryPlanner():
                                         )
             integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
             integration_selects = [integration_select]
-        elif isinstance(time_filter, BinaryOperation) and time_filter.op == '=' and time_filter.args[1] == Latest():
+        elif isinstance(time_filter, BinaryOperation) and time_filter.op == '=':
             integration_select = Select(targets=[Star()],
                                         from_table=table,
                                         where=preparation_where,
@@ -584,7 +584,25 @@ class QueryPlanner():
                                         order_by=order_by,
                                         limit=Constant(predictor_window),
                                         )
-            integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
+
+            if type(time_filter.args[1]) is Latest:
+                integration_select.where = find_and_remove_time_filter(integration_select.where, time_filter)
+            else:
+                time_filter_date = time_filter.args[1]
+                preparation_time_filter = BinaryOperation(
+                    '<=',
+                    args=[
+                        Identifier(predictor_time_column_name),
+                        time_filter_date
+                    ]
+                )
+                integration_select.where = add_order_not_null(
+                    replace_time_filter(
+                        preparation_where2, time_filter, preparation_time_filter
+                    )
+                )
+                time_filter.op = '>'
+
             integration_selects = [integration_select]
         elif isinstance(time_filter, BinaryOperation) and time_filter.op in ('>', '>='):
             time_filter_date = time_filter.args[1]
