@@ -48,29 +48,29 @@ class ProjectStep(PlanStep):
         if isinstance(dataframe, Result):
             self.references.append(dataframe)
 
+# TODO remove
+class FilterStep(PlanStep):
+    """Filters some dataframe according to a query"""
+    def __init__(self, dataframe, query, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dataframe = dataframe
+        self.query = query
 
-# class FilterStep(PlanStep):
-#     """Filters some dataframe according to a query"""
-#     def __init__(self, dataframe, query, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.dataframe = dataframe
-#         self.query = query
-#
-#         if isinstance(dataframe, Result):
-#             self.references.append(dataframe)
+        if isinstance(dataframe, Result):
+            self.references.append(dataframe)
 
+# TODO remove
+class GroupByStep(PlanStep):
+    """Groups output by columns and computes aggregation functions"""
 
-# class GroupByStep(PlanStep):
-#     """Groups output by columns and computes aggregation functions"""
-#
-#     def __init__(self, dataframe, columns, targets, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.dataframe = dataframe
-#         self.columns = columns
-#         self.targets = targets
-#
-#         if isinstance(dataframe, Result):
-#             self.references.append(dataframe)
+    def __init__(self, dataframe, columns, targets, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dataframe = dataframe
+        self.columns = columns
+        self.targets = targets
+
+        if isinstance(dataframe, Result):
+            self.references.append(dataframe)
 
 
 class JoinStep(PlanStep):
@@ -102,17 +102,17 @@ class UnionStep(PlanStep):
         if isinstance(right, Result):
             self.references.append(right)
 
+# TODO remove
+class OrderByStep(PlanStep):
+    """Applies sorting to a dataframe"""
 
-# class OrderByStep(PlanStep):
-#     """Applies sorting to a dataframe"""
-#
-#     def __init__(self, dataframe, order_by, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.dataframe = dataframe
-#         self.order_by = order_by
-#
-#         if isinstance(dataframe, Result):
-#             self.references.append(dataframe)
+    def __init__(self, dataframe, order_by, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dataframe = dataframe
+        self.order_by = order_by
+
+        if isinstance(dataframe, Result):
+            self.references.append(dataframe)
 
 
 class LimitOffsetStep(PlanStep):
@@ -255,11 +255,11 @@ class SubSelectStep(PlanStep):
 
 
 class QueryStep(PlanStep):
-    def __init__(self, query, dataframe, *args, **kwargs):
-        """Performs select from dataframe"""
+    def __init__(self, query, from_table=None, *args, **kwargs):
+        """Performs query using injected dataframe"""
         super().__init__(*args, **kwargs)
         self.query = query
-        self.dataframe = dataframe
+        self.from_table = from_table
 
 
 class DataStep(PlanStep):

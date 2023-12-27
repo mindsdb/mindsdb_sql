@@ -924,7 +924,7 @@ class QueryPlanner():
         ):
             query2 = copy.deepcopy(query)
             query2.from_table = None
-            sup_select = QueryStep(query2, join_step.result)
+            sup_select = QueryStep(query2, from_table=join_step.result)
             self.plan.add_step(sup_select)
             return sup_select
         return join_step

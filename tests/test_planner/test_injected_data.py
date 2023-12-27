@@ -1,9 +1,11 @@
+import copy
+
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FilterStep, DataStep, ProjectStep, JoinStep, ApplyPredictorStep,
-                                         SubSelectStep)
+                                       SubSelectStep, QueryStep)
 from mindsdb_sql.parser.utils import JoinType
 
 
@@ -63,6 +65,9 @@ class TestInjectedData:
             where=BinaryOperation(op='=', args=[Identifier('t.a'), Constant(1)])
         )
 
+        subquery = copy.deepcopy(query)
+        subquery.from_table = None
+
         plan = plan_query(
             query,
             integrations=['int1'],
@@ -90,12 +95,9 @@ class TestInjectedData:
                          query=Join(left=Identifier('tab1'),
                                     right=Identifier('tab2'),
                                     join_type=JoinType.JOIN)),
-                FilterStep(dataframe=Result(3), query=BinaryOperation(op='=', args=[Identifier('t.a'), Constant(1)])),
-                ProjectStep(dataframe=Result(4), columns=[Identifier('t.x')])
+                QueryStep(subquery, from_table=Result(3)),
             ],
         )
 
-        for i in range(len(plan.steps)):
-            print(plan.steps[i], expected_plan.steps[i])
-            assert plan.steps[i] == expected_plan.steps[i]
+        assert plan.steps == expected_plan.steps
 
