@@ -5,7 +5,7 @@ from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, BetweenOperation, Join, Star, BinaryOperation, Constant, NativeQuery, Parameter)
 
-from mindsdb_sql.planner.steps import (FetchDataframeStep, JoinStep, ApplyPredictorStep, SubSelectStep)
+from mindsdb_sql.planner.steps import (FetchDataframeStep, JoinStep, ApplyPredictorStep, SubSelectStep, QueryStep)
 from mindsdb_sql.planner.utils import (query_traversal, filters_to_bin_op)
 
 
@@ -32,7 +32,25 @@ class PlanJoin:
 
     def plan(self, query):
         self.tables_idx = {}
-        return self.plan_join_tables(query)
+        join_step = self.plan_join_tables(query)
+
+        if (
+                query.group_by is not None
+                or query.order_by is not None
+                or query.having is not None
+                or query.distinct is True
+                or query.where is not None
+                or query.limit is not None
+                or query.offset is not None
+                or len(query.targets) != 1
+                or not isinstance(query.targets[0], Star)
+        ):
+            query2 = copy.deepcopy(query)
+            query2.from_table = None
+            sup_select = QueryStep(query2, from_table=join_step.result)
+            self.planner.plan.add_step(sup_select)
+            return sup_select
+        return join_step
 
     def resolve_table(self, table):
         # gets integration for table and name to access to it
@@ -178,6 +196,12 @@ class PlanJoin:
         self.query_context['use_limit'] = use_limit
 
     def plan_join_tables(self, query_in):
+
+        # plan all nested selects in 'where'
+        find_selects = self.planner.get_nested_selects_plan_fnc(self.planner.default_namespace, force=True)
+        query_in.targets = query_traversal(query_in.targets, find_selects)
+        query_traversal(query_in.where, find_selects)
+
         query = copy.deepcopy(query_in)
 
         # replace sub selects, with identifiers with links to original selects
@@ -212,10 +236,6 @@ class PlanJoin:
                     node.parts = col_parts
 
         query_traversal(query, _check_identifiers)
-
-        # plan all subselects in query
-        find_selects = self.planner.get_nested_selects_plan_fnc(self.planner.default_namespace, force=True)
-        query_traversal(query.where, find_selects)
 
         self.check_query_conditions(query)
 

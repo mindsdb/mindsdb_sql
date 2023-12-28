@@ -911,28 +911,12 @@ class QueryPlanner():
         plan_join = PlanJoin(self)
         join_step = plan_join.plan(query)
 
-        if (
-            query.group_by is not None
-            or query.order_by is not None
-            or query.having is not None
-            or query.distinct is True
-            or query.where is not None
-            or query.limit is not None
-            or query.offset is not None
-            or len(query.targets) != 1
-            or not isinstance(query.targets[0], Star)
-        ):
-            query2 = copy.deepcopy(query)
-            query2.from_table = None
-            sup_select = QueryStep(query2, from_table=join_step.result)
-            self.plan.add_step(sup_select)
-            return sup_select
-        return join_step
-
         # FIXME: Tableau workaround, INFORMATION_SCHEMA with Where
         # if isinstance(join.right, Identifier) \
         #         and self.resolve_database_table(join.right)[0] == 'INFORMATION_SCHEMA':
         #     pass
+
+        return join_step
 
 
     def plan_create_table(self, query):
