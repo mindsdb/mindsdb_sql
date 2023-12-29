@@ -18,4 +18,10 @@ class NativeQuery(ASTNode):
                f'NativeQuery(integration={self.integration.to_string()}, query="{self.query}")'
 
     def get_string(self, *args, **kwargs):
-        return f'{self.integration.to_string()} ({self.query})'
+        alias = ''
+        if self.alias is not None:
+            alias = f'as {self.alias.parts[-1]}'
+        return f'({self.query}) {alias}'
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}:{self.integration.to_string()} ({self.query})'

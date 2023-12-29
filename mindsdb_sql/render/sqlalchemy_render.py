@@ -412,6 +412,13 @@ class SqlalchemyRender:
             elif isinstance(from_table, ast.Identifier):
                 table = self.to_table(from_table)
                 query = query.select_from(table)
+
+            elif isinstance(from_table, ast.NativeQuery):
+                alias = None
+                if from_table.alias:
+                    alias = from_table.alias.parts[-1]
+                table = sa.text(from_table.query).columns().subquery(alias)
+                query = query.select_from(table)
             else:
                 raise NotImplementedError(f'Select from {from_table}')
 
