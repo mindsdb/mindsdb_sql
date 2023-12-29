@@ -3,10 +3,11 @@ from dataclasses import dataclass, field
 
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser import ast
-from mindsdb_sql.parser.ast import (Select, Identifier, BetweenOperation, Join, Star, BinaryOperation, Constant, NativeQuery, Parameter)
-
+from mindsdb_sql.parser.ast import (Select, Identifier, BetweenOperation, Join, Star, BinaryOperation, Constant,
+                                    NativeQuery, Parameter)
 from mindsdb_sql.planner.steps import (FetchDataframeStep, JoinStep, ApplyPredictorStep, SubSelectStep, QueryStep)
 from mindsdb_sql.planner.utils import (query_traversal, filters_to_bin_op)
+from mindsdb_sql.planner.plan_join_ts import PlanJoinTSPredictorQuery
 
 
 @dataclass
@@ -20,6 +21,61 @@ class TableInfo:
 
 
 class PlanJoin:
+
+    def __init__(self, planner):
+        self.planner = planner
+
+    def is_timeseries(self, query):
+
+        join = query.from_table
+        l_predictor = self.planner.get_predictor(join.left) if isinstance(join.left, Identifier) else None
+        r_predictor = self.planner.get_predictor(join.right) if isinstance(join.right, Identifier) else None
+        if l_predictor and l_predictor.get('timeseries'):
+            return True
+        if r_predictor and r_predictor.get('timeseries'):
+            return True
+
+    def check_single_integration(self, query):
+        query_info = self.planner.get_query_info(query)
+
+        # can we send all query to integration?
+
+        # one integration and not mindsdb objects in query
+        if (
+                len(query_info['mdb_entities']) == 0
+                and len(query_info['integrations']) == 1
+                and 'files' not in query_info['integrations']
+                and 'views' not in query_info['integrations']
+        ):
+
+            int_name = list(query_info['integrations'])[0]
+            # if is sql database
+            if self.planner.integrations.get(int_name, {}).get('class_type') != 'api':
+
+                # send to this integration
+                return int_name
+        return None
+
+    def plan(self, query, integration=None):
+        # FIXME: Tableau workaround, INFORMATION_SCHEMA with Where
+        # if isinstance(join.right, Identifier) \
+        #         and self.resolve_database_table(join.right)[0] == 'INFORMATION_SCHEMA':
+        #     pass
+
+        # send join to integration as is?
+        integration_to_send = self.check_single_integration(query)
+        if integration_to_send:
+            self.planner.prepare_integration_select(integration_to_send, query)
+
+            last_step = self.planner.plan.add_step(FetchDataframeStep(integration=integration_to_send, query=query))
+            return last_step
+        elif self.is_timeseries(query):
+            return PlanJoinTSPredictorQuery(self.planner).plan(query, integration)
+        else:
+            return PlanJoinTablesQuery(self.planner).plan(query)
+
+
+class PlanJoinTablesQuery:
 
     def __init__(self, planner):
         self.planner = planner
