@@ -1,3 +1,4 @@
+from typing import List
 import copy
 from dataclasses import dataclass, field
 
@@ -14,8 +15,8 @@ from mindsdb_sql.planner.plan_join_ts import PlanJoinTSPredictorQuery
 class TableInfo:
     integration: str
     table: Identifier
-    aliases: list[str] = field(default_factory=list)
-    conditions: list = None
+    aliases: List[str] = field(default_factory=List)
+    conditions: List = None
     sub_select: ast.ASTNode = None
     predictor_info: dict = None
 
