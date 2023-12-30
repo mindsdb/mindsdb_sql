@@ -2,14 +2,25 @@ import copy
 
 import pytest
 
-from mindsdb_sql import parse_sql
+from mindsdb_sql import parse_sql, NativeQuery, OrderBy, NullConstant
 from mindsdb_sql.exceptions import PlanningException
-from mindsdb_sql.parser.ast import *
+from mindsdb_sql.parser.ast import Select, Star, Identifier, Join, Constant, BinaryOperation, Update, BetweenOperation
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import *
+from mindsdb_sql.planner.steps import (
+    JoinStep,
+    SaveToTable,
+    ProjectStep,
+    InsertToTable,
+    MapReduceStep,
+    MultipleSteps,
+    UpdateToTable,
+    LimitOffsetStep,
+    FetchDataframeStep,
+    ApplyTimeseriesPredictorStep
+)
 from mindsdb_sql.parser.utils import JoinType
 
 
@@ -725,7 +736,74 @@ class TestJoinTimeseriesPredictor:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        
+
+    def test_join_predictor_timeseries_concrete_date_equal(self):
+        predictor_window = 10
+        group_by_column = 'vendor_id'
+
+        sql = """
+            select * from
+                mysql.data.ny_output as ta
+                join mindsdb.tp3 as tb
+            where
+                ta.pickup_hour = 10
+                and ta.vendor_id = 1
+        """
+
+        query = parse_sql(sql, dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='mysql',
+                                   query=Select(targets=[
+                                       Identifier(parts=['ta', group_by_column], alias=Identifier(group_by_column))],
+                                       from_table=Identifier('data.ny_output', alias=Identifier('ta')),
+                                       where=BinaryOperation('=', args=[Identifier('ta.vendor_id'), Constant(1)]),
+                                       distinct=True,
+                                   )
+                                   ),
+                MapReduceStep(
+                    values=Result(0),
+                    reduce='union',
+                    step=FetchDataframeStep(
+                        integration='mysql',
+                        query=parse_sql("""
+                            SELECT * FROM data.ny_output AS ta
+                            WHERE ta.pickup_hour <= 10 AND ta.vendor_id = 1 AND ta.pickup_hour is not null and
+                            ta.vendor_id = '$var[vendor_id]'
+                            ORDER BY ta.pickup_hour DESC LIMIT 10
+                        """),
+                    ),
+                ),
+                ApplyTimeseriesPredictorStep(
+                    output_time_filter=BinaryOperation('>', args=[Identifier('ta.pickup_hour'), Constant(10)]),
+                    namespace='mindsdb',
+                    predictor=Identifier('tp3', alias=Identifier('tb')),
+                    dataframe=Result(1),
+                ),
+                JoinStep(left=Result(1),
+                         right=Result(2),
+                         query=Join(
+                             right=Identifier('result_2'),
+                             left=Identifier('result_1'),
+                             join_type=JoinType.JOIN)
+                         ),
+                ProjectStep(dataframe=Result(3), columns=[Star()]),
+            ],
+        )
+
+        plan = plan_query(query,
+                          integrations=['mysql'],
+                          predictor_namespace='mindsdb',
+                          predictor_metadata={
+                              'tp3': {'timeseries': True,
+                                       'order_by_column': 'pickup_hour',
+                                       'group_by_columns': [group_by_column],
+                                       'window': predictor_window}
+                          })
+
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]
 
     def test_join_predictor_timeseries_error_on_nested_where(self):
         query = Select(targets=[Identifier('pred.time'), Identifier('pred.price')],
