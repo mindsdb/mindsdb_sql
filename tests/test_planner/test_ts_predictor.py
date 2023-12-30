@@ -1385,3 +1385,73 @@ class TestJoinTimeseriesPredictor:
             # print(plan.steps[i])
             # print(expected_plan.steps[i])
             assert plan.steps[i] == expected_plan.steps[i]
+
+
+    def test_join_native_query(self):
+        query = parse_sql('''
+            SELECT *
+            FROM int1 (select * from tab) as t
+            JOIN pred as m
+            WHERE t.date > LATEST
+        ''')
+
+        group_by_column = 'type'
+
+        plan = plan_query(
+            query,
+            integrations=['int1'],
+            default_namespace='proj',
+            predictor_metadata=[{
+                'name': 'pred',
+                'integration_name': 'proj',
+                'timeseries': True,
+                'window': 10, 'horizon': 10, 'order_by_column': 'date', 'group_by_columns': [group_by_column]
+            }]
+        )
+
+        expected_plan = QueryPlan(steps=[
+            FetchDataframeStep(
+                integration='int1',
+                query=Select(
+                    targets=[Identifier('t.type', alias=Identifier('type'))],
+                    from_table=NativeQuery(query='select * from tab', integration=Identifier('int1'), alias=Identifier('t')),
+                    distinct=True
+                )
+            ),
+            MapReduceStep(
+                values=Result(0),
+                reduce='union',
+                step=FetchDataframeStep(integration='int1',
+                    query=Select(
+                        targets=[Star()],
+                        from_table=NativeQuery(query='select * from tab', integration=Identifier('int1'), alias=Identifier('t')),
+                        distinct=False,
+                        limit=Constant(10),
+                        order_by=[OrderBy(field=Identifier('t.date'), direction='DESC')],
+                        where=BinaryOperation('and', args=[
+                            BinaryOperation('is not', args=[Identifier('t.date'), NullConstant()]),
+                            BinaryOperation('=', args=[Identifier('t.type'), Constant('$var[type]')]),
+                        ])
+                    )
+                ),
+            ),
+            ApplyTimeseriesPredictorStep(
+                namespace='proj',
+                predictor=Identifier('pred', alias=Identifier('m')),
+                dataframe=Result(1),
+                output_time_filter=BinaryOperation('>', args=[Identifier('t.date'), Latest()]),
+            ),
+            JoinStep(
+                left=Result(1),
+                right=Result(2),
+                query=Join(
+                    left=Identifier('result_1'),
+                    right=Identifier('result_2'),
+                    join_type=JoinType.JOIN
+                )
+            )
+        ])
+
+        assert len(plan.steps) == len(expected_plan.steps)
+        for i in range(len(plan.steps)):
+            assert plan.steps[i] == expected_plan.steps[i]

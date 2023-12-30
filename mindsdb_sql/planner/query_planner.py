@@ -164,7 +164,10 @@ class QueryPlanner:
         query_traversal(query, _prepare_integration_select)
 
     def get_integration_select_step(self, select):
-        integration_name, table = self.resolve_database_table(select.from_table)
+        if isinstance(select.from_table, NativeQuery):
+            integration_name = select.from_table.integration.parts[-1]
+        else:
+            integration_name, table = self.resolve_database_table(select.from_table)
 
         fetch_df_select = copy.deepcopy(select)
         self.prepare_integration_select(integration_name, fetch_df_select)
