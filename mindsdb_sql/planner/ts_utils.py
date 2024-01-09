@@ -1,3 +1,4 @@
+from mindsdb_sql import OrderBy
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser.ast import Identifier, Operation, BinaryOperation, BetweenOperation
 
@@ -70,3 +71,21 @@ def validate_ts_where_condition(op, allowed_columns, allow_and=True):
         validate_ts_where_condition(op.args[0], allowed_columns, allow_and=True)
     if isinstance(op.args[1], Operation):
         validate_ts_where_condition(op.args[1], allowed_columns, allow_and=True)
+
+
+def recursively_check_join_identifiers_for_ambiguity(item, aliased_fields=None):
+    if item is None:
+        return
+    elif isinstance(item, Identifier):
+        if len(item.parts) == 1:
+            if aliased_fields is not None and item.parts[0] in aliased_fields:
+                # is alias
+                return
+            raise PlanningException(f'Ambigous identifier {str(item)}, provide table name for operations on a join.')
+    elif isinstance(item, Operation):
+        recursively_check_join_identifiers_for_ambiguity(item.args, aliased_fields=aliased_fields)
+    elif isinstance(item, OrderBy):
+        recursively_check_join_identifiers_for_ambiguity(item.field, aliased_fields=aliased_fields)
+    elif isinstance(item, list):
+        for arg in item:
+            recursively_check_join_identifiers_for_ambiguity(arg, aliased_fields=aliased_fields)
