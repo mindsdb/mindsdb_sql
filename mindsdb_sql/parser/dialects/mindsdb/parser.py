@@ -31,10 +31,11 @@ all_tokens_list.remove('RPAREN')
 all_tokens_list.remove('LPAREN')
 
 """
-Unfortunately the rules are not iherited from base SQLParser, because it just doesn't work with Sly due to metaclass magic.
+Unfortunately the rules are not inherited from base SQLParser, because it just doesn't work with Sly due to metaclass magic.
 """
 
 
+# noinspection SqlDialectInspection
 class MindsDBParser(Parser):
     log = ParserLogger()
     tokens = MindsDBLexer.tokens
@@ -171,7 +172,7 @@ class MindsDBParser(Parser):
     @_('DROP AGENT if_exists_or_empty identifier')
     def drop_agent(self, p):
         return DropAgent(name=p.identifier, if_exists=p.if_exists_or_empty)
-    
+
     @_('UPDATE AGENT identifier SET kw_parameter_list')
     def update_agent(self, p):
         return UpdateAgent(name=p.identifier, updated_params=p.kw_parameter_list)
@@ -1407,7 +1408,7 @@ class MindsDBParser(Parser):
             arg1 = Last()
         else:
             arg1 = p.expr1
-        return BinaryOperation(op=p[1], args=(p[0], arg1))
+        return BinaryOperation(op=p[1], args=(p.expr0, arg1))
 
     @_('MINUS expr %prec UMINUS',
        'NOT expr %prec UNOT', )

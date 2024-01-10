@@ -73,7 +73,7 @@ class MindsDBLexer(Lexer):
         IN, LIKE, CONCAT, BETWEEN, WINDOW, OVER, PARTITION_BY,
 
         # Data types
-        CAST, ID, INTEGER, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE,
+        CAST, ID, INTEGER, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE, MINDS_ID, NAT_ID, AMB_ID
 
     }
 
@@ -290,8 +290,19 @@ class MindsDBLexer(Lexer):
     TRUE = r'\bTRUE\b'
     FALSE = r'\bFALSE\b'
 
+    def register_integrations(self, mindsdb_obs: list, native_ints: list):
+        self.mindsdb_objs = mindsdb_obs
+        self.native_ints = native_ints
+
     @_(r'(?:([a-zA-Z_$0-9]*[a-zA-Z_$]+[a-zA-Z_$0-9]*)|(?:`([^`]+)`))')
     def ID(self, t):
+        if t.value in self.mindsdb_objs:
+            t.type = 'MINDS_ID'
+        elif t.value in self.native_ints:
+            t.type = 'NAT_ID'
+        else:
+            t.type = 'AMB_ID'
+
         return t
 
     @_(r'\d+\.\d*')

@@ -1825,7 +1825,7 @@ class Parser(metaclass=ParserMeta):
     track_positions = True
     
     # Logging object where debugging/diagnostic messages are sent
-    log = SlyLogger(sys.stderr)     
+    log = SlyLogger(sys.stderr)
 
     # Debugging filename where parsetab.out data can be written
     debugfile = None
@@ -2027,6 +2027,7 @@ class Parser(metaclass=ParserMeta):
                 f.write(str(cls._lrtable))
             cls.log.info('Parser debugging for %s written to %s', cls.__qualname__, cls.debugfile)
 
+
     # ----------------------------------------------------------------------
     # Parsing Support.  This is the parsing runtime that users use to
     # ----------------------------------------------------------------------
@@ -2065,6 +2066,8 @@ class Parser(metaclass=ParserMeta):
         '''
         Parse the given input tokens.
         '''
+        type(self).log.error('Starting parse..')
+
         lookahead = None                                  # Current lookahead symbol
         lookaheadstack = []                               # Stack of lookahead symbols
         actions = self._lrtable.lr_action                 # Local reference to action table (to avoid lookup on self.)
@@ -2089,6 +2092,7 @@ class Parser(metaclass=ParserMeta):
 
         errtoken   = None                                 # Err token
         while True:
+            type(self).log.error(f'Starting parse step in state {self.state}')
             # Get the next symbol on the input.  If a lookahead symbol
             # is already set, we just use that. Otherwise, we'll pull
             # the next token off of the lookaheadstack or from the lexer
@@ -2108,6 +2112,8 @@ class Parser(metaclass=ParserMeta):
             else:
                 t = defaulted_states[self.state]
 
+            type(self).log.error(f'state: {t}')
+
             if t is not None:
                 if t > 0:
                     # shift a symbol on the stack
@@ -2115,6 +2121,7 @@ class Parser(metaclass=ParserMeta):
                     self.state = t
 
                     symstack.append(lookahead)
+                    type(self).log.error(f'Symbol stack: {symstack}')
                     lookahead = None
 
                     # Decrease error count on successful shift
@@ -2164,6 +2171,7 @@ class Parser(metaclass=ParserMeta):
                     continue
 
                 if t == 0:
+                    type(self).log.error(f'Final symstack: {symstack}')
                     n = symstack[-1]
                     result = getattr(n, 'value', None)
                     return result
