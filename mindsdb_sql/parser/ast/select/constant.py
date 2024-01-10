@@ -4,16 +4,17 @@ from mindsdb_sql.parser.utils import indent
 
 
 class Constant(ASTNode):
-    def __init__(self, value, *args, **kwargs):
+    def __init__(self, value, with_quotes=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.value = value
+        self.with_quotes = with_quotes
 
     def to_tree(self, *args, level=0, **kwargs):
         alias_str = f', alias={self.alias.to_tree()}' if self.alias else ''
         return indent(level) + f'Constant(value={repr(self.value)}{alias_str})'
 
     def get_string(self, *args, **kwargs):
-        if isinstance(self.value, str):
+        if isinstance(self.value, str) and self.with_quotes:
             out_str = f"\'{self.value}\'"
         elif isinstance(self.value, bool):
             out_str = 'TRUE' if self.value else 'FALSE'
@@ -29,24 +30,10 @@ class NullConstant(Constant):
         super().__init__(value=None, *args, **kwargs)
 
     def to_tree(self, *args, level=0, **kwargs):
-        return '\t'*level +  'NullConstant()'
+        return '\t'*level + 'NullConstant()'
 
     def get_string(self, *args, **kwargs):
         return 'NULL'
-
-
-# TODO replace it to just Constant?
-# DEFAULT
-class SpecialConstant(ASTNode):
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.name = name
-
-    def to_tree(self, *args, level=0, **kwargs):
-        return indent(level) + f'SpecialConstant(name={self.name})'
-
-    def get_string(self, *args, **kwargs):
-        return self.name
 
 
 class Last(Constant):

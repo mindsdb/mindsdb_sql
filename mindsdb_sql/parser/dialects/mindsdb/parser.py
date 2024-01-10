@@ -356,7 +356,7 @@ class MindsDBParser(Parser):
             if isinstance(p[4], Constant):
                 val = p[4]
             else:
-                val = SpecialConstant('DEFAULT')
+                val = Constant(p[4], with_quotes=False)
             params['COLLATE'] = val
 
         return Set(category=p.id.lower(), arg=arg, params=params)
@@ -365,8 +365,8 @@ class MindsDBParser(Parser):
     @_('SET charset constant',
        'SET charset DEFAULT')
     def set(self, p):
-        if hasattr(p, 'DEFAULT'):
-            arg = SpecialConstant('DEFAULT')
+        if hasattr(p, 'id'):
+            arg = Constant(p.id, with_quotes=False)
         else:
             arg = p.constant
         return Set(category='CHARSET', arg=arg)

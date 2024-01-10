@@ -124,7 +124,7 @@ class MySQLParser(SQLParser):
             if isinstance(p[4], Constant):
                 val = p[4]
             else:
-                val = SpecialConstant('DEFAULT')
+                val = Constant('DEFAULT', with_quotes=False)
             params['COLLATE'] = val
 
         return Set(category=p.id.lower(), arg=arg, params=params)
@@ -134,7 +134,7 @@ class MySQLParser(SQLParser):
     @_('SET charset DEFAULT')
     def set(self, p):
         if hasattr(p, 'DEFAULT'):
-            arg = SpecialConstant('DEFAULT')
+            arg = Constant('DEFAULT', with_quotes=False)
         else:
             arg = p.constant
         return Set(category='CHARSET', arg=arg)

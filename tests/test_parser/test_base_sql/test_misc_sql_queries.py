@@ -103,7 +103,7 @@ class TestMiscQueriesNoSqlite:
         assert str(ast) == str(expected_ast)
 
 
-        sql = "SET NAMES some_name collate default"
+        sql = "SET NAMES some_name collate DEFAULT"
 
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Set(category="names",
@@ -126,14 +126,14 @@ class TestMiscQueriesNoSqlite:
         sql = "SET CHARACTER SET DEFAULT"
 
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Set(category='CHARSET', arg=SpecialConstant('DEFAULT'))
+        expected_ast = Set(category='CHARSET', arg=Constant('DEFAULT', with_quotes=False))
 
         assert ast.to_tree() == expected_ast.to_tree()
 
         sql = "SET CHARSET DEFAULT"
 
         ast = parse_sql(sql, dialect=dialect)
-        expected_ast = Set(category='CHARSET', arg=SpecialConstant('DEFAULT'))
+        expected_ast = Set(category='CHARSET', arg=Constant('DEFAULT', with_quotes=False))
 
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
