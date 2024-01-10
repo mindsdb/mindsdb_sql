@@ -44,6 +44,8 @@ class MindsDBLexer(Lexer):
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
         PERSIST, PERSIST_ONLY, DEFAULT,
         IF_EXISTS, IF_NOT_EXISTS, COLUMNS, FIELDS, COLLATE, SEARCH_PATH,
+        VARIABLE, SYSTEM_VARIABLE,
+
         # SELECT Keywords
         WITH, SELECT, DISTINCT, FROM, WHERE, AS,
         LIMIT, OFFSET, ASC, DESC, NULLS_FIRST, NULLS_LAST,
@@ -314,3 +316,36 @@ class MindsDBLexer(Lexer):
     @_(r'\n+')
     def ignore_newline(self, t):
         self.lineno += len(t.value)
+
+    @_(r'@[a-zA-Z_.$]+',
+       r"@'[a-zA-Z_.$][^']*'",
+       r"@`[a-zA-Z_.$][^`]*`",
+       r'@"[a-zA-Z_.$][^"]*"'
+       )
+    def VARIABLE(self, t):
+        t.value = t.value.lstrip('@')
+
+        if t.value[0] == '"':
+            t.value = t.value.strip('\"')
+        elif t.value[0] == "'":
+            t.value = t.value.strip('\'')
+        elif t.value[0] == "`":
+            t.value = t.value.strip('`')
+        return t
+
+    @_(r'@@[a-zA-Z_.$]+',
+       r"@@'[a-zA-Z_.$][^']*'",
+       r"@@`[a-zA-Z_.$][^`]*`",
+       r'@@"[a-zA-Z_.$][^"]*"'
+       )
+    def SYSTEM_VARIABLE(self, t):
+        t.value = t.value.lstrip('@')
+
+        if t.value[0] == '"':
+            t.value = t.value.strip('\"')
+        elif t.value[0] == "'":
+            t.value = t.value.strip('\'')
+        elif t.value[0] == "`":
+            t.value = t.value.strip('`')
+        return t
+

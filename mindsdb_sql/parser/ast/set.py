@@ -16,7 +16,6 @@ class Set(ASTNode):
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
-        ind1 = indent(level+1)
         category_str = f'category={self.category}, '
         arg_str = f'arg={self.arg.to_tree()},' if self.arg else ''
         if self.params:

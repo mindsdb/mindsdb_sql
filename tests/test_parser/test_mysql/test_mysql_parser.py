@@ -1,6 +1,6 @@
 from mindsdb_sql import parse_sql
 from mindsdb_sql.parser.ast import Select, Identifier, BinaryOperation, Star
-from mindsdb_sql.parser.dialects.mysql import Variable
+from mindsdb_sql.parser.ast import Variable
 from mindsdb_sql.parser.parser import Show
 
 class TestMySQLParser:

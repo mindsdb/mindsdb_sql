@@ -1692,6 +1692,22 @@ class MindsDBParser(Parser):
     def raw_query(self, p):
         return p[0] + p[1]
 
+    @_('variable')
+    def table_or_subquery(self, p):
+        return p.variable
+
+    @_('variable')
+    def expr(self, p):
+        return p.variable
+
+    @_('SYSTEM_VARIABLE')
+    def variable(self, p):
+        return Variable(value=p.SYSTEM_VARIABLE, is_system_var=True)
+
+    @_('VARIABLE')
+    def variable(self, p):
+        return Variable(value=p.VARIABLE)
+
     @_(
         'IF_NOT_EXISTS',
         'empty'

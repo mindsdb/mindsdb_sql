@@ -14,6 +14,6 @@ from .update import *
 from .delete import *
 from .drop import *
 from .create import *
+from .variable import *
 
-from mindsdb_sql.parser.dialects.mysql.variable import Variable
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest

@@ -2,7 +2,6 @@ from mindsdb_sql.parser.logger import ParserLogger
 from mindsdb_sql.parser.parser import SQLParser
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mysql.lexer import MySQLLexer
-from mindsdb_sql.parser.dialects.mysql.variable import Variable
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.utils import ensure_select_keyword_order, JoinType
 
