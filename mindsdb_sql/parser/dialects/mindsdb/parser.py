@@ -837,7 +837,11 @@ class MindsDBParser(Parser):
     @_('RETRAIN identifier',
        'RETRAIN identifier PREDICT result_columns',
        'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN',
-       'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns')
+       'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'RETRAIN MODEL identifier',
+       'RETRAIN MODEL identifier PREDICT result_columns',
+       'RETRAIN MODEL identifier FROM identifier LPAREN raw_query RPAREN',
+       'RETRAIN MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns')
     def create_predictor(self, p):
         query_str = None
         if hasattr(p, 'raw_query'):
@@ -856,7 +860,8 @@ class MindsDBParser(Parser):
             targets=getattr(p, 'result_columns', None)
         )
 
-    @_('FINETUNE identifier FROM identifier LPAREN raw_query RPAREN')
+    @_('FINETUNE identifier FROM identifier LPAREN raw_query RPAREN',
+       'FINETUNE MODEL identifier FROM identifier LPAREN raw_query RPAREN')
     def create_predictor(self, p):
         query_str = None
         if hasattr(p, 'raw_query'):
