@@ -31,3 +31,28 @@ class TestDescribeMindsdb:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+        # describe attr
+        sql = "DESCRIBE MODEL pred.attr"
+        ast = parse_sql(sql, dialect='mindsdb')
+
+        expected_ast = Describe(type='predictor', value=Identifier(parts=['pred', 'attr']))
+
+        assert str(ast) == str(expected_ast)
+
+        # version
+        sql = "DESCRIBE MODEL pred.11"
+        ast = parse_sql(sql, dialect='mindsdb')
+
+        expected_ast = Describe(type='predictor', value=Identifier(parts=['pred', '11']))
+
+        assert str(ast) == str(expected_ast)
+
+        # version and attr
+        sql = "DESCRIBE MODEL pred.11.attr"
+        ast = parse_sql(sql, dialect='mindsdb')
+
+        expected_ast = Describe(type='predictor', value=Identifier(parts=['pred', '11', 'attr']))
+
+        assert str(ast) == str(expected_ast)
+
+
