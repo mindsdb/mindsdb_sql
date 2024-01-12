@@ -304,12 +304,14 @@ class MindsDBLexer(Lexer):
     def INTEGER(self, t):
         return t
 
-    @_(r"'[^']*'")
+    @_(r"'(?:[^\'\\]|\\.)*'")
     def QUOTE_STRING(self, t):
+        t.value = t.value.replace('\\"', '"').replace("\\'", "'")
         return t
 
-    @_(r'"[^"]*"')
+    @_(r'"(?:[^\"\\]|\\.)*"')
     def DQUOTE_STRING(self, t):
+        t.value = t.value.replace('\\"', '"').replace("\\'", "'")
         return t
 
     @_(r'\n+')
