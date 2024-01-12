@@ -26,7 +26,7 @@ modules = (
 )
 
 
-def parse_sql2(sql, dialect='sqlite'):
+def parse_sql2(sql, dialect='mindsdb'):
     # convert to ast
     query = parse_sql(sql, dialect)
 

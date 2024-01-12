@@ -48,7 +48,7 @@ class ProjectStep(PlanStep):
         if isinstance(dataframe, Result):
             self.references.append(dataframe)
 
-
+# TODO remove
 class FilterStep(PlanStep):
     """Filters some dataframe according to a query"""
     def __init__(self, dataframe, query, *args, **kwargs):
@@ -59,7 +59,7 @@ class FilterStep(PlanStep):
         if isinstance(dataframe, Result):
             self.references.append(dataframe)
 
-
+# TODO remove
 class GroupByStep(PlanStep):
     """Groups output by columns and computes aggregation functions"""
 
@@ -102,7 +102,7 @@ class UnionStep(PlanStep):
         if isinstance(right, Result):
             self.references.append(right)
 
-
+# TODO remove
 class OrderByStep(PlanStep):
     """Applies sorting to a dataframe"""
 
@@ -252,6 +252,14 @@ class SubSelectStep(PlanStep):
         self.dataframe = dataframe
         self.table_name = table_name
         self.add_absent_cols = add_absent_cols
+
+
+class QueryStep(PlanStep):
+    def __init__(self, query, from_table=None, *args, **kwargs):
+        """Performs query using injected dataframe"""
+        super().__init__(*args, **kwargs)
+        self.query = query
+        self.from_table = from_table
 
 
 class DataStep(PlanStep):

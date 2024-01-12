@@ -2,7 +2,6 @@ from mindsdb_sql import parse_sql
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.utils import JoinType
-from mindsdb_sql.planner.ts_utils import validate_ts_where_condition
 
 
 class TestTimeSeries:

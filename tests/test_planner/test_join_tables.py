@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 from mindsdb_sql.exceptions import PlanningException
@@ -6,7 +8,7 @@ from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, GroupByStep,
-                                       LimitOffsetStep, OrderByStep, ApplyPredictorStep, SubSelectStep)
+                                       LimitOffsetStep, OrderByStep, ApplyPredictorStep, SubSelectStep, QueryStep)
 from mindsdb_sql.parser.utils import JoinType
 from mindsdb_sql import parse_sql
 
@@ -39,8 +41,7 @@ class TestPlanJoinTables:
                                                                                           Identifier('tab2.column1')]),
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
-                                      ProjectStep(dataframe=Result(2),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                      QueryStep(parse_sql("select tab1.column1, tab2.column1, tab2.column2"), from_table=Result(2)),
                                   ],
         )
 
@@ -57,6 +58,10 @@ class TestPlanJoinTables:
             AND (tab1.column3 = tab2.column3)
         ''')
 
+        subquery = copy.deepcopy(query)
+        subquery.from_table = None
+        subquery.offset = None
+
         plan = plan_query(query, integrations=['int', 'int2'])
         expected_plan = QueryPlan(integrations=['int'],
                                   steps=[
@@ -72,40 +77,11 @@ class TestPlanJoinTables:
                                                                                           Identifier('tab2.column1')]),
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
-                                      FilterStep(dataframe=Result(2),
-                                                 query=BinaryOperation('and',
-                                                                       args=[
-                                                                           BinaryOperation('and', parentheses=True,
-                                                                                           args=[
-                                                                                               BinaryOperation('=', parentheses=True,
-                                                                                                               args=[
-                                                                                                                   Identifier(
-                                                                                                                       'tab1.column1'),
-                                                                                                                   Constant(
-                                                                                                                       1)]),
-                                                                                               BinaryOperation('=', parentheses=True,
-                                                                                                               args=[
-                                                                                                                   Identifier(
-                                                                                                                       'tab2.column1'),
-                                                                                                                   Constant(
-                                                                                                                       0)]),
-
-                                                                                           ]
-                                                                                           ),
-                                                                           BinaryOperation('=', parentheses=True,
-                                                                                           args=[Identifier(
-                                                                                               'tab1.column3'),
-                                                                                                 Identifier(
-                                                                                                     'tab2.column3')]),
-                                                                       ]
-                                                                       )),
-                                      ProjectStep(dataframe=Result(3),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                      QueryStep(subquery, from_table=Result(2)),
                                   ],
                                   )
 
-        for i in range(len(plan.steps)):
-            assert plan.steps[i] == expected_plan.steps[i]
+        assert plan.steps == expected_plan.steps
 
 
     def test_join_tables_plan_groupby(self):
@@ -122,6 +98,11 @@ class TestPlanJoinTables:
             group_by=[Identifier('tab1.column1'), Identifier('tab2.column1')],
             having=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Constant(0)])
         )
+
+        subquery = copy.deepcopy(query)
+        subquery.from_table = None
+        subquery.offset = None
+
         plan = plan_query(query, integrations=['int', 'int2'])
         expected_plan = QueryPlan(integrations=['int'],
                                   steps = [
@@ -142,15 +123,7 @@ class TestPlanJoinTables:
                                                                                           Identifier('tab2.column1')]),
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
-                                      GroupByStep(dataframe=Result(2),
-                                                  targets=[Identifier('tab1.column1'),
-                                                            Identifier('tab2.column1'),
-                                                            Function('sum', args=[Identifier('tab2.column2')])],
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
-                                      FilterStep(dataframe=Result(3), query=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Constant(0)])),
-                                      ProjectStep(dataframe=Result(4),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'),
-                                                           Function(op='sum', args=[Identifier('tab2.column2')], alias=Identifier('total'))]),
+                                      QueryStep(subquery, from_table=Result(2)),
                                   ],
                                   )
         assert plan.steps == expected_plan.steps
@@ -166,13 +139,21 @@ class TestPlanJoinTables:
                        limit=Constant(10),
                        offset=Constant(15),
                 )
+
+        subquery = copy.deepcopy(query)
+        subquery.from_table = None
+        subquery.offset = None
+
         plan = plan_query(query, integrations=['int', 'int2'])
         expected_plan = QueryPlan(integrations=['int'],
                                   steps = [
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
                                                              targets=[Star()],
-                                                             from_table=Identifier('tab1')),
+                                                             from_table=Identifier('tab1'),
+                                                             limit=Constant(10),
+                                                             offset=Constant(15),
+                                                         ),
                                                          ),
                                       FetchDataframeStep(integration='int2',
                                                          query=Select(targets=[Star()],
@@ -186,9 +167,7 @@ class TestPlanJoinTables:
                                                                                           Identifier('tab2.column1')]),
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
-                                      LimitOffsetStep(dataframe=Result(2), limit=10, offset=15),
-                                      ProjectStep(dataframe=Result(3),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                      QueryStep(subquery, from_table=Result(2)),
                                   ],
                                   )
 
@@ -206,14 +185,18 @@ class TestPlanJoinTables:
                        offset=Constant(15),
                        order_by=[OrderBy(field=Identifier('tab1.column1'))],
                 )
+
+        subquery = copy.deepcopy(query)
+        subquery.from_table = None
+        subquery.offset = None
+
         plan = plan_query(query, integrations=['int', 'int2'])
         expected_plan = QueryPlan(integrations=['int'],
                                   steps = [
-                                      FetchDataframeStep(integration='int',
-                                                         query=Select(
-                                                             targets=[Star()],
-                                                             from_table=Identifier('tab1')),
-                                                         ),
+                                      FetchDataframeStep(
+                                          integration='int',
+                                          query=parse_sql("select * from tab1 order by column1 limit 10 offset 15")
+                                      ),
                                       FetchDataframeStep(integration='int2',
                                                          query=Select(targets=[Star()],
                                                                       from_table=Identifier('tab2')),
@@ -226,10 +209,7 @@ class TestPlanJoinTables:
                                                                                           Identifier('tab2.column1')]),
                                                           join_type=JoinType.INNER_JOIN
                                                           )),
-                                      OrderByStep(dataframe=Result(2), order_by=[OrderBy(field=Identifier('tab1.column1'))]),
-                                      LimitOffsetStep(dataframe=Result(3), limit=10, offset=15),
-                                      ProjectStep(dataframe=Result(4),
-                                                  columns=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')]),
+                                      QueryStep(subquery, from_table=Result(2)),
                                   ],
                                   )
 
@@ -355,6 +335,9 @@ class TestPlanJoinTables:
             where t1.a=1 and t2.b=2 and 1=1
         ''', dialect='mindsdb')
 
+        subquery = copy.deepcopy(query)
+        subquery.from_table = None
+
         plan = plan_query(query, integrations=['int1', 'int2', 'proj'],  default_namespace='proj',
                           predictor_metadata=[{'name': 'pred', 'integration_name': 'proj'}])
 
@@ -387,40 +370,11 @@ class TestPlanJoinTables:
                                         args=[Identifier('tbl3.id'),
                                               Identifier('t1.id')]),
                                     join_type=JoinType.LEFT_JOIN)),
-              FilterStep(dataframe=Result(6),
-                         query=BinaryOperation(op='and',
-                              args=(
-                                BinaryOperation(op='and',
-                                  args=(
-                                    BinaryOperation(op='=',
-                                      args=(
-                                        Identifier(parts=['t1', 'a']),
-                                        Constant(value=1)
-                                      )
-                                    ),
-                                    BinaryOperation(op='=',
-                                      args=(
-                                        Identifier(parts=['t2', 'b']),
-                                        Constant(value=2)
-                                      )
-                                    )
-                                  )
-                                ),
-                                BinaryOperation(op='=',
-                                  args=(
-                                    Constant(value=1),
-                                    Constant(value=1)
-                                  )
-                                )
-                              )
-                            )
-              ),
-              ProjectStep(dataframe=Result(7), columns=[Star()])
+              QueryStep(subquery, from_table=Result(6)),
             ]
         )
 
-        for i in range(len(plan.steps)):
-            assert plan.steps[i] == expected_plan.steps[i]
+        assert plan.steps == expected_plan.steps
 
     def test_complex_join_tables_subselect(self):
         query = parse_sql('''
@@ -442,8 +396,8 @@ class TestPlanJoinTables:
                                    predictor=Identifier('pred', alias=Identifier('m'))),
                 JoinStep(left=Result(1),
                          right=Result(2),
-                         query=Join(left=Identifier('result_1'),
-                                    right=Identifier('result_2'),
+                         query=Join(left=Identifier('tab1'),
+                                    right=Identifier('tab2'),
                                     join_type=JoinType.JOIN)),
                 SubSelectStep(dataframe=Result(3), query=Select(targets=[Star()]), table_name='t2'),
                 JoinStep(
@@ -462,8 +416,7 @@ class TestPlanJoinTables:
             ]
         )
 
-        for i in range(len(plan.steps)):
-            assert plan.steps[i] == expected_plan.steps[i]
+        assert plan.steps == expected_plan.steps
 
     def test_join_with_select_from_native_query(self):
         query = parse_sql('''

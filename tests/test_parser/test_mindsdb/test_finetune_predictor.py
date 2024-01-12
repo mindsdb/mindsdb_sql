@@ -29,3 +29,10 @@ class TestFinetunePredictor:
         assert ' '.join(str(ast).split()).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+        # with MODEL
+        sql = "FINETUNE MODEL mindsdb.pred FROM integration_name (SELECT * FROM table_1) USING a=1, b=null"
+        ast = parse_sql(sql, dialect='mindsdb')
+
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()

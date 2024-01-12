@@ -1,9 +1,10 @@
+from mindsdb_sql import parse_sql
 from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
-                                       UnionStep)
+                                       UnionStep, QueryStep)
 from mindsdb_sql.parser.utils import JoinType
 
 
@@ -49,19 +50,16 @@ class TestPlanUnion:
                                    ),
                 ApplyPredictorStep(namespace='mindsdb', dataframe=Result(1), predictor=Identifier('pred')),
                 JoinStep(left=Result(1), right=Result(2),
-                         query=Join(left=Identifier('result_1'),
-                                    right=Identifier('result_2'),
+                         query=Join(left=Identifier('tab1'),
+                                    right=Identifier('tab2'),
                                     join_type=JoinType.INNER_JOIN)),
-                ProjectStep(dataframe=Result(3), columns=[Identifier('tab1.column1'), Identifier('pred.predicted', alias=Identifier('predicted'))]),
-
+                QueryStep(parse_sql("select tab1.column1, pred.predicted as predicted"), from_table=Result(3)),
                 # Union
                 UnionStep(left=Result(0), right=Result(4), unique=False),
-
             ],
         )
 
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
-        for i in range(len(plan.steps)):
-            assert plan.steps[i] == expected_plan.steps[i]
+        assert plan.steps == expected_plan.steps
         

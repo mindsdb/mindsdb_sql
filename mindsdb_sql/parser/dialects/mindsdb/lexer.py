@@ -42,8 +42,10 @@ class MindsDBLexer(Lexer):
         VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
-        PERSIST, PERSIST_ONLY, DEFAULT,
+        PERSIST, PERSIST_ONLY,
         IF_EXISTS, IF_NOT_EXISTS, COLUMNS, FIELDS, COLLATE, SEARCH_PATH,
+        VARIABLE, SYSTEM_VARIABLE,
+
         # SELECT Keywords
         WITH, SELECT, DISTINCT, FROM, WHERE, AS,
         LIMIT, OFFSET, ASC, DESC, NULLS_FIRST, NULLS_LAST,
@@ -170,7 +172,6 @@ class MindsDBLexer(Lexer):
     PLUGINS = r'\bPLUGINS\b'
     PERSIST = r'\bPERSIST\b'
     PERSIST_ONLY = r'\bPERSIST_ONLY\b'
-    DEFAULT = r'\bDEFAULT\b'
     IF_EXISTS = r'\bIF[\s]+EXISTS\b'
     IF_NOT_EXISTS = r'\bIF[\s]+NOT[\s]+EXISTS\b'
     COLUMNS = r'\bCOLUMNS\b'
@@ -295,7 +296,7 @@ class MindsDBLexer(Lexer):
     def ID(self, t):
         return t
 
-    @_(r'\d+\.\d*')
+    @_(r'\d+\.\d+')
     def FLOAT(self, t):
         return t
 
@@ -303,14 +304,49 @@ class MindsDBLexer(Lexer):
     def INTEGER(self, t):
         return t
 
-    @_(r"'[^']*'")
+    @_(r"'(?:[^\'\\]|\\.)*'")
     def QUOTE_STRING(self, t):
+        t.value = t.value.replace('\\"', '"').replace("\\'", "'")
         return t
 
-    @_(r'"[^"]*"')
+    @_(r'"(?:[^\"\\]|\\.)*"')
     def DQUOTE_STRING(self, t):
+        t.value = t.value.replace('\\"', '"').replace("\\'", "'")
         return t
 
     @_(r'\n+')
     def ignore_newline(self, t):
         self.lineno += len(t.value)
+
+    @_(r'@[a-zA-Z_.$]+',
+       r"@'[a-zA-Z_.$][^']*'",
+       r"@`[a-zA-Z_.$][^`]*`",
+       r'@"[a-zA-Z_.$][^"]*"'
+       )
+    def VARIABLE(self, t):
+        t.value = t.value.lstrip('@')
+
+        if t.value[0] == '"':
+            t.value = t.value.strip('\"')
+        elif t.value[0] == "'":
+            t.value = t.value.strip('\'')
+        elif t.value[0] == "`":
+            t.value = t.value.strip('`')
+        return t
+
+    @_(r'@@[a-zA-Z_.$]+',
+       r"@@'[a-zA-Z_.$][^']*'",
+       r"@@`[a-zA-Z_.$][^`]*`",
+       r'@@"[a-zA-Z_.$][^"]*"'
+       )
+    def SYSTEM_VARIABLE(self, t):
+        t.value = t.value.lstrip('@')
+
+        if t.value[0] == '"':
+            t.value = t.value.strip('\"')
+        elif t.value[0] == "'":
+            t.value = t.value.strip('\'')
+        elif t.value[0] == "`":
+            t.value = t.value.strip('`')
+        return t
+
