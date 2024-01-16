@@ -32,3 +32,29 @@ class TestSql:
         assert str(ast).lower() == str(expected_ast).lower()
         assert ast.to_tree() == expected_ast.to_tree()
 
+    def test_escaping(self):
+        expected_ast = Select(
+            targets=[Constant(value="a ' \" b")]
+        )
+
+        sql = """
+          select 'a \\' \\" b'
+        """
+
+        ast = parse_sql(sql)
+
+        assert str(ast).lower() == str(expected_ast).lower()
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        # in double quotes
+        sql = """
+          select "a \\' \\" b"
+        """
+
+        ast = parse_sql(sql)
+
+        assert str(ast).lower() == str(expected_ast).lower()
+        assert ast.to_tree() == expected_ast.to_tree()
+
+
+

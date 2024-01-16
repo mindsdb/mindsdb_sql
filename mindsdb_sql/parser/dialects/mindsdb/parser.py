@@ -334,42 +334,57 @@ class MindsDBParser(Parser):
     def rollback_transaction(self, p):
         return RollbackTransaction()
 
-    # Set
-
-    @_('SET id identifier',
-       'SET id identifier COLLATE constant',
-       'SET id identifier COLLATE DEFAULT',
-       'SET id constant',
-       'SET id constant COLLATE constant',
-       'SET id constant COLLATE DEFAULT')
+    # --- Set ---
+    @_('SET set_item_list')
     def set(self, p):
-        if not p.id.lower() == 'names':
-            raise ParsingException(f'Expected "SET names", got "SET {p.id}"')
-        if isinstance(p[2], Constant):
-            arg = Identifier(p[2].value)
+        set_list = p[1]
+        if len(set_list) == 1:
+            return set_list[0]
+        return Set(set_list=set_list)
+
+    @_('set_item',
+       'set_item_list COMMA set_item')
+    def set_item_list(self, p):
+        arr = getattr(p, 'set_item_list', [])
+        arr.append(p.set_item)
+        return arr
+
+    # set names
+    @_('id id',
+       'id constant',
+       'id id COLLATE constant',
+       'id id COLLATE id',
+       'id constant COLLATE constant',
+       'id constant COLLATE id')
+    def set_item(self, p):
+        category = p[0]
+        if category.lower() != 'names':
+            raise ParsingException(f'Expected "SET names", got "SET {category}"')
+        if isinstance(p[1], Constant):
+            value = p[1]
         else:
-            # is identifier
-            arg = p[2]
+            # is id
+            value = Constant(p[1], with_quotes=False)
 
         params = {}
         if hasattr(p, 'COLLATE'):
-            if isinstance(p[4], Constant):
-                val = p[4]
+            if isinstance(p[3], Constant):
+                val = p[3]
             else:
-                val = SpecialConstant('DEFAULT')
+                val = Constant(p[3], with_quotes=False)
             params['COLLATE'] = val
 
-        return Set(category=p.id.lower(), arg=arg, params=params)
+        return Set(category=category, value=value, params=params)
 
     # set charset
-    @_('SET charset constant',
-       'SET charset DEFAULT')
-    def set(self, p):
-        if hasattr(p, 'DEFAULT'):
-            arg = SpecialConstant('DEFAULT')
+    @_('charset constant',
+       'charset id')
+    def set_item(self, p):
+        if hasattr(p, 'id'):
+            arg = Constant(p.id, with_quotes=False)
         else:
             arg = p.constant
-        return Set(category='CHARSET', arg=arg)
+        return Set(category='CHARSET', value=arg)
 
     @_('CHARACTER SET',
        'CHARSET',
@@ -378,28 +393,29 @@ class MindsDBParser(Parser):
         return p[0]
 
     # set transaction
-    @_('SET transact_scope TRANSACTION transact_property_list',
-       'SET TRANSACTION transact_property_list')
-    def set(self, p):
+    @_('set_scope TRANSACTION transact_property_list',
+       'TRANSACTION transact_property_list')
+    def set_item(self, p):
         isolation_level = None
         access_mode = None
-        transact_scope = getattr(p, 'transact_scope', None)
+        transact_scope = getattr(p, 'set_scope', None)
         for prop in p.transact_property_list:
             if prop['type'] == 'iso_level':
                 isolation_level = prop['value']
             else:
                 access_mode = prop['value']
 
-        return SetTransaction(
-            isolation_level=isolation_level,
-            access_mode=access_mode,
-            scope=transact_scope,
-        )
+        params = {}
+        if isolation_level is not None:
+            params['isolation_level'] = isolation_level
+        if access_mode is not None:
+            params['access_mode'] = access_mode
 
-    @_('GLOBAL',
-       'SESSION')
-    def transact_scope(self, p):
-        return p[0]
+        return Set(
+            category='TRANSACTION',
+            scope=transact_scope,
+            params=params
+        )
 
     @_('transact_property_list COMMA transact_property')
     def transact_property_list(self, p):
@@ -429,30 +445,29 @@ class MindsDBParser(Parser):
     def transact_access_mode(self, p):
         return ' '.join([x for x in p])
 
-    @_('SET expr_list',
-       'SET set_modifier expr_list')
-    def set(self, p):
-        if len(p.expr_list) == 1:
-            arg = p.expr_list[0]
-        else:
-            arg = Tuple(items=p.expr_list)
+    @_('identifier EQUALS expr',
+       'set_scope identifier EQUALS expr',
+       'variable EQUALS expr',
+       'set_scope variable EQUALS expr')
+    def set_item(self, p):
 
-        if hasattr(p, 'set_modifier'):
-            category = p.set_modifier
-        else:
-            category = None
+        scope = None
+        name = p[0]
+        if hasattr(p, 'set_scope'):
+            scope = p.set_scope
+            name=p[1]
 
-        return Set(category=category, arg=arg)
+        return Set(name=name, value=p.expr, scope=scope)
 
     @_('GLOBAL',
        'PERSIST',
        'PERSIST_ONLY',
        'SESSION',
        )
-    def set_modifier(self, p):
+    def set_scope(self, p):
         return p[0]
 
-    # Show
+    # --- Show ---
     @_('show WHERE expr')
     def show(self, p):
         command = p.show
@@ -822,7 +837,11 @@ class MindsDBParser(Parser):
     @_('RETRAIN identifier',
        'RETRAIN identifier PREDICT result_columns',
        'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN',
-       'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns')
+       'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'RETRAIN MODEL identifier',
+       'RETRAIN MODEL identifier PREDICT result_columns',
+       'RETRAIN MODEL identifier FROM identifier LPAREN raw_query RPAREN',
+       'RETRAIN MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns')
     def create_predictor(self, p):
         query_str = None
         if hasattr(p, 'raw_query'):
@@ -841,7 +860,8 @@ class MindsDBParser(Parser):
             targets=getattr(p, 'result_columns', None)
         )
 
-    @_('FINETUNE identifier FROM identifier LPAREN raw_query RPAREN')
+    @_('FINETUNE identifier FROM identifier LPAREN raw_query RPAREN',
+       'FINETUNE MODEL identifier FROM identifier LPAREN raw_query RPAREN')
     def create_predictor(self, p):
         query_str = None
         if hasattr(p, 'raw_query'):
@@ -1691,6 +1711,22 @@ class MindsDBParser(Parser):
     @_('raw_query raw_query')
     def raw_query(self, p):
         return p[0] + p[1]
+
+    @_('variable')
+    def table_or_subquery(self, p):
+        return p.variable
+
+    @_('variable')
+    def expr(self, p):
+        return p.variable
+
+    @_('SYSTEM_VARIABLE')
+    def variable(self, p):
+        return Variable(value=p.SYSTEM_VARIABLE, is_system_var=True)
+
+    @_('VARIABLE')
+    def variable(self, p):
+        return Variable(value=p.VARIABLE)
 
     @_(
         'IF_NOT_EXISTS',
