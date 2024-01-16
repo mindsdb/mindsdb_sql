@@ -661,6 +661,8 @@ class QueryPlanner:
 
     # method for compatibility
     def from_query(self, query=None):
+        self.plan = QueryPlan()
+
         if query is None:
             query = self.query
 
