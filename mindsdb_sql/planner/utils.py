@@ -188,7 +188,7 @@ def query_traversal(node, callback, is_table=False, is_target=False, parent_quer
             for node2 in node.order_by:
                 node_out = query_traversal(node2, callback, parent_query=parent_query) or node2
                 array.append(node_out)
-            node.partition = array
+            node.order_by = array
 
     elif isinstance(node, ast.TypeCast):
         node_out = query_traversal(node.arg, callback, parent_query=parent_query)
