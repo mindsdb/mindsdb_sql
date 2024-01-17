@@ -2093,6 +2093,7 @@ class Parser(metaclass=ParserMeta):
         errtoken   = None                                 # Err token
         while True:
             type(self).log.error(f'Starting parse step in state {self.state}')
+            type(self).log.error(f'Symbol stack: {symstack}')
             # Get the next symbol on the input.  If a lookahead symbol
             # is already set, we just use that. Otherwise, we'll pull
             # the next token off of the lookaheadstack or from the lexer
@@ -2121,7 +2122,6 @@ class Parser(metaclass=ParserMeta):
                     self.state = t
 
                     symstack.append(lookahead)
-                    type(self).log.error(f'Symbol stack: {symstack}')
                     lookahead = None
 
                     # Decrease error count on successful shift
