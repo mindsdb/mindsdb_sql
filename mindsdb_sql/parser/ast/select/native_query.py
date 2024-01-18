@@ -18,7 +18,8 @@ class NativeQuery(ASTNode):
                f'NativeQuery(integration={self.integration.to_string()}, query="{self.query}")'
 
     def get_string(self, *args, **kwargs):
-        return f'({self.query})'
+        # standard native query render is used in create view
+        return f'{self.integration.to_string()} ({self.query})'
 
     def __repr__(self):
         return f'{self.__class__.__name__}:{self.integration.to_string()} ({self.query})'
