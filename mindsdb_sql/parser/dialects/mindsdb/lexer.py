@@ -7,8 +7,6 @@ If we do, like in MySQL lexer, the new rules like `DATASOURCE = r'\bDATASOURCE\b
 Then, for an input `DATASOURCE`, the last matched regexp is `STRING`, and the token is incorrectly classified 
 as a string.
 """
-
-
 class MindsDBLexer(Lexer):
     reflags = re.IGNORECASE
     ignore = ' \t\r'
@@ -16,7 +14,7 @@ class MindsDBLexer(Lexer):
     ignore_line_comment = r'--[^\n]*'
 
     tokens = {
-        USE, DROP, CREATE, DESCRIBE, RETRAIN, REPLACE,
+        USE, DROP, CREATE, DESCRIBE, RETRAIN,REPLACE,
 
         # Misc
         SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
@@ -24,26 +22,29 @@ class MindsDBLexer(Lexer):
         SERIALIZABLE, ONLY, CONVERT, BEGIN,
 
         # Mindsdb special
-        PREDICTOR, PREDICTORS, DATASOURCE, INTEGRATION, INTEGRATIONS, DATASOURCES,
+
+        PREDICTOR, PREDICTORS, DATASOURCE, INTEGRATION, INTEGRATIONS,DATASOURCES,
         STREAM, STREAMS, PUBLICATION, PUBLICATIONS, VIEW, VIEWS, DATASETS, DATASET,
         MODEL, MODELS, ML_ENGINE, ML_ENGINES, HANDLERS,
         FINETUNE, EVALUATE,
         LATEST, LAST, HORIZON, USING,
-        ENGINE, TRAIN, PREDICT, PARAMETERS, JOB, CHATBOT, EVERY, PROJECT,
+        ENGINE, TRAIN, PREDICT, PARAMETERS, JOB, CHATBOT, EVERY,PROJECT,
         ANOMALY, DETECTION,
         KNOWLEDGE_BASE, KNOWLEDGE_BASES,
         SKILL,
         AGENT,
 
         # SHOW/DDL Keywords
+
         SHOW, SCHEMAS, SCHEMA, DATABASES, DATABASE, TABLES, TABLE, FULL, EXTENDED, PROCESSLIST,
         MUTEX, CODE, SLAVE, REPLICA, REPLICAS, CHANNEL, TRIGGERS, TRIGGER, KEYS, STORAGE, LOGS, BINARY,
         MASTER, PRIVILEGES, PROFILES, HOSTS, OPEN, INDEXES,
         VARIABLES, SESSION, STATUS,
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
-        PERSIST, PERSIST_ONLY, DEFAULT,
+        PERSIST, PERSIST_ONLY,
         IF_EXISTS, IF_NOT_EXISTS, COLUMNS, FIELDS, COLLATE, SEARCH_PATH,
+        VARIABLE, SYSTEM_VARIABLE,
 
         # SELECT Keywords
         WITH, SELECT, DISTINCT, FROM, WHERE, AS,
@@ -171,7 +172,6 @@ class MindsDBLexer(Lexer):
     PLUGINS = r'\bPLUGINS\b'
     PERSIST = r'\bPERSIST\b'
     PERSIST_ONLY = r'\bPERSIST_ONLY\b'
-    DEFAULT = r'\bDEFAULT\b'
     IF_EXISTS = r'\bIF[\s]+EXISTS\b'
     IF_NOT_EXISTS = r'\bIF[\s]+NOT[\s]+EXISTS\b'
     COLUMNS = r'\bCOLUMNS\b'
@@ -201,6 +201,7 @@ class MindsDBLexer(Lexer):
     SEARCH_PATH = r'\bSEARCH_PATH\b'
 
     # SELECT
+
     ON = r'\bON\b'
     ASC = r'\bASC\b'
     DESC = r'\bDESC\b'
@@ -285,6 +286,7 @@ class MindsDBLexer(Lexer):
     OVER = r'\bOVER\b'
     PARTITION_BY = r'\bPARTITION BY\b'
 
+
     # Data types
     NULL = r'\bNULL\b'
     TRUE = r'\bTRUE\b'
@@ -294,7 +296,7 @@ class MindsDBLexer(Lexer):
     def ID(self, t):
         return t
 
-    @_(r'\d+\.\d*')
+    @_(r'\d+\.\d+')
     def FLOAT(self, t):
         return t
 
@@ -302,14 +304,49 @@ class MindsDBLexer(Lexer):
     def INTEGER(self, t):
         return t
 
-    @_(r"'[^']*'")
+    @_(r"'(?:[^\'\\]|\\.)*'")
     def QUOTE_STRING(self, t):
+        t.value = t.value.replace('\\"', '"').replace("\\'", "'")
         return t
 
-    @_(r'"[^"]*"')
+    @_(r'"(?:[^\"\\]|\\.)*"')
     def DQUOTE_STRING(self, t):
+        t.value = t.value.replace('\\"', '"').replace("\\'", "'")
         return t
 
     @_(r'\n+')
     def ignore_newline(self, t):
         self.lineno += len(t.value)
+
+    @_(r'@[a-zA-Z_.$]+',
+       r"@'[a-zA-Z_.$][^']*'",
+       r"@`[a-zA-Z_.$][^`]*`",
+       r'@"[a-zA-Z_.$][^"]*"'
+       )
+    def VARIABLE(self, t):
+        t.value = t.value.lstrip('@')
+
+        if t.value[0] == '"':
+            t.value = t.value.strip('\"')
+        elif t.value[0] == "'":
+            t.value = t.value.strip('\'')
+        elif t.value[0] == "`":
+            t.value = t.value.strip('`')
+        return t
+
+    @_(r'@@[a-zA-Z_.$]+',
+       r"@@'[a-zA-Z_.$][^']*'",
+       r"@@`[a-zA-Z_.$][^`]*`",
+       r'@@"[a-zA-Z_.$][^"]*"'
+       )
+    def SYSTEM_VARIABLE(self, t):
+        t.value = t.value.lstrip('@')
+
+        if t.value[0] == '"':
+            t.value = t.value.strip('\"')
+        elif t.value[0] == "'":
+            t.value = t.value.strip('\'')
+        elif t.value[0] == "`":
+            t.value = t.value.strip('`')
+        return t
+

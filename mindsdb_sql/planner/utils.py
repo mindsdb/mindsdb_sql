@@ -75,24 +75,6 @@ def recursively_extract_column_values(op, row_dict, predictor):
         raise PlanningException(f'Only \'and\' and \'=\' operations allowed in WHERE clause, found: {op.to_tree()}')
 
 
-def recursively_check_join_identifiers_for_ambiguity(item, aliased_fields=None):
-    if item is None:
-        return
-    elif isinstance(item, Identifier):
-        if len(item.parts) == 1:
-            if aliased_fields is not None and item.parts[0] in aliased_fields:
-                # is alias
-                return
-            raise PlanningException(f'Ambigous identifier {str(item)}, provide table name for operations on a join.')
-    elif isinstance(item, Operation):
-        recursively_check_join_identifiers_for_ambiguity(item.args, aliased_fields=aliased_fields)
-    elif isinstance(item, OrderBy):
-        recursively_check_join_identifiers_for_ambiguity(item.field, aliased_fields=aliased_fields)
-    elif isinstance(item, list):
-        for arg in item:
-            recursively_check_join_identifiers_for_ambiguity(arg, aliased_fields=aliased_fields)
-
-
 def get_deepest_select(select):
     if not select.from_table or not isinstance(select.from_table, Select):
         return select
@@ -126,7 +108,10 @@ def query_traversal(node, callback, is_table=False, is_target=False, parent_quer
         array = []
         for node2 in node.targets:
             node_out = query_traversal(node2, callback, parent_query=node, is_target=True) or node2
-            array.append(node_out)
+            if isinstance(node_out, list):
+                array.extend(node_out)
+            else:
+                array.append(node_out)
         node.targets = array
 
         if node.cte is not None:
@@ -203,7 +188,7 @@ def query_traversal(node, callback, is_table=False, is_target=False, parent_quer
             for node2 in node.order_by:
                 node_out = query_traversal(node2, callback, parent_query=parent_query) or node2
                 array.append(node_out)
-            node.partition = array
+            node.order_by = array
 
     elif isinstance(node, ast.TypeCast):
         node_out = query_traversal(node.arg, callback, parent_query=parent_query)
@@ -292,6 +277,20 @@ def query_traversal(node, callback, is_table=False, is_target=False, parent_quer
             node_out = query_traversal(node.field, callback, parent_query=parent_query)
             if node_out is not None:
                 node.field = node_out
+
+    elif isinstance(node, ast.Case):
+        rules = []
+        for condition, result in node.rules:
+            condition2 = query_traversal(condition, callback, parent_query=parent_query)
+            result2 = query_traversal(result, callback, parent_query=parent_query)
+
+            condition = condition if condition2 is None else condition2
+            result = result if result2 is None else result2
+            rules.append([condition, result])
+        node.rules = rules
+        default = query_traversal(node.default, callback, parent_query=parent_query)
+        if default is not None:
+            node.default = default
 
     elif isinstance(node, list):
         array = []

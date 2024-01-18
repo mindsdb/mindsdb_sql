@@ -48,6 +48,7 @@ class FakeExecutor:
                     {'name': 'predicted', 'type': 'float'},
                     {'name': 'target', 'type': 'float'},
                     {'name': 'sqft', 'type': 'float'},
+                    {'name': 'x', 'type': 'int'},
                 ]
                 return self.list_cols_return(step.table, cols)
             return None

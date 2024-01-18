@@ -907,45 +907,6 @@ class TestSelectStructureNoSqlite:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
-    def test_case(self, dialect):
-        sql = f'''SELECT
-                    CASE
-                        WHEN R.DELETE_RULE = 'CASCADE' THEN 0
-                        WHEN R.DELETE_RULE = 'SET NULL' THEN 2
-                        ELSE 3
-                    END AS DELETE_RULE
-                   FROM INFORMATION_SCHEMA.COLLATIONS'''
-        ast = parse_sql(sql, dialect=dialect)
-
-        expected_ast = Select(
-            targets=[
-                Case(
-                    rules=[
-                        [
-                            BinaryOperation(op='=', args=[
-                                Identifier('R.DELETE_RULE'),
-                                Constant('CASCADE')
-                            ]),
-                            Constant(0)
-                        ],
-                        [
-                            BinaryOperation(op='=', args=[
-                                Identifier('R.DELETE_RULE'),
-                                Constant('SET NULL')
-                            ]),
-                            Constant(2)
-                        ]
-                    ],
-                    default=Constant(3),
-                    alias=Identifier('DELETE_RULE')
-                )
-            ],
-            from_table=Identifier('INFORMATION_SCHEMA.COLLATIONS')
-        )
-
-        assert ast.to_tree() == expected_ast.to_tree()
-        assert str(ast) == str(expected_ast)
-
     def test_table_star(self, dialect):
         sql = f'select *, t.* From table1 '
         ast = parse_sql(sql, dialect=dialect)
@@ -993,6 +954,67 @@ class TestSelectStructureNoSqlite:
                 ])
             ],
             from_table=Identifier('tab1')
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+class TestMindsdb:
+
+    def test_case(self):
+        sql = f'''SELECT
+                    CASE
+                        WHEN R.DELETE_RULE = 'CASCADE' THEN 0
+                        WHEN R.DELETE_RULE = 'SET NULL' THEN 2
+                        ELSE 3
+                    END AS DELETE_RULE,
+                    sum(
+                      CASE
+                        WHEN 1 = 1 THEN 1
+                        ELSE 0
+                      END
+                    )
+                   FROM INFORMATION_SCHEMA.COLLATIONS'''
+        ast = parse_sql(sql)
+
+        expected_ast = Select(
+            targets=[
+                Case(
+                    rules=[
+                        [
+                            BinaryOperation(op='=', args=[
+                                Identifier('R.DELETE_RULE'),
+                                Constant('CASCADE')
+                            ]),
+                            Constant(0)
+                        ],
+                        [
+                            BinaryOperation(op='=', args=[
+                                Identifier('R.DELETE_RULE'),
+                                Constant('SET NULL')
+                            ]),
+                            Constant(2)
+                        ]
+                    ],
+                    default=Constant(3),
+                    alias=Identifier('DELETE_RULE')
+                ),
+                Function(
+                    op='sum',
+                    args=[
+                        Case(
+                            rules=[
+                                [
+                                    BinaryOperation(op='=', args=[Constant(1), Constant(1)]),
+                                    Constant(1)
+                                ],
+                            ],
+                            default=Constant(0)
+                        )
+                    ]
+                )
+            ],
+            from_table=Identifier('INFORMATION_SCHEMA.COLLATIONS')
         )
 
         assert ast.to_tree() == expected_ast.to_tree()

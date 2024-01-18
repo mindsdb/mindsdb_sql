@@ -514,8 +514,9 @@ class TestPlanIntegrationSelect:
 
     def test_select_from_table_subselect_api_integration(self):
         query = parse_sql('''
-            select * from int1.tab1
+            select x from int1.tab2
             where x1 in (select id from int1.tab1)
+            limit 1
         ''', dialect='mindsdb')
 
         expected_plan = QueryPlan(
@@ -523,21 +524,32 @@ class TestPlanIntegrationSelect:
             steps=[
                 FetchDataframeStep(
                     integration='int1',
-                    query=parse_sql('select tab1.id as id from tab1'),
+                    query=parse_sql('select * from tab1'),
+                ),
+                SubSelectStep(
+                    dataframe=Result(0),
+                    query=parse_sql("select id"),
+                    table_name='tab1'
                 ),
                 FetchDataframeStep(
                     integration='int1',
                     query=Select(
                         targets=[Star()],
-                        from_table=Identifier('tab1'),
+                        from_table=Identifier('tab2'),
                         where=BinaryOperation(
                             op='in',
                             args=[
-                                Identifier(parts=['tab1', 'x1']),
-                                Parameter(Result(0))
+                                Identifier(parts=['tab2', 'x1']),
+                                Parameter(Result(1))
                             ]
-                        )
+                        ),
+                        limit=Constant(1)
                     ),
+                ),
+                SubSelectStep(
+                    dataframe=Result(2),
+                    query=parse_sql("select x"),
+                    table_name='tab2'
                 ),
             ],
         )
@@ -585,7 +597,12 @@ class TestPlanIntegrationSelect:
             steps=[
                 FetchDataframeStep(
                     integration='int1',
-                    query=parse_sql('select tab1.id as id from tab1'),
+                    query=parse_sql('select * from tab1'),
+                ),
+                SubSelectStep(
+                    dataframe=Result(0),
+                    query=parse_sql("select id"),
+                    table_name='tab1'
                 ),
                 DeleteStep(
                     table=Identifier('int1.tab1'),
@@ -593,7 +610,7 @@ class TestPlanIntegrationSelect:
                         op='in',
                         args=[
                             Identifier(parts=['x1']),
-                            Parameter(Result(0))
+                            Parameter(Result(1))
                         ]
                     )
                 ),

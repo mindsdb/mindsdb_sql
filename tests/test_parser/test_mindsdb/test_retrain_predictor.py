@@ -26,6 +26,12 @@ class TestRetrainPredictor:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+        # with model
+        sql = "RETRAIN MODEL mindsdb.pred"
+        ast = parse_sql(sql, dialect='mindsdb')
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_retrain_predictor_full(self):
         sql = """Retrain pred
                 FROM integration_name 
