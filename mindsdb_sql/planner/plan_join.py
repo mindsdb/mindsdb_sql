@@ -374,6 +374,7 @@ class PlanJoinTablesQuery:
                 for col in query_in.order_by:
                     if self.get_table_for_column(col.field).table != item.table:
                         order_by = False
+                        break
                     col = copy.deepcopy(col)
                     col.field.parts = [col.field.parts[-1]]
                     order_by.append(col)

@@ -13,4 +13,4 @@ class Parameter(ASTNode):
         return '\t' * level + f'Parameter({repr(self.value)})'
 
     def get_string(self, *args, **kwargs):
-        return str(self.value)
+        return ':' + str(self.value)
