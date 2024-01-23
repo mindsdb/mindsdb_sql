@@ -241,4 +241,3 @@ class SQLLexer(Lexer):
     @_(r'\n+')
     def ignore_newline(self, t):
         self.lineno += len(t.value)
-
