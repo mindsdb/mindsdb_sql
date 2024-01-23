@@ -8,4 +8,3 @@ __github__ = 'https://github.com/mindsdb/mindsdb_sql'
 __pypi__ = 'https://pypi.org/project/mindsdb_sql'
 __license__ = 'GPL-3.0'
 __copyright__ = 'Copyright 2021- mindsdb'
-
