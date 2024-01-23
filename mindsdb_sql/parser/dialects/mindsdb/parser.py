@@ -100,6 +100,7 @@ class MindsDBParser(Parser):
     # -- Knowledge Base --
     @_(
         'CREATE KNOWLEDGE_BASE if_not_exists_or_empty identifier USING kw_parameter_list',
+        'CREATE KNOWLEDGE_BASE if_not_exists_or_empty identifier',
         # from select
         'CREATE KNOWLEDGE_BASE if_not_exists_or_empty identifier FROM LPAREN select RPAREN USING kw_parameter_list',
         'CREATE KNOWLEDGE_BASE if_not_exists_or_empty identifier FROM LPAREN select RPAREN',
