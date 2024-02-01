@@ -133,6 +133,7 @@ class SqlalchemyRender:
                 "is": "is_",
                 "is not": "is_not",
                 "like": "like",
+                "not like": "notlike",
                 "in": "in_",
                 "not in": "notin_",
                 "||": "concat",

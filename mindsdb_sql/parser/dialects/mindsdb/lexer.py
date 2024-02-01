@@ -71,7 +71,7 @@ class MindsDBLexer(Lexer):
         PLUS, MINUS, DIVIDE, MODULO,
         EQUALS, NEQUALS, GREATER, GEQ, LESS, LEQ,
         AND, OR, NOT, IS, IS_NOT,
-        IN, LIKE, CONCAT, BETWEEN, WINDOW, OVER, PARTITION_BY,
+        IN, LIKE, NOT_LIKE, CONCAT, BETWEEN, WINDOW, OVER, PARTITION_BY,
 
         # Data types
         CAST, ID, INTEGER, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE,
@@ -275,6 +275,7 @@ class MindsDBLexer(Lexer):
     AND = r'\bAND\b'
     OR = r'\bOR\b'
     IS_NOT = r'\bIS[\s]+NOT\b'
+    NOT_LIKE = r'\bNOT[\s]+LIKE\b'
     NOT = r'\bNOT\b'
     IS = r'\bIS\b'
     LIKE = r'\bLIKE\b'
