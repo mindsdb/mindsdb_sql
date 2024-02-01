@@ -11,17 +11,20 @@ class MindsDBParser(Parser):
     log = ParserLogger()
     tokens = MindsDBLexer.tokens
 
-    # Get a list of low priority tokens to set for right priority
     sql_tokens = tokens.copy()
     for parsed in ['NAT_ID', 'AMB_ID', 'MINDS_ID']:
         sql_tokens.remove(parsed)
 
-    right_precedence_tokens = sql_tokens.copy()
+    # Get a list of low priority tokens to set for left (reduce) priority
+
+    right_precedence_tokens = ['AS', 'DOT', 'COMMA', 'JOIN']
+
+    left_precedence_tokens = sql_tokens.copy()
     for parsed in ['AS', 'DOT', 'COMMA']:
         right_precedence_tokens.remove(parsed)
 
     precedence = (
-        ('left', *list(right_precedence_tokens)),
+        ('left', *list(left_precedence_tokens)),
         ('right', DOT, AS, COMMA),
     )
 
@@ -125,20 +128,22 @@ class MindsDBParser(Parser):
     def empty(self, p):
         pass
 
-    @_('select_item from_item where_condition')
+    @_('select_clause from_clause')
     def select(self, p):
         pass
 
     @_('SELECT STAR',
        'SELECT id',
        'SELECT id_list')
-    def select_item(self, p):
+    def select_clause(self, p):
         pass
 
+    ################################################ FROM ##############################################################
     @_('FROM id',
        'FROM id_list',
-       'FROM join')
-    def from_item(self, p):
+       'FROM native_query'
+       'FROM join where_clause')
+    def from_clause(self, p):
         pass
 
     @_('join_list join_condition',
@@ -147,18 +152,24 @@ class MindsDBParser(Parser):
         pass
 
     @_('id JOIN id',
-       'join_list JOIN id')
+       'id JOIN native_query',
+       'join_list JOIN id',
+       'join_list JOIN native_query')
     def join_list(self, p):
         pass
 
+    ################################################ WHERE #############################################################
     @_('WHERE condition',
-        'WHERE condition_list')
-    def where_condtion(self, p):
+       'WHERE condition_list',
+       'empty')
+    def where_clause(self, p):
         pass
 
     @_('condition boolean condition',
-       'condition_list boolean condition')
-    def boolean_list(self, p):
+       'condition_list boolean condition',
+       'condition_list boolean LPAREN condition RPAREN',
+       'condition_list boolean LPAREN condition_list RPAREN')
+    def condition_list(self, p):
         pass
 
     @_('AND',
@@ -167,7 +178,8 @@ class MindsDBParser(Parser):
     def boolean(self, p):
         pass
 
-    @_('id comparator value')
+    @_('id comparator value',
+       'id comparator id')
     def condition(self, p):
         pass
 
