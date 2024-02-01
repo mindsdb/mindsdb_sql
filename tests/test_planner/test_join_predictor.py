@@ -532,12 +532,12 @@ class TestPredictorVersion:
         sql = '''
             select * from int.tab1 a
             join proj.pred.1 p
-            where a.x=1 and p.x=1 and a.y=3 and p.y=''
+            where a.x=1 and p.x=1 and p.ttt=2 and a.y=3 and p.y=''
         '''
 
         subquery = parse_sql("""
             select * from x
-            where a.x=1 and 0=0 and a.y=3 and p.y=''
+            where a.x=1 and 0=0 and p.ttt=2 and a.y=3 and 0=0
         """)
         subquery.from_table = None
 
@@ -560,7 +560,7 @@ class TestPredictorVersion:
         )
 
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb',
-                          predictor_metadata=[{'name': 'pred', 'integration_name': 'proj'}])
+                          predictor_metadata=[{'name': 'pred', 'integration_name': 'proj', 'to_predict': ['ttt']}])
 
         assert plan.steps == expected_plan.steps
 
