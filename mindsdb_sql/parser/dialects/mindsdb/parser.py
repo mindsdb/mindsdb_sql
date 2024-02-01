@@ -229,10 +229,17 @@ class MindsDBParser(Parser):
     # -- Jobs --
     @_('CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN job_schedule',
        'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN job_schedule',
+       'CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN job_schedule IF LPAREN raw_query RPAREN',
+       'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN job_schedule IF LPAREN raw_query RPAREN',
        'CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN',
        'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN')
     def create_job(self, p):
-        query_str = tokens_to_string(p.raw_query)
+        if hasattr(p, 'raw_query0'):
+            query_str = tokens_to_string(p.raw_query0)
+            if_query_str = tokens_to_string(p.raw_query1)
+        else:
+            query_str = tokens_to_string(p.raw_query)
+            if_query_str = None
 
         job_schedule = getattr(p, 'job_schedule', {})
 
@@ -254,6 +261,7 @@ class MindsDBParser(Parser):
         return CreateJob(
             name=p.identifier,
             query_str=query_str,
+            if_query_str=if_query_str,
             start_str=start_str,
             end_str=end_str,
             repeat_str=repeat_str,
