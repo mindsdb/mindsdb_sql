@@ -784,10 +784,11 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
-       'CREATE PREDICTOR if_not_exists_or_empty identifier PREDICT result_columns',
-       'CREATE MODEL if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
-       'CREATE MODEL if_not_exists_or_empty identifier PREDICT result_columns')
+    @_('CREATE replace_or_empty PREDICTOR if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE replace_or_empty PREDICTOR if_not_exists_or_empty identifier PREDICT result_columns',
+       'CREATE replace_or_empty MODEL if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE replace_or_empty MODEL if_not_exists_or_empty identifier PREDICT result_columns'
+       )
     def create_predictor(self, p):
         query_str = None
         if hasattr(p, 'raw_query'):
@@ -804,7 +805,8 @@ class MindsDBParser(Parser):
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
             targets=p.result_columns,
-            if_not_exists=p.if_not_exists_or_empty
+            if_not_exists=p.if_not_exists_or_empty,
+            is_replace=p.replace_or_empty
         )
 
     # Typed models
@@ -1741,6 +1743,15 @@ class MindsDBParser(Parser):
     @_('VARIABLE')
     def variable(self, p):
         return Variable(value=p.VARIABLE)
+
+    @_(
+        'OR REPLACE',
+        'empty'
+    )
+    def replace_or_empty(self, p):
+        if hasattr(p, 'REPLACE'):
+            return True
+        return False
 
     @_(
         'IF_NOT_EXISTS',
