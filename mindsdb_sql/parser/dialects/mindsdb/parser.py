@@ -47,7 +47,7 @@ class MindsDBParser(Parser):
         ('left', PLUS, MINUS),
         ('left', STAR, DIVIDE),
         ('right', UMINUS),  # Unary minus operator, unary not
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, BETWEEN, IS, IS_NOT, LIKE),
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, BETWEEN, IS, IS_NOT, NOT_LIKE, LIKE),
     )
 
     # Top-level statements
@@ -229,10 +229,20 @@ class MindsDBParser(Parser):
     # -- Jobs --
     @_('CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN job_schedule',
        'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN job_schedule',
+       'CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN job_schedule IF LPAREN raw_query RPAREN',
+       'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN job_schedule IF LPAREN raw_query RPAREN',
        'CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN',
-       'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN')
+       'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN',
+       'CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN IF LPAREN raw_query RPAREN',
+       'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN IF LPAREN raw_query RPAREN'
+       )
     def create_job(self, p):
-        query_str = tokens_to_string(p.raw_query)
+        if hasattr(p, 'raw_query0'):
+            query_str = tokens_to_string(p.raw_query0)
+            if_query_str = tokens_to_string(p.raw_query1)
+        else:
+            query_str = tokens_to_string(p.raw_query)
+            if_query_str = None
 
         job_schedule = getattr(p, 'job_schedule', {})
 
@@ -254,6 +264,7 @@ class MindsDBParser(Parser):
         return CreateJob(
             name=p.identifier,
             query_str=query_str,
+            if_query_str=if_query_str,
             start_str=start_str,
             end_str=end_str,
             repeat_str=repeat_str,
@@ -776,10 +787,11 @@ class MindsDBParser(Parser):
         p.create_predictor.order_by = p.ordering_terms
         return p.create_predictor
 
-    @_('CREATE PREDICTOR if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
-       'CREATE PREDICTOR if_not_exists_or_empty identifier PREDICT result_columns',
-       'CREATE MODEL if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
-       'CREATE MODEL if_not_exists_or_empty identifier PREDICT result_columns')
+    @_('CREATE replace_or_empty PREDICTOR if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE replace_or_empty PREDICTOR if_not_exists_or_empty identifier PREDICT result_columns',
+       'CREATE replace_or_empty MODEL if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE replace_or_empty MODEL if_not_exists_or_empty identifier PREDICT result_columns'
+       )
     def create_predictor(self, p):
         query_str = None
         if hasattr(p, 'raw_query'):
@@ -796,7 +808,8 @@ class MindsDBParser(Parser):
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
             targets=p.result_columns,
-            if_not_exists=p.if_not_exists_or_empty
+            if_not_exists=p.if_not_exists_or_empty,
+            is_replace=p.replace_or_empty
         )
 
     # Typed models
@@ -1422,6 +1435,7 @@ class MindsDBParser(Parser):
        'expr NOT expr',
        'expr IS expr',
        'expr LIKE expr',
+       'expr NOT_LIKE expr',
        'expr CONCAT expr',
        'expr IN expr')
     def expr(self, p):
@@ -1429,7 +1443,11 @@ class MindsDBParser(Parser):
             arg1 = Last()
         else:
             arg1 = p.expr1
-        return BinaryOperation(op=p[1], args=(p[0], arg1))
+        if len(p) > 3:
+            op = ' '.join([p[i] for i in range(1, len(p)-1)])
+        else:
+            op = p[1]
+        return BinaryOperation(op=op, args=(p[0], arg1))
 
     @_('MINUS expr %prec UMINUS',
        'NOT expr %prec UNOT', )
@@ -1728,6 +1746,15 @@ class MindsDBParser(Parser):
     @_('VARIABLE')
     def variable(self, p):
         return Variable(value=p.VARIABLE)
+
+    @_(
+        'OR REPLACE',
+        'empty'
+    )
+    def replace_or_empty(self, p):
+        if hasattr(p, 'REPLACE'):
+            return True
+        return False
 
     @_(
         'IF_NOT_EXISTS',

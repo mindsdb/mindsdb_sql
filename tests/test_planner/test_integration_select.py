@@ -524,7 +524,7 @@ class TestPlanIntegrationSelect:
             steps=[
                 FetchDataframeStep(
                     integration='int1',
-                    query=parse_sql('select * from tab1'),
+                    query=parse_sql('select tab1.`id` AS `id` from tab1'),
                 ),
                 SubSelectStep(
                     dataframe=Result(0),
@@ -534,7 +534,7 @@ class TestPlanIntegrationSelect:
                 FetchDataframeStep(
                     integration='int1',
                     query=Select(
-                        targets=[Star()],
+                        targets=[Identifier('tab2.x', alias=Identifier('x'))],
                         from_table=Identifier('tab2'),
                         where=BinaryOperation(
                             op='in',
@@ -597,7 +597,7 @@ class TestPlanIntegrationSelect:
             steps=[
                 FetchDataframeStep(
                     integration='int1',
-                    query=parse_sql('select * from tab1'),
+                    query=parse_sql('select tab1.`id` AS `id` from tab1'),
                 ),
                 SubSelectStep(
                     dataframe=Result(0),

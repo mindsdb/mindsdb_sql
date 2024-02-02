@@ -289,9 +289,10 @@ class QueryPlanner:
         #     keep only limit and where
         #     the rest goes to outer select
         query2 = Select(
-            targets=[Star()],
+            targets=query.targets,
             from_table=query.from_table,
             where=query.where,
+            order_by=query.order_by,
             limit=query.limit,
         )
         prev_step = self.plan_integration_select(query2)

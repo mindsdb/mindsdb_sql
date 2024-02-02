@@ -62,7 +62,7 @@ def parse_sql2(sql, dialect='mindsdb'):
         return query
     sql2 = sql2.replace(' FLOAT', ' float')
 
-    query2 = parse_sql(sql2, 'mysql')
+    query2 = parse_sql(sql2, 'mindsdb')
 
     # exclude cases when sqlalchemy replaces some parts of sql
     if not (

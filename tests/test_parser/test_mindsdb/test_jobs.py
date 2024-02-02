@@ -56,6 +56,23 @@ class TestJobs:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+        # 4
+
+        sql = '''
+            create job j1 ( retrain p1 )
+            every 2 hours
+            if (select a from table)
+        '''
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreateJob(
+            name=Identifier('j1'),
+            query_str="retrain p1",
+            if_query_str="select a from table",
+            repeat_str="2 hours"
+        )
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_create_job_minimal_with_if_not_exists(self):
         sql = '''
             create job if not exists proj2.j1 ( 

@@ -407,16 +407,27 @@ class PlanJoinTablesQuery:
             raise NotImplementedError("TS predictor is not supported here yet")
         data_step = self.step_stack[-1]
         row_dict = None
+
+        predict_target = item.predictor_info.get('to_predict')
+        if isinstance(predict_target, list) and len(predict_target) > 0:
+            predict_target = predict_target[0]
+        if predict_target is not None:
+            predict_target = predict_target.lower()
+
         if item.conditions:
             row_dict = {}
-            for el in item.conditions:
+            for i, el in enumerate(item.conditions):
                 if isinstance(el.args[0], Identifier) and el.op == '=':
+                    col_name = el.args[0].parts[-1]
+                    if col_name.lower() == predict_target:
+                        # don't add predict target to parameters
+                        continue
 
                     if isinstance(el.args[1], (Constant, Parameter)):
                         row_dict[el.args[0].parts[-1]] = el.args[1].value
 
                     # exclude condition
-                    item.conditions[0]._orig_node.args = [Constant(0), Constant(0)]
+                    el._orig_node.args = [Constant(0), Constant(0)]
 
         predictor_step = self.planner.plan.add_step(ApplyPredictorStep(
             namespace=item.integration,
