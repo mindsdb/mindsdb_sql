@@ -232,7 +232,10 @@ class MindsDBParser(Parser):
        'CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN job_schedule IF LPAREN raw_query RPAREN',
        'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN job_schedule IF LPAREN raw_query RPAREN',
        'CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN',
-       'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN')
+       'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN',
+       'CREATE JOB if_not_exists_or_empty identifier LPAREN raw_query RPAREN IF LPAREN raw_query RPAREN',
+       'CREATE JOB if_not_exists_or_empty identifier AS LPAREN raw_query RPAREN IF LPAREN raw_query RPAREN'
+       )
     def create_job(self, p):
         if hasattr(p, 'raw_query0'):
             query_str = tokens_to_string(p.raw_query0)
