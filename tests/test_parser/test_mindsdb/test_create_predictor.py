@@ -104,6 +104,17 @@ class TestCreatePredictor:
 
         assert ast.to_tree() == expected_ast.to_tree()
 
+        # test or replace
+        sql = """CREATE or replace model pred
+                FROM integration_name 
+                (select * FROM table_name)
+                PREDICT f1 as f1_alias, f2
+                """
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast.is_replace = True
+
+        assert ast.to_tree() == expected_ast.to_tree()
+
     def test_create_predictor_quotes(self):
         sql = """CREATE PREDICTOR xxx 
                  FROM `yyy` 

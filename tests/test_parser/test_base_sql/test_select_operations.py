@@ -564,3 +564,21 @@ class TestOperationsNoSqlite:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
+class TestOperationsMindsdb:
+    def test_select_binary_operations(self):
+        for op in ['not like',]:
+            sql = f'SELECT column1 {op.upper()} column2 FROM tab'
+            ast = parse_sql(sql)
+
+            expected_ast = Select(
+                targets=[BinaryOperation(op=op,
+                                         args=(
+                                             Identifier.from_path_str('column1'), Identifier.from_path_str('column2')
+                                         )),
+                         ],
+                from_table=Identifier.from_path_str('tab')
+            )
+
+            assert str(ast).lower() == sql.lower()
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
