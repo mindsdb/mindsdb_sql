@@ -12,20 +12,20 @@ class MindsDBParser(Parser):
     tokens = MindsDBLexer.tokens
 
     sql_tokens = tokens.copy()
-    for parsed in ['NAT_ID', 'AMB_ID', 'MINDS_ID']:
+    for parsed in ['SELECT', 'ID', 'NAT_ID', 'AMB_ID', 'MINDS_ID']:
         sql_tokens.remove(parsed)
 
     # Get a list of low priority tokens to set for left (reduce) priority
 
-    right_precedence_tokens = ['AS', 'DOT', 'COMMA', 'JOIN']
+    right_precedence_tokens = ['AS', 'DOT', 'JOIN', 'WHERE']
 
     left_precedence_tokens = sql_tokens.copy()
-    for parsed in ['AS', 'DOT', 'COMMA']:
-        right_precedence_tokens.remove(parsed)
+    for parsed in right_precedence_tokens:
+        left_precedence_tokens.remove(parsed)
 
     precedence = (
         ('left', *list(left_precedence_tokens)),
-        ('right', DOT, AS, COMMA),
+        ('right', *list(right_precedence_tokens)),
     )
 
     def register_integrations(self, mindsdb_obs, native_ints):
@@ -69,8 +69,21 @@ class MindsDBParser(Parser):
                                 sym.left.id_type = id.id_type
                                 sym.right.id_type = id.id_type
 
-    ################################################ Parse SQL #########################################################
+    ################################################ terminals #########################################################
 
+    @_('select',
+       'id',
+       'native_query')
+    def query(self, p):
+        return p[0]
+
+    ################################################ terminals #########################################################
+    """@_('LPAREN sql_statement RPAREN')
+    def sub_query(self, p):
+        pass"""
+
+    ################################################ Parse SQL #########################################################
+    """
     @_(*list(sql_tokens))
     def sql_statement(self, p):
         type(self).log.debug(f"found sql_statement {p[0]}")
@@ -85,24 +98,43 @@ class MindsDBParser(Parser):
             return p[0] + [p[1], ]
         else:
             return p[0] + p[1]
+    """
+    ################################################ Native Queries ####################################################
 
-    ################################################ Combine IDs #######################################################
-    @_('id COMMA id')
+    native_query_tokens = tokens.copy()
+    for parsed in ['LPAREN', 'RPAREN']:
+        native_query_tokens.remove(parsed)
+
+    @_(*list(native_query_tokens))
+    def raw_query(self, p):
+        return {'raw_query': p[0]}
+
+    @_('raw_query raw_query',
+       'LPAREN raw_query RPAREN')
+    def raw_query(self, p):
+        if hasattr(p, 'LPAREN'):
+            return {'raw_query': p[1]}
+        else:
+            return {'raw_query': p[0]['raw_query'] + p[1]['raw_query']}
+
+    @_('id LPAREN raw_query RPAREN')
+    def native_query(self, p):
+        return {'native_db': p[0], 'native_query': p[2]}
+
+
+    ################################################ IDs ###############################################################
+    @_('id COMMA id',
+       'id_list COMMA id')
     def id_list(self, p):
         if hasattr(p, 'id_list'):
             return p[0] + [p[2], ]
         else:
             return [p[0], p[2]]
 
-    ################################################ IDs #######################################################
     @_('ID')
     def id(self, p):
-        return p.ID
-
-    @_('id')
-    def id(self, p):
         id_dict = {'type': 'id',
-                   'column': p[1]}
+                   'column': p[0]}
 
         return id_dict
 
@@ -110,7 +142,7 @@ class MindsDBParser(Parser):
     def id(self, p):
         id_dict = {'type': 'id',
                    'database': p[0],
-                   'column': p[1]}
+                   'column': p[2]}
 
         return id_dict
 
@@ -118,70 +150,77 @@ class MindsDBParser(Parser):
     def id(self, p):
         id_dict = {'type': 'id',
                    'database': p[0],
-                   'column': p[1],
-                   'alias': p[2]}
+                   'column': p[2],
+                   'alias': p[4]}
 
         return id_dict
 
     ################################################ SELECT ############################################################
     @_('')
     def empty(self, p):
-        pass
+        return None
 
-    @_('select_clause from_clause')
+    @_('select_clause from_clause where_clause')
     def select(self, p):
-        pass
+        return {'select_clause': p[0], "from_clause": p[1], 'where_clause': p[2]}
 
     @_('SELECT STAR',
        'SELECT id',
        'SELECT id_list')
     def select_clause(self, p):
-        pass
+        return {'select': p[1]}
 
     ################################################ FROM ##############################################################
     @_('FROM id',
        'FROM id_list',
-       'FROM native_query'
-       'FROM join where_clause')
+       'FROM native_query',
+       'FROM join')
     def from_clause(self, p):
-        pass
+        return {'from': p[1]}
 
-    @_('join_list join_condition',
-       'join_list join_condition AS id')
-    def join(self, p):
-        pass
-
+    ################################################ JOIN ##############################################################
     @_('id JOIN id',
        'id JOIN native_query',
-       'join_list JOIN id',
-       'join_list JOIN native_query')
-    def join_list(self, p):
-        pass
+       'join JOIN id',
+       'join JOIN native_query')
+    def join(self, p):
+        return {'left_join': p[0], 'right_join': p[2]}
 
     ################################################ WHERE #############################################################
+
+    @_('empty')
+    def where_clause(self, p):
+        return {'condition': p[1]}
+
     @_('WHERE condition',
        'WHERE condition_list',
-       'empty')
+       'WHERE condition_list LIMIT INTEGER',)
     def where_clause(self, p):
-        pass
+        if hasattr(p, 'LIMIT'):
+            return {'where_conditions': p[1], 'limit': p[3]}
+        else:
+            return {'where_conditions': p[1]}
 
     @_('condition boolean condition',
        'condition_list boolean condition',
        'condition_list boolean LPAREN condition RPAREN',
        'condition_list boolean LPAREN condition_list RPAREN')
     def condition_list(self, p):
-        pass
+        if hasattr(p, 'LPAREN'):
+            return {'left_condition': p[0], "boolean": p[1], 'right_condition': p[3]}
+        else:
+            return {'left_condition': p[0], "boolean": p[1], 'right_condition': p[2]}
 
     @_('AND',
        'OR',
        'NOT')
     def boolean(self, p):
-        pass
+        return p[0]
 
     @_('id comparator value',
        'id comparator id')
     def condition(self, p):
-        pass
+        return {'left_id': p[0], "comparator": p[1], 'right_id': p[1]}
 
     @_('EQUALS',
        'NEQUALS',
@@ -190,13 +229,14 @@ class MindsDBParser(Parser):
        'LEQ',
        'LESS')
     def comparator(self, p):
-        pass
+        return p[0]
 
     @_('INTEGER',
        'FLOAT',
        'QUOTE_STRING',
        'DQUOTE_STRING',
        'TRUE',
-       'FALSE')
+       'FALSE',
+       'LATEST')
     def value(self, p):
-        pass
+        return p[0]
