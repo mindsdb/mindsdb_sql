@@ -12,7 +12,7 @@ class MindsDBParser(Parser):
     tokens = MindsDBLexer.tokens
 
     sql_tokens = tokens.copy()
-    for parsed in ['SELECT', 'ID', 'NAT_ID', 'AMB_ID', 'MINDS_ID']:
+    for parsed in ['SELECT', 'CREATE', 'ID', 'NAT_ID', 'AMB_ID', 'MINDS_ID']:
         sql_tokens.remove(parsed)
 
     # Get a list of low priority tokens to set for left (reduce) priority
@@ -71,9 +71,10 @@ class MindsDBParser(Parser):
 
     ################################################ terminals #########################################################
 
-    @_('select',
-       'id',
-       'native_query')
+    @_('raw_query',
+       'native_query',
+       'select',
+       'view')
     def query(self, p):
         return p[0]
 
@@ -240,3 +241,10 @@ class MindsDBParser(Parser):
        'LATEST')
     def value(self, p):
         return p[0]
+
+    ################################################ VIEWS #############################################################
+
+    @_('CREATE VIEW id FROM native_query')
+    def view(self, p):
+        return {"view_name": p.id, "native_query": p.native_query}
+

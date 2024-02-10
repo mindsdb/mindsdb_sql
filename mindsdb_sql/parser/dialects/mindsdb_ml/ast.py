@@ -1,6 +1,12 @@
 import enum
 
 
+"""
+The top level query should initiate a flow, each node should have a task function that calls the tasks of it's sub-nodes.
+The sub-nodes can also start flows of thier own. Concurrency should be used when calling concurrent sub nodes.  
+
+"""
+
 class ASTNode:
     def __init__(self, **kwargs):
         self.value = kwargs.get('value')
