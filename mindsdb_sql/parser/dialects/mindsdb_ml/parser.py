@@ -191,7 +191,7 @@ class MindsDBParser(Parser):
 
     @_('empty')
     def where_clause(self, p):
-        return {'condition': p[1]}
+        return {'condition': None}
 
     @_('WHERE condition',
        'WHERE condition_list',
@@ -202,13 +202,14 @@ class MindsDBParser(Parser):
         else:
             return {'where_conditions': p[1]}
 
-    @_('condition boolean condition',
+    @_('LPAREN condition_list RPAREN',
+       'condition boolean condition',
        'condition_list boolean condition',
-       'condition_list boolean LPAREN condition RPAREN',
-       'condition_list boolean LPAREN condition_list RPAREN')
+       'condition_list boolean condition_list')
     def condition_list(self, p):
-        if hasattr(p, 'LPAREN'):
-            return {'left_condition': p[0], "boolean": p[1], 'right_condition': p[3]}
+        if hasattr(p, 'LPAREN') and hasattr(p, 'RPAREN'):
+            p[1].parentheses = True
+            return p[1]
         else:
             return {'left_condition': p[0], "boolean": p[1], 'right_condition': p[2]}
 
@@ -219,7 +220,9 @@ class MindsDBParser(Parser):
         return p[0]
 
     @_('id comparator value',
-       'id comparator id')
+       'LPAREN id comparator value RPAREN',
+       'id comparator id',
+       'LPAREN id comparator id RPAREN')
     def condition(self, p):
         return {'left_id': p[0], "comparator": p[1], 'right_id': p[1]}
 
