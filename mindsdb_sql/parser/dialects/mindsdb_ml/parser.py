@@ -3,7 +3,6 @@ from mindsdb_sql.parser.dialects.mindsdb_ml.ast import *
 from mindsdb_sql.exceptions import ParsingException
 from mindsdb_sql.parser.dialects.mindsdb_lite.lexer import MindsDBLexer
 from mindsdb_sql.parser.logger import ParserLogger
-from mindsdb_sql.parser.dialects.mindsdb_ml.parser import *
 from mindsdb_sql.parser.utils import ensure_select_keyword_order, JoinType, tokens_to_string
 
 
