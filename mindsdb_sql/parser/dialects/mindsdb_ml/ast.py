@@ -1,6 +1,7 @@
 import enum
 from prefect import flow, task
 import operator
+from typing import Union
 
 """
 The top level query should initiate a flow, each node should have a task function that calls the tasks of it's sub-nodes.
@@ -31,7 +32,7 @@ class Query(ASTNode):
     A MindsDB Identifier. Terminal Node type.
     """
 
-    def __init__(self, branches, **kwargs):
+    def __init__(self, branches: list, **kwargs):
         super().__init__(**kwargs)
 
         self.branches = branches
@@ -50,10 +51,11 @@ class RawQuery(ASTNode):
     A MindsDB Identifier. Terminal Node type.
     """
 
-    def __init__(self, raw_query: str, **kwargs):
+    def __init__(self, raw_query: str, parentheses: bool = False, **kwargs):
         super().__init__(**kwargs)
 
         self.raw_query = raw_query
+        self.parentheses = parentheses
 
     @task
     def execute(self):
@@ -61,7 +63,10 @@ class RawQuery(ASTNode):
         pass
 
     def __str__(self) -> str:
-        return str(self.raw_query)
+        if not self.parentheses:
+            return str(self.raw_query)
+        else:
+            return '(' + str(self.raw_query) + ')'
 
 
 class NativeQuery(ASTNode):
@@ -90,7 +95,7 @@ class Identifier(ASTNode):
     """
     ID_TYPE = enum.Enum('id_type', ['MINDSDB', 'NATIVE', 'AMBIGUOUS'])
 
-    def __init__(self, id_type, column, table=None, alias=None, **kwargs):
+    def __init__(self, column, table=None, alias=None, id_type=None, **kwargs):
         super().__init__(**kwargs)
 
         # type will be resolved when query is disambiguated.
@@ -193,15 +198,29 @@ class Select(ASTNode):
             pass
 
     def __str__(self) -> str:
-        'SELECT ' + str(self.selec_clause) + ' ' + str(self.from_clause) + ' ' + str(self.where_clause)
+        str(self.selec_clause) + ' ' + str(self.from_clause) + ' ' + str(self.where_clause)
 
+class SelectClause(ASTNode):
+
+    def __init__(self, select_arg):
+        self.select_arg = select_arg
+
+    def get_aliases(self):
+        # Select statements are blocking
+        return self.select_arg.get_aliases()
+
+    def resolve_aliases(self, aliases: dict):
+        self.select_arg.resolve_aliases(aliases=aliases)
+
+    def __str__(self) -> str:
+        'SELECT ' + str(self.select_arg)
 
 class FromClause(ASTNode):
     """
     A MindsDB Identifier. Terminal Node type.
     """
 
-    def __init__(self, from_arg: Identifier | IdentifierList | NativeQuery | 'JoinClause', **kwargs):
+    def __init__(self, from_arg: Union[Identifier, IdentifierList, NativeQuery, 'JoinClause'], **kwargs):
         super().__init__(**kwargs)
 
         self.from_arg = from_arg
@@ -222,7 +241,7 @@ class JoinClause(ASTNode):
     """
 
     def __init__(self,
-                 left_arg: Identifier | 'JoinClause',
+                 left_arg: Union[Identifier, 'JoinClause'],
                  right_arg: Identifier | NativeQuery,
                  **kwargs):
         super().__init__(**kwargs)
@@ -245,7 +264,7 @@ class WhereClause(ASTNode):
     A MindsDB Identifier. Terminal Node type.
     """
 
-    def __init__(self, where_conditions: 'Condition' | 'ConditionList' = None, limit=None, **kwargs):
+    def __init__(self, where_conditions: Union['Condition', 'ConditionList', None] = None, limit=None, **kwargs):
         super().__init__(**kwargs)
 
         self.where_conditions = where_conditions
@@ -272,11 +291,11 @@ class ConditionList(ASTNode):
     """
 
     def __init__(self,
-                 left_condition: 'Condition' | 'ConditionList',
+                 left_condition: Union['Condition', 'ConditionList'],
                  boolean: 'Boolean',
-                 right_condition: 'Condition' | 'ConditionList',
+                 right_condition: Union['Condition', 'ConditionList'],
                  parantheses: bool = None,
-                 , **kwargs):
+                 **kwargs):
         super().__init__(**kwargs)
 
         self.left_condition = left_condition
@@ -323,7 +342,7 @@ class Condition(ASTNode):
 
     def __init__(self, left_arg: Identifier,
                  comparator: 'Comparator',
-                 right_arg: Identifier | 'Value',
+                 right_arg: Union[Identifier, 'Value'],
                  parantheses: bool = None,
                  **kwargs):
         super().__init__(**kwargs)

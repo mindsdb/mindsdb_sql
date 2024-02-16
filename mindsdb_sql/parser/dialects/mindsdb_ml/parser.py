@@ -76,7 +76,7 @@ class MindsDBParser(Parser):
        'select',
        'view')
     def query(self, p):
-        return p[0]
+        return Query(branches=[p[0], ])
 
     ################################################ terminals #########################################################
     """@_('LPAREN sql_statement RPAREN')
@@ -108,53 +108,41 @@ class MindsDBParser(Parser):
 
     @_(*list(native_query_tokens))
     def raw_query(self, p):
-        return {'raw_query': p[0]}
+        return RawQuery(raw_query=p[0])
 
     @_('raw_query raw_query',
        'LPAREN raw_query RPAREN')
     def raw_query(self, p):
         if hasattr(p, 'LPAREN'):
-            return {'raw_query': p[1]}
+            p[1].parentheses = True
+            return p[1].parentheses
         else:
-            return {'raw_query': p[0]['raw_query'] + p[1]['raw_query']}
+            return RawQuery(raw_query=str(p[0]) + str(p[1]))
 
     @_('id LPAREN raw_query RPAREN')
     def native_query(self, p):
-        return {'native_db': p[0], 'native_query': p[2]}
-
+        return NativeQuery(integration=p[0], raw_query=p[2])
 
     ################################################ IDs ###############################################################
     @_('id COMMA id',
        'id_list COMMA id')
     def id_list(self, p):
         if hasattr(p, 'id_list'):
-            return p[0] + [p[2], ]
+            return p[0].id_list.extend([p[2], ])
         else:
-            return [p[0], p[2]]
+            return IdentifierList(id_list=[p[0], p[2]])
 
     @_('ID')
     def id(self, p):
-        id_dict = {'type': 'id',
-                   'column': p[0]}
-
-        return id_dict
+        return Identifier(column=p[0])
 
     @_('id DOT id')
     def id(self, p):
-        id_dict = {'type': 'id',
-                   'database': p[0],
-                   'column': p[2]}
-
-        return id_dict
+        return Identifier(column=p[2], table=p[0])
 
     @_('id DOT id AS id')
     def id(self, p):
-        id_dict = {'type': 'id',
-                   'database': p[0],
-                   'column': p[2],
-                   'alias': p[4]}
-
-        return id_dict
+        return Identifier(column=p[2], table=p[0], alias=p[4])
 
     ################################################ SELECT ############################################################
     @_('')
@@ -163,44 +151,44 @@ class MindsDBParser(Parser):
 
     @_('select_clause from_clause where_clause')
     def select(self, p):
-        return {'select_clause': p[0], "from_clause": p[1], 'where_clause': p[2]}
+        return Select(select_clause=p[0], from_clause=p[1], where_clause=p[2])
 
     @_('SELECT STAR',
        'SELECT id',
        'SELECT id_list')
     def select_clause(self, p):
-        return {'select': p[1]}
+        return SelectClause(select_arg=p[1])
 
     ################################################ FROM ##############################################################
     @_('FROM id',
        'FROM id_list',
        'FROM native_query',
-       'FROM join')
+       'FROM join_clause')
     def from_clause(self, p):
-        return {'from': p[1]}
+        return FromClause(from_arg=p[1])
 
     ################################################ JOIN ##############################################################
     @_('id JOIN id',
        'id JOIN native_query',
-       'join JOIN id',
-       'join JOIN native_query')
-    def join(self, p):
-        return {'left_join': p[0], 'right_join': p[2]}
+       'join_clause JOIN id',
+       'join_clause JOIN native_query')
+    def join_clause(self, p):
+        return JoinClause(left_arg=p[0], right_arg=p[2])
 
     ################################################ WHERE #############################################################
 
     @_('empty')
     def where_clause(self, p):
-        return {'condition': None}
+        return WhereClause()
 
     @_('WHERE condition',
        'WHERE condition_list',
-       'WHERE condition_list LIMIT INTEGER',)
+       'WHERE condition_list LIMIT INTEGER', )
     def where_clause(self, p):
         if hasattr(p, 'LIMIT'):
-            return {'where_conditions': p[1], 'limit': p[3]}
+            return WhereClause(where_conditions=p[1], limit=p[3])
         else:
-            return {'where_conditions': p[1]}
+            return WhereClause(where_conditions=p[1])
 
     @_('LPAREN condition_list RPAREN',
        'condition boolean condition',
@@ -211,20 +199,23 @@ class MindsDBParser(Parser):
             p[1].parentheses = True
             return p[1]
         else:
-            return {'left_condition': p[0], "boolean": p[1], 'right_condition': p[2]}
+            return ConditionList(left_condition=p[0], boolean=p[1], right_condition=p[2])
 
     @_('AND',
        'OR',
        'NOT')
     def boolean(self, p):
-        return p[0]
+        return Boolean(boolean=p[0])
 
     @_('id comparator value',
        'LPAREN id comparator value RPAREN',
        'id comparator id',
        'LPAREN id comparator id RPAREN')
     def condition(self, p):
-        return {'left_id': p[0], "comparator": p[1], 'right_id': p[1]}
+        if hasattr(p, 'LPAREN') and hasattr(p, 'RPAREN'):
+            return Condition(left_arg=p[1], comparator=p[2], right_arg=p[3])
+        else:
+            return Condition(left_arg=p[0], comparator=p[1], right_arg=p[2])
 
     @_('EQUALS',
        'NEQUALS',
@@ -233,7 +224,7 @@ class MindsDBParser(Parser):
        'LEQ',
        'LESS')
     def comparator(self, p):
-        return p[0]
+        return Comparator(comparator=p[0])
 
     @_('INTEGER',
        'FLOAT',
@@ -243,11 +234,10 @@ class MindsDBParser(Parser):
        'FALSE',
        'LATEST')
     def value(self, p):
-        return p[0]
+        return Value(value=p[0])
 
     ################################################ VIEWS #############################################################
 
     @_('CREATE VIEW id FROM native_query')
     def view(self, p):
         return {"view_name": p.id, "native_query": p.native_query}
-
