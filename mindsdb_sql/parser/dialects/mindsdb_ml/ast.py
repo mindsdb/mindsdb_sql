@@ -1,5 +1,6 @@
 import enum
 from prefect import flow, task
+from prefect.runtime import flow_run, task_run
 import operator
 from typing import Union
 
@@ -8,6 +9,17 @@ The top level query should initiate a flow, each node should have a task functio
 The sub-nodes can also start flows of thier own. Concurrency should be used when calling concurrent sub nodes.  
 
 """
+
+
+def generate_task_name():
+    flow_name = flow_run.flow_name
+    task_name = task_run.task_name
+
+    parameters = task_run.parameters
+    name = parameters["name"]
+    limit = parameters["limit"]
+
+    return f"{flow_name}-{task_name}-with-{name}-and-{limit}"
 
 
 class ASTNode:
@@ -43,7 +55,7 @@ class Query(ASTNode):
             branch.execute.submit()
 
     def __str__(self) -> str:
-        ' '.join([str(branch) for branch in self.branches])
+        return ' '.join([str(branch) for branch in self.branches])
 
 
 class RawQuery(ASTNode):
@@ -57,10 +69,14 @@ class RawQuery(ASTNode):
         self.raw_query = raw_query
         self.parentheses = parentheses
 
-    @task
     def execute(self):
-        """ submit query to MindsDB SQL Lite database"""
-        pass
+        @task(name='Raw Query',
+              description=str(self),
+              task_run_name=generate_task_name()
+              )
+        def task_fn():
+            """ submit query to MindsDB SQL Lite database"""
+            pass
 
     def __str__(self) -> str:
         if not self.parentheses:
@@ -80,13 +96,17 @@ class NativeQuery(ASTNode):
         self.integration = integration
         self.raw_query = raw_query
 
-    @task
     def execute(self):
-        """ submit query to the integration database"""
-        pass
+        @task(name='Native Query',
+              description=str(self),
+              task_run_name=generate_task_name()
+              )
+        def task_fn():
+            """ submit query to Native database"""
+            pass
 
     def __str__(self) -> str:
-        str(self.integration) + ' (' + str(self.raw_query) + ')'
+        return str(self.integration) + ' (' + str(self.raw_query) + ')'
 
 
 class Identifier(ASTNode):
@@ -130,7 +150,7 @@ class Identifier(ASTNode):
         elif self.alias:
             return str(self.column) + ' AS ' + str(self.alias)
         else:
-            str(self.column)
+            return str(self.column)
 
 
 class IdentifierList(ASTNode):
@@ -139,7 +159,7 @@ class IdentifierList(ASTNode):
     """
     ID_TYPE = enum.Enum('id_type', ['MINDSDB', 'NATIVE', 'AMBIGUOUS'])
 
-    def __init__(self, id_list, **kwargs):
+    def __init__(self, id_list: list['Identifer'], **kwargs):
         super().__init__(**kwargs)
 
         self.id_list = id_list
@@ -155,7 +175,7 @@ class IdentifierList(ASTNode):
         return any([idid.resolve_aliases(aliases=aliases) for idid in self.id_list])
 
     def __str__(self) -> str:
-        ' '.join([str(idid) for idid in self.id_list])
+        return ' '.join([str(idid) for idid in self.id_list])
 
 
 class Select(ASTNode):
@@ -163,11 +183,11 @@ class Select(ASTNode):
     A MindsDB Identifier. Terminal Node type.
     """
 
-    def __init__(self, select_claus, from_claus, where_clause, **kwargs):
+    def __init__(self, select_clause, from_clause, where_clause, **kwargs):
         super().__init__(**kwargs)
 
-        self.select_clause = select_claus
-        self.from_clause = from_claus
+        self.select_clause = select_clause
+        self.from_clause = from_clause
         self.where_clause = where_clause
 
     def get_aliases(self):
@@ -187,18 +207,20 @@ class Select(ASTNode):
                     self.from_clause.resolve_aliases(alias_dict),
                     self.where_clause.resolve_aliases(alias_dict)])
 
-    @task
     def execute(self):
-        """ execute the select statement """
+        @task(name='Select',
+              description=str(self),
+              task_run_name=generate_task_name()
+              )
+        def task_fn():
+            self.resolve_aliases()
 
-        self.resolve_aliases()
-
-        for conditional in self.where_clause.yield_conditions():
-            # TODO iteratively combine conditionals
+            # TODO: implement select.
             pass
 
     def __str__(self) -> str:
-        str(self.selec_clause) + ' ' + str(self.from_clause) + ' ' + str(self.where_clause)
+        return str(self.select_clause) + ' ' + str(self.from_clause) + ' ' + str(self.where_clause)
+
 
 class SelectClause(ASTNode):
 
@@ -213,7 +235,8 @@ class SelectClause(ASTNode):
         self.select_arg.resolve_aliases(aliases=aliases)
 
     def __str__(self) -> str:
-        'SELECT ' + str(self.select_arg)
+        return 'SELECT ' + str(self.select_arg)
+
 
 class FromClause(ASTNode):
     """
@@ -370,21 +393,13 @@ class Comparator(ASTNode):
     """
     A MindsDB Identifier. Terminal Node type.
     """
-    OP_TYPE = {'EQUALS': operator.eq,
-               'NEQUALS': operator.ne,
-               'GEQ': operator.ge,
-               'GREATER': operator.gt,
-               'LEQ': operator.le,
-               'LESS': operator.lt
+    OP_TYPE = {'=': operator.eq,
+               '!=': operator.ne,
+               '>=': operator.ge,
+               '>': operator.gt,
+               '<=': operator.le,
+               '<': operator.lt
                }
-
-    OP_TYPE_STR = {'EQUALS': '=',
-                   'NEQUALS': '!=',
-                   'GEQ': '>=',
-                   'GREATER': '>',
-                   'LEQ': '<=',
-                   'LESS': '<'
-                   }
 
     def __init__(self, comparator: str, **kwargs):
         super().__init__(**kwargs)
@@ -393,7 +408,7 @@ class Comparator(ASTNode):
         self.operator = self.OP_TYPE[comparator]
 
     def __str__(self) -> str:
-        return str(self.OP_TYPE_STR[self.comparator])
+        return str(self.comparator)
 
 
 class Value(ASTNode):

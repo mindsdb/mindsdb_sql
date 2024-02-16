@@ -128,7 +128,8 @@ class MindsDBParser(Parser):
        'id_list COMMA id')
     def id_list(self, p):
         if hasattr(p, 'id_list'):
-            return p[0].id_list.extend([p[2], ])
+            p[0].id_list.extend([p[2], ])
+            return p[0]
         else:
             return IdentifierList(id_list=[p[0], p[2]])
 
@@ -136,11 +137,11 @@ class MindsDBParser(Parser):
     def id(self, p):
         return Identifier(column=p[0])
 
-    @_('id DOT id')
+    @_('ID DOT ID')
     def id(self, p):
         return Identifier(column=p[2], table=p[0])
 
-    @_('id DOT id AS id')
+    @_('ID DOT ID AS ID')
     def id(self, p):
         return Identifier(column=p[2], table=p[0], alias=p[4])
 
