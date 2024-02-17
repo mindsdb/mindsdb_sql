@@ -27,9 +27,9 @@ class ASTNode:
         pass
         # raise Exception("ASTNode must have either a value or left and right.")
 
-    def get_aliases(self) -> list:
+    def get_aliases(self) -> dict:
         # return a list of aliases. Must be implemented by subclasses.
-        return []
+        return {}
 
     def resolve_aliases(self, aliases: dict) -> bool:
         # resolves aliases and returns a True on success. Must be implemented by subclasses.
@@ -52,7 +52,7 @@ class Query(ASTNode):
     @flow
     def execute(self):
         for branch in self.branches:
-            branch.execute.submit()
+            branch.execute().submit()
 
     def __str__(self) -> str:
         return ' '.join([str(branch) for branch in self.branches])
@@ -77,6 +77,8 @@ class RawQuery(ASTNode):
         def task_fn():
             """ submit query to MindsDB SQL Lite database"""
             pass
+
+        return task_fn
 
     def __str__(self) -> str:
         if not self.parentheses:
@@ -105,6 +107,8 @@ class NativeQuery(ASTNode):
             """ submit query to Native database"""
             pass
 
+        return task_fn
+
     def __str__(self) -> str:
         return str(self.integration) + ' (' + str(self.raw_query) + ')'
 
@@ -131,16 +135,22 @@ class Identifier(ASTNode):
         # alias is "AS alias"
         self.alias = alias
 
-    def get_aliases(self):
+    def get_aliases(self) -> dict:
         if self.alias:
-            return [self.alias]
+            return {self.alias: self}
         else:
-            return []
+            return {}
 
     def resolve_aliases(self, aliases: dict) -> bool:
-        self.resolved_table_alias = aliases[self.alias]
 
-        return True
+        if self.table and self.table in aliases:
+            self.table_alias = aliases[self.table]
+
+            return True
+        elif self.table is None:
+            return True
+        else:
+            return False  # Alias is unresolved.
 
     def __str__(self) -> str:
         if self.table and self.alias:
@@ -164,12 +174,11 @@ class IdentifierList(ASTNode):
 
         self.id_list = id_list
 
-    def get_aliases(self):
-        alias_list = []
+    def get_aliases(self) -> dict:
+        alias_dict = {}
         for idid in self.id_list:
-            alias_list.extend(idid.get_aliases())
-
-        return alias_list
+            alias_dict.update(idid.get_aliases())
+        return alias_dict
 
     def resolve_aliases(self, aliases: dict) -> bool:
         return any([idid.resolve_aliases(aliases=aliases) for idid in self.id_list])
@@ -190,9 +199,9 @@ class Select(ASTNode):
         self.from_clause = from_clause
         self.where_clause = where_clause
 
-    def get_aliases(self):
+    def get_aliases(self) -> dict:
         # Select statements are blocking
-        return []
+        return {}
 
     def resolve_aliases(self, aliases: dict):
         alias_dict = {}
@@ -218,6 +227,8 @@ class Select(ASTNode):
             # TODO: implement select.
             pass
 
+        return task_fn
+
     def __str__(self) -> str:
         return str(self.select_clause) + ' ' + str(self.from_clause) + ' ' + str(self.where_clause)
 
@@ -227,12 +238,12 @@ class SelectClause(ASTNode):
     def __init__(self, select_arg):
         self.select_arg = select_arg
 
-    def get_aliases(self):
+    def get_aliases(self) -> dict:
         # Select statements are blocking
         return self.select_arg.get_aliases()
 
     def resolve_aliases(self, aliases: dict):
-        self.select_arg.resolve_aliases(aliases=aliases)
+        return self.select_arg.resolve_aliases(aliases=aliases)
 
     def __str__(self) -> str:
         return 'SELECT ' + str(self.select_arg)
@@ -248,7 +259,7 @@ class FromClause(ASTNode):
 
         self.from_arg = from_arg
 
-    def get_aliases(self):
+    def get_aliases(self) -> dict:
         return self.from_arg.get_aliases()
 
     def resolve_aliases(self, aliases: dict) -> bool:
@@ -272,8 +283,11 @@ class JoinClause(ASTNode):
         self.left_arg = left_arg
         self.right_arg = right_arg
 
-    def get_aliases(self):
-        return self.left_arg.get_aliases() + self.right_arg.get_aliases()
+    def get_aliases(self) -> dict:
+        return_dict = {}
+        return_dict.update(self.left_arg.get_aliases())
+        return_dict.update(self.right_arg.get_aliases())
+        return return_dict
 
     def resolve_aliases(self, aliases: dict) -> bool:
         return self.left_arg.resolve_aliases(aliases) and self.right_arg.resolve_aliases(aliases)
@@ -293,7 +307,7 @@ class WhereClause(ASTNode):
         self.where_conditions = where_conditions
         self.limit = limit
 
-    def get_aliases(self):
+    def get_aliases(self) -> dict:
         return self.where_conditions.get_aliases()
 
     def resolve_aliases(self, aliases: dict) -> bool:
@@ -326,8 +340,11 @@ class ConditionList(ASTNode):
         self.right_condition = right_condition
         self.parantheses = parantheses
 
-    def get_aliases(self):
-        return self.left_condition.get_aliases() + self.right_condition.get_aliases()
+    def get_aliases(self)->dict:
+        return_dict = {}
+        return_dict.update(self.left_condition.get_aliases())
+        return_dict.update(self.right_condition.get_aliases())
+        return return_dict
 
     def resolve_aliases(self, aliases: dict) -> bool:
         return self.left_condition.resolve_aliases(aliases) and self.right_condition.resolve_aliases(aliases)
@@ -375,8 +392,11 @@ class Condition(ASTNode):
         self.right_arg = right_arg
         self.parantheses = parantheses
 
-    def get_aliases(self):
-        return self.left_arg.get_aliases() + self.right_arg.get_aliases()
+    def get_aliases(self) -> dict:
+        return_dict = {}
+        return_dict.update(self.left_arg.get_aliases())
+        return_dict.update(self.right_arg.get_aliases())
+        return return_dict
 
     def resolve_aliases(self, aliases: dict) -> bool:
         return self.left_arg.resolve_aliases(aliases) and self.right_arg.resolve_aliases(aliases)
