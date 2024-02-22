@@ -44,10 +44,12 @@ class MindsDBParser(Parser):
         ('left', AND),
         ('right', UNOT),
         ('left', EQUALS, NEQUALS),
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, BETWEEN, IS, IS_NOT, NOT_LIKE, LIKE),
+        ('left', JSON_GET),
         ('left', PLUS, MINUS),
         ('left', STAR, DIVIDE),
         ('right', UMINUS),  # Unary minus operator, unary not
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, BETWEEN, IS, IS_NOT, NOT_LIKE, LIKE),
+
     )
 
     # Top-level statements
@@ -1438,17 +1440,15 @@ class MindsDBParser(Parser):
        'expr LIKE expr',
        'expr NOT_LIKE expr',
        'expr CONCAT expr',
+       'expr JSON_GET constant',
+       'expr JSON_GET_STR constant',
        'expr IN expr')
     def expr(self, p):
         if hasattr(p, 'LAST'):
             arg1 = Last()
         else:
-            arg1 = p.expr1
-        if len(p) > 3:
-            op = ' '.join([p[i] for i in range(1, len(p)-1)])
-        else:
-            op = p[1]
-        return BinaryOperation(op=op, args=(p[0], arg1))
+            arg1 = p[2]
+        return BinaryOperation(op=p[1], args=(p[0], arg1))
 
     @_('MINUS expr %prec UMINUS',
        'NOT expr %prec UNOT', )

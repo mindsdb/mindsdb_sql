@@ -157,5 +157,9 @@ class TestSpecificSelects:
         assert str(ast) == str(expected_ast)
 
 
+    def test_json(self):
+        sql = """SELECT col -> '2' from TAB1"""
+        # TODO
+        raise
 
 
