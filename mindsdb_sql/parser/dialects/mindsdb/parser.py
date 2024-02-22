@@ -819,6 +819,7 @@ class MindsDBParser(Parser):
         'CREATE ANOMALY DETECTION MODEL identifier FROM identifier LPAREN raw_query RPAREN',
         'CREATE ANOMALY DETECTION MODEL identifier PREDICT result_columns',
         'CREATE ANOMALY DETECTION MODEL identifier PREDICT result_columns FROM identifier LPAREN raw_query RPAREN',
+        'CREATE ANOMALY DETECTION MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
         # TODO add IF_NOT_EXISTS elegantly (should be low level BNF expansion)
     )
     def create_anomaly_detection_model(self, p):

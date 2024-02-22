@@ -43,8 +43,12 @@ class CreateDatabase(ASTNode):
         if self.is_replace:
             replace_str = f' OR REPLACE'
 
+        engine_str = ''
+        if self.engine:
+            engine_str = f'ENGINE = {repr(self.engine)} '
+
         parameters_str = ''
         if self.parameters:
             parameters_str = f', PARAMETERS = {json.dumps(self.parameters)}'
-        out_str = f'CREATE{replace_str} DATABASE {"IF NOT EXISTS " if self.if_not_exists else ""}{self.name.to_string()} WITH ENGINE = {repr(self.engine)}{parameters_str}'
+        out_str = f'CREATE{replace_str} DATABASE {"IF NOT EXISTS " if self.if_not_exists else ""}{self.name.to_string()} {engine_str}{parameters_str}'
         return out_str
