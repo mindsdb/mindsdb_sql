@@ -592,28 +592,33 @@ class SqlalchemyRender:
 
         return stmt
 
+    def get_query(self, ast_query):
+        if isinstance(ast_query, ast.Select):
+            stmt = self.prepare_select(ast_query)
+        elif isinstance(ast_query, ast.Insert):
+            stmt = self.prepare_insert(ast_query)
+        elif isinstance(ast_query, ast.Update):
+            stmt = self.prepare_update(ast_query)
+        elif isinstance(ast_query, ast.CreateTable):
+            stmt = self.prepare_create_table(ast_query)
+        elif isinstance(ast_query, ast.DropTables):
+            stmt = self.prepare_drop_table(ast_query)
+        else:
+            raise NotImplementedError(f'Unknown statement: {ast_query.__class__.__name__}')
+        return stmt
+
     def get_string(self, ast_query, with_failback=True):
+        if isinstance(ast_query, (ast.CreateTable, ast.DropTables)):
+            render_func = render_ddl_query
+        else:
+            render_func = render_dml_query
+
         try:
-            if isinstance(ast_query, ast.Select):
-                stmt = self.prepare_select(ast_query)
-                sql = render_dml_query(stmt, self.dialect)
-            elif isinstance(ast_query, ast.Insert):
-                stmt = self.prepare_insert(ast_query)
-                sql = render_dml_query(stmt, self.dialect)
-            elif isinstance(ast_query, ast.Update):
-                stmt = self.prepare_update(ast_query)
-                sql = render_dml_query(stmt, self.dialect)
-            elif isinstance(ast_query, ast.CreateTable):
-                stmt = self.prepare_create_table(ast_query)
-                sql = render_ddl_query(stmt, self.dialect)
-            elif isinstance(ast_query, ast.DropTables):
-                stmt = self.prepare_drop_table(ast_query)
-                sql = render_ddl_query(stmt, self.dialect)
-            else:
-                raise NotImplementedError(f'Unknown statement: {ast_query.__class__.__name__}')
+            stmt = self.get_query(ast_query)
+
+            sql = render_func(stmt, self.dialect)
 
             return sql
-
 
         except (SQLAlchemyError, NotImplementedError) as e:
             if not with_failback:
