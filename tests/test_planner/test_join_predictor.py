@@ -736,6 +736,9 @@ class TestPredictorParams:
                       join mindsdb.pred m
                       join mindsdb.pred m2
                     where m.a = 2
+                    using m.param1 = 'a', 
+                          m2.param2 = 'b',
+                          param3 = 'c'
                 '''
 
         subquery = parse_sql("""
@@ -750,13 +753,15 @@ class TestPredictorParams:
                 FetchDataframeStep(integration='int',
                                    query=parse_sql('select * from tab1 as t')),
                 ApplyPredictorStep(namespace='mindsdb', dataframe=Result(0),
-                                   predictor=Identifier('pred', alias=Identifier('m')), row_dict={'a': 2}),
+                                   predictor=Identifier('pred', alias=Identifier('m')),
+                                   row_dict={ 'a': 2 }, params={ 'param1': 'a', 'param3': 'c' }),
                 JoinStep(left=Result(0), right=Result(1),
                          query=Join(left=Identifier('tab1'),
                                     right=Identifier('tab2'),
                                     join_type=JoinType.JOIN)),
                 ApplyPredictorStep(namespace='mindsdb', dataframe=Result(2),
-                                   predictor=Identifier('pred', alias=Identifier('m2'))),
+                                   predictor=Identifier('pred', alias=Identifier('m2')),
+                                   params={ 'param2': 'b', 'param3': 'c' }),
                 JoinStep(left=Result(2), right=Result(3),
                          query=Join(left=Identifier('tab1'),
                                     right=Identifier('tab2'),

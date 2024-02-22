@@ -104,6 +104,7 @@ class PlanJoinTablesQuery:
         ):
             query2 = copy.deepcopy(query)
             query2.from_table = None
+            query2.using = None
             sup_select = QueryStep(query2, from_table=join_step.result)
             self.planner.plan.add_step(sup_select)
             return sup_select
@@ -429,11 +430,25 @@ class PlanJoinTablesQuery:
                     # exclude condition
                     el._orig_node.args = [Constant(0), Constant(0)]
 
+        # params for model
+        model_params = None
+
+        if query_in.using is not None:
+            model_params = {}
+            for param, value in query_in.using.items():
+                if '.' in param:
+                    alias = param.split('.')[0]
+                    if (alias,) in item.aliases:
+                        new_param = '.'.join(param.split('.')[1:])
+                        model_params[new_param] = value
+                else:
+                    model_params[param] = value
+
         predictor_step = self.planner.plan.add_step(ApplyPredictorStep(
             namespace=item.integration,
             dataframe=data_step.result,
             predictor=item.table,
-            params=query_in.using,
+            params=model_params,
             row_dict=row_dict,
         ))
         self.step_stack.append(predictor_step)
