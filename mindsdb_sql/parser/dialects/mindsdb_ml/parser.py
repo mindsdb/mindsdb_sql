@@ -241,4 +241,6 @@ class MindsDBParser(Parser):
 
     @_('CREATE VIEW id FROM native_query')
     def view(self, p):
-        return {"view_name": p.id, "native_query": p.native_query}
+        return View(view_name=p.id, native_query=p.native_query)
+
+    ################################################ TRAIN #############################################################

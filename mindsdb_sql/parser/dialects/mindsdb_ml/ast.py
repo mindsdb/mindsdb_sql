@@ -6,6 +6,9 @@ from prefect.tasks import task_input_hash
 from prefect.runtime import flow_run, task_run
 import operator
 from typing import Union
+import ray
+import pandas as pd
+import numpy as np
 
 """
 The top level query should initiate a flow, each node should have a task function that calls the tasks of it's sub-nodes.
@@ -17,12 +20,12 @@ The sub-nodes can also start flows of thier own. Concurrency should be used when
 def generate_flow_run_name(name: str):
     date = datetime.datetime.now(datetime.timezone.utc)
 
-    return f"{date:%A}-{name}"
+    return f"{date:%A %H %M %S}-{name}"
 
 
-def generate_task_name():
+def generate_task_name(task_name: str = None):
     flow_name = flow_run.flow_name
-    task_name = task_run.task_name
+    task_name = task_run.task_name if task_run.task_name else task_name
 
     parameters = task_run.parameters
     name = parameters["name"] if "name" in parameters.keys() else None
@@ -61,7 +64,7 @@ class Query(ASTNode):
     def execute(self):
         @flow(name='Query',
               description=str(self),
-              flow_run_name=generate_flow_run_name('SELECT'),
+              flow_run_name=generate_flow_run_name('Query'),
               log_prints=True
               )
         def flow_fn(clauses):
@@ -76,6 +79,25 @@ class Query(ASTNode):
             return results
 
         return flow_fn(clauses=self.clauses)
+
+    def visualize(self):
+        @flow(name='Query',
+              description=str(self),
+              flow_run_name=generate_flow_run_name('Query'),
+              log_prints=True
+              )
+        def flow_fn(clauses):
+            # concurrent execution
+            results = [clause.execute() for clause in clauses]
+
+            # await results
+            for i, clause in enumerate(clauses):
+                if clause.is_task:
+                    results[i] = results[i].result()
+
+            return results
+
+        flow_fn.visualize()
 
     def __str__(self) -> str:
         return ' '.join([str(branch) for branch in self.clauses])
@@ -95,7 +117,8 @@ class RawQuery(ASTNode):
     def execute(self):
         @task(name='Raw Query',
               description=str(self),
-              task_run_name=generate_task_name()
+              task_run_name=generate_task_name('Raw Query'),
+              viz_return_value=None
               )
         def task_fn():
             """ submit query to MindsDB SQL Lite database"""
@@ -125,11 +148,20 @@ class NativeQuery(ASTNode):
     def execute(self):
         @task(name='Native Query',
               description=str(self),
-              task_run_name=generate_task_name()
+              task_run_name=generate_task_name('Native Query'),
+              viz_return_value=None
               )
         def task_fn():
             """ submit query to Native database"""
-            pass
+
+            # Mock database return
+            df = pd.DataFrame.from_dict({'sqft': np.random.rand(1000),
+                                        'location':np.random.rand(1000),
+                                         'neighborhood': np.random.rand(1000),
+                                         'days_on_market': np.random.rand(1000)
+                                         })
+
+            return ray.data.from_pandas(df)
 
         return task_fn
 
@@ -293,7 +325,8 @@ class SelectClause(ASTNode):
     def execute(self):
         @task(name='Select Clause',
               description=str(self),
-              task_run_name=generate_task_name()
+              task_run_name=generate_task_name('Select Clause'),
+              viz_return_value=None
               )
         def task_fn():
             """Get information on select clause from backend"""
@@ -325,7 +358,7 @@ class FromClause(ASTNode):
     def execute(self):
         @flow(name='From Clause',
               description=str(self),
-              flow_run_name=generate_flow_run_name('SELECT'),
+              flow_run_name=generate_flow_run_name('From Clause'),
               log_prints=True
               )
         def flow_fn():
@@ -345,7 +378,7 @@ class JoinClause(ASTNode):
 
     def __init__(self,
                  left_arg: Union[Identifier, 'JoinClause'],
-                 right_arg: Identifier | NativeQuery,
+                 right_arg: Union[Identifier, NativeQuery],
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -365,7 +398,7 @@ class JoinClause(ASTNode):
     def execute(self):
         @flow(name='Join Clause',
               description=str(self),
-              flow_run_name=generate_flow_run_name('SELECT'),
+              flow_run_name=generate_flow_run_name('Join Clause'),
               log_prints=True
               )
         def flow_fn():
@@ -399,7 +432,8 @@ class WhereClause(ASTNode):
     def execute(self):
         @task(name='Where Clause',
               description=str(self),
-              task_run_name=generate_task_name()
+              task_run_name=generate_task_name('Where Clause'),
+              viz_return_value=None
               )
         def task_fn():
             """Get information on from clause from backend"""
@@ -530,10 +564,41 @@ class Value(ASTNode):
     A MindsDB Identifier. Terminal Node type.
     """
 
-    def __init__(self, value: int | float | str | bool, **kwargs):
+    def __init__(self, value: Union[int, float, str, bool], **kwargs):
         super().__init__(**kwargs)
 
         self.value = value
 
     def __str__(self) -> str:
         return str(self.value)
+
+
+class View(ASTNode):
+    """
+    A MindsDB Identifier. Terminal Node type.
+    """
+
+    def __init__(self, view_name: str, native_query: NativeQuery, **kwargs):
+        super().__init__(**kwargs)
+
+        self.view_name = view_name
+        self.native_query = native_query
+
+    def execute(self):
+        @flow(name='View',
+              description=str(self),
+              flow_run_name=generate_flow_run_name('View'),
+              log_prints=True
+              )
+        def flow_fn():
+            """ submit query to MindsDB SQL Lite database"""
+            return self.native_query.execute()
+
+        return flow_fn()
+
+    def __str__(self) -> str:
+
+        if not self.parentheses:
+            return str(self.raw_query)
+        else:
+            return '(' + str(self.raw_query) + ')'
