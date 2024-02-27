@@ -76,7 +76,7 @@ class MindsDBParser(Parser):
        'select',
        'view')
     def query(self, p):
-        return Query(branches=[p[0], ])
+        return Query(clauses=[p[0], ])
 
     ################################################ terminals #########################################################
     """@_('LPAREN sql_statement RPAREN')

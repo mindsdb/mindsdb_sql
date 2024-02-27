@@ -1,5 +1,8 @@
 import enum
-from prefect import flow, task
+import datetime
+from datetime import timedelta
+from prefect import flow, task, get_run_logger
+from prefect.tasks import task_input_hash
 from prefect.runtime import flow_run, task_run
 import operator
 from typing import Union
@@ -11,13 +14,19 @@ The sub-nodes can also start flows of thier own. Concurrency should be used when
 """
 
 
+def generate_flow_run_name(name: str):
+    date = datetime.datetime.now(datetime.timezone.utc)
+
+    return f"{date:%A}-{name}"
+
+
 def generate_task_name():
     flow_name = flow_run.flow_name
     task_name = task_run.task_name
 
     parameters = task_run.parameters
-    name = parameters["name"]
-    limit = parameters["limit"]
+    name = parameters["name"] if "name" in parameters.keys() else None
+    limit = parameters["limit"] if "limit" in parameters.keys() else None
 
     return f"{flow_name}-{task_name}-with-{name}-and-{limit}"
 
@@ -44,18 +53,32 @@ class Query(ASTNode):
     A MindsDB Identifier. Terminal Node type.
     """
 
-    def __init__(self, branches: list, **kwargs):
+    def __init__(self, clauses: list, **kwargs):
         super().__init__(**kwargs)
 
-        self.branches = branches
+        self.clauses = clauses
 
-    @flow
     def execute(self):
-        for branch in self.branches:
-            branch.execute().submit()
+        @flow(name='Query',
+              description=str(self),
+              flow_run_name=generate_flow_run_name('SELECT'),
+              log_prints=True
+              )
+        def flow_fn(clauses):
+            # concurrent execution
+            results = [clause.execute() for clause in clauses]
+
+            # await results
+            for i, clause in enumerate(clauses):
+                if clause.is_task:
+                    results[i] = results[i].result()
+
+            return results
+
+        return flow_fn(clauses=self.clauses)
 
     def __str__(self) -> str:
-        return ' '.join([str(branch) for branch in self.branches])
+        return ' '.join([str(branch) for branch in self.clauses])
 
 
 class RawQuery(ASTNode):
@@ -78,9 +101,10 @@ class RawQuery(ASTNode):
             """ submit query to MindsDB SQL Lite database"""
             pass
 
-        return task_fn
+        return task_fn.submit()
 
     def __str__(self) -> str:
+
         if not self.parentheses:
             return str(self.raw_query)
         else:
@@ -184,7 +208,7 @@ class IdentifierList(ASTNode):
         return any([idid.resolve_aliases(aliases=aliases) for idid in self.id_list])
 
     def __str__(self) -> str:
-        return ' '.join([str(idid) for idid in self.id_list])
+        return ', '.join([str(idid) for idid in self.id_list])
 
 
 class Select(ASTNode):
@@ -192,23 +216,30 @@ class Select(ASTNode):
     A MindsDB Identifier. Terminal Node type.
     """
 
-    def __init__(self, select_clause, from_clause, where_clause, **kwargs):
+    def __init__(self,
+                 select_clause: 'SelectClause',
+                 from_clause: 'FromClause',
+                 where_clause: 'WhereClause',
+                 **kwargs):
         super().__init__(**kwargs)
 
         self.select_clause = select_clause
         self.from_clause = from_clause
         self.where_clause = where_clause
+        self.is_task = False
 
     def get_aliases(self) -> dict:
         # Select statements are blocking
         return {}
 
-    def resolve_aliases(self, aliases: dict):
+    def resolve_aliases(self, aliases: dict = {}):
         alias_dict = {}
 
         alias_dict.update(self.select_clause.get_aliases())
         alias_dict.update(self.from_clause.get_aliases())
         alias_dict.update(self.where_clause.get_aliases())
+
+        self.alias_dict = alias_dict
 
         # TODO: add logic to cross reference aliases with registered symbols. Aliases cannot be overlaoded.
 
@@ -217,17 +248,30 @@ class Select(ASTNode):
                     self.where_clause.resolve_aliases(alias_dict)])
 
     def execute(self):
-        @task(name='Select',
+        self.resolve_aliases()
+
+        clauses = [self.select_clause, self.from_clause, self.where_clause]
+
+        @flow(name='Select',
               description=str(self),
-              task_run_name=generate_task_name()
+              flow_run_name=generate_flow_run_name('SELECT'),
+              log_prints=True
               )
-        def task_fn():
-            self.resolve_aliases()
+        def flow_fn(clauses):
+            # concurrent execution
+            results = [clause.execute() for clause in clauses]
 
-            # TODO: implement select.
-            pass
+            # await results
+            for i, clause in enumerate(clauses):
+                if clause.is_task:
+                    results[i] = results[i].result()
 
-        return task_fn
+            return results
+
+        # update self
+        self.select_clause, self.from_clause, self.where_clause = flow_fn(clauses=clauses)
+
+        return
 
     def __str__(self) -> str:
         return str(self.select_clause) + ' ' + str(self.from_clause) + ' ' + str(self.where_clause)
@@ -237,6 +281,7 @@ class SelectClause(ASTNode):
 
     def __init__(self, select_arg):
         self.select_arg = select_arg
+        self.is_task = True
 
     def get_aliases(self) -> dict:
         # Select statements are blocking
@@ -244,6 +289,17 @@ class SelectClause(ASTNode):
 
     def resolve_aliases(self, aliases: dict):
         return self.select_arg.resolve_aliases(aliases=aliases)
+
+    def execute(self):
+        @task(name='Select Clause',
+              description=str(self),
+              task_run_name=generate_task_name()
+              )
+        def task_fn():
+            """Get information on select clause from backend"""
+            pass
+
+        return task_fn.submit()
 
     def __str__(self) -> str:
         return 'SELECT ' + str(self.select_arg)
@@ -258,12 +314,25 @@ class FromClause(ASTNode):
         super().__init__(**kwargs)
 
         self.from_arg = from_arg
+        self.is_task = False
 
     def get_aliases(self) -> dict:
         return self.from_arg.get_aliases()
 
     def resolve_aliases(self, aliases: dict) -> bool:
         return self.from_arg.resolve_aliases(aliases)
+
+    def execute(self):
+        @flow(name='From Clause',
+              description=str(self),
+              flow_run_name=generate_flow_run_name('SELECT'),
+              log_prints=True
+              )
+        def flow_fn():
+            """Get information on from clause from backend"""
+            pass
+
+        return flow_fn()
 
     def __str__(self) -> str:
         return 'FROM ' + str(self.from_arg)
@@ -282,6 +351,7 @@ class JoinClause(ASTNode):
 
         self.left_arg = left_arg
         self.right_arg = right_arg
+        self.is_task = False
 
     def get_aliases(self) -> dict:
         return_dict = {}
@@ -291,6 +361,18 @@ class JoinClause(ASTNode):
 
     def resolve_aliases(self, aliases: dict) -> bool:
         return self.left_arg.resolve_aliases(aliases) and self.right_arg.resolve_aliases(aliases)
+
+    def execute(self):
+        @flow(name='Join Clause',
+              description=str(self),
+              flow_run_name=generate_flow_run_name('SELECT'),
+              log_prints=True
+              )
+        def flow_fn():
+            """Get information on from clause from backend"""
+            pass
+
+        return flow_fn()
 
     def __str__(self) -> str:
         return str(self.left_arg) + ' JOIN ' + str(self.right_arg)
@@ -306,12 +388,24 @@ class WhereClause(ASTNode):
 
         self.where_conditions = where_conditions
         self.limit = limit
+        self.is_task = True
 
     def get_aliases(self) -> dict:
         return self.where_conditions.get_aliases()
 
     def resolve_aliases(self, aliases: dict) -> bool:
         return self.where_conditions.resolve_aliases(aliases)
+
+    def execute(self):
+        @task(name='Where Clause',
+              description=str(self),
+              task_run_name=generate_task_name()
+              )
+        def task_fn():
+            """Get information on from clause from backend"""
+            pass
+
+        return task_fn.submit()
 
     def __str__(self) -> str:
         if not self.where_conditions:
@@ -340,7 +434,7 @@ class ConditionList(ASTNode):
         self.right_condition = right_condition
         self.parantheses = parantheses
 
-    def get_aliases(self)->dict:
+    def get_aliases(self) -> dict:
         return_dict = {}
         return_dict.update(self.left_condition.get_aliases())
         return_dict.update(self.right_condition.get_aliases())
