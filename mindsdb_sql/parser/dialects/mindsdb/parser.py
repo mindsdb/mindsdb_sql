@@ -404,6 +404,8 @@ class MindsDBParser(Parser):
        'CHARSET',
        )
     def charset(self, p):
+        if hasattr(p, 'SET'):
+            return f'{p[0]} {p[1]}'
         return p[0]
 
     # set transaction
@@ -525,57 +527,14 @@ class MindsDBParser(Parser):
             modes=modes
         )
 
-    @_('SCHEMAS',
-       'DATABASES',
-       'TABLES',
-       'OPEN TABLES',
-       'TRIGGERS',
-       'COLUMNS',
-       'FIELDS',
-       'PLUGINS',
-       'VARIABLES',
-       'INDEXES',
-       'KEYS',
-       'SESSION VARIABLES',
-       'GLOBAL VARIABLES',
-       'GLOBAL STATUS',
-       'SESSION STATUS',
-       'PROCEDURE STATUS',
-       'FUNCTION STATUS',
-       'TABLE STATUS',
-       'MASTER STATUS',
-       'STATUS',
-       'STORAGE ENGINES',
-       'PROCESSLIST',
-       'INDEX',
-       'CREATE TABLE',
-       'WARNINGS',
-       'ENGINES',
-       'CHARSET',
-       'CHARACTER SET',
-       'COLLATION',
-       'BINARY LOGS',
-       'MASTER LOGS',
-       'PRIVILEGES',
-       'PROFILES',
-       'REPLICAS',
-       'SLAVE HOSTS',
-       # Mindsdb specific
-       'VIEWS',
-       'STREAMS',
-       'PREDICTORS',
-       'INTEGRATIONS',
-       'DATASOURCES',
-       'PUBLICATIONS',
-       'DATASETS',
-       'MODELS',
-       'ML_ENGINES',
-       'HANDLERS',
-       'SEARCH_PATH',
-       'KNOWLEDGE_BASES',
-       'ALL')
+    @_(
+       'id',
+       'id id',
+    )
     def show_category(self, p):
-        return ' '.join([x for x in p])
+        if hasattr(p, 'id'):
+            return p.id
+        return f"{p.id0} {p.id1}"
 
     # custom show commands
     @_('SHOW ENGINE identifier STATUS',
@@ -587,8 +546,7 @@ class MindsDBParser(Parser):
             modes=[p[3]]
         )
 
-    @_('SHOW FUNCTION CODE identifier',
-       'SHOW PROCEDURE CODE identifier')
+    @_('SHOW id id identifier')
     def show(self, p):
         category = p[1] + ' ' + p[2]
         return Show(
@@ -1138,14 +1096,6 @@ class MindsDBParser(Parser):
         select.where = where_expr
         return select
 
-    # Special cases for keyword-like identifiers
-    @_('select FROM TABLES')
-    def select(self, p):
-        select = p.select
-        ensure_select_keyword_order(select, 'FROM')
-        select.from_table = Identifier(p.TABLES)
-        return select
-
     @_('select FROM from_table_aliased',
        'select FROM join_tables_implicit',
        'select FROM join_tables')
@@ -1646,6 +1596,7 @@ class MindsDBParser(Parser):
        'HORIZON',
        'HOSTS',
        'INDEXES',
+       'INDEX',
        'INTEGRATION',
        'INTEGRATIONS',
        'ISOLATION',
@@ -1687,6 +1638,7 @@ class MindsDBParser(Parser):
        'STREAM',
        'STREAMS',
        'TABLES',
+       'TABLE',
        'TRAIN',
        'TRANSACTION',
        'TRIGGERS',
@@ -1697,7 +1649,17 @@ class MindsDBParser(Parser):
        'WARNINGS',
        'MODEL',
        'MODELS',
-       'AGENT'
+       'AGENT',
+       'SCHEMAS',
+       'FUNCTION',
+       'charset',
+       'PROCEDURE',
+       'ML_ENGINES',
+       'HANDLERS',
+       'BINARY',
+       'KNOWLEDGE_BASES',
+       'ALL',
+       'CREATE',
        )
     def id(self, p):
         return p[0]

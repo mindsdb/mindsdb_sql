@@ -36,12 +36,6 @@ class TestShow:
             assert str(ast) == str(expected_ast)
             assert ast.to_tree() == expected_ast.to_tree()
 
-    def test_show_unknown_category_error(self, dialect):
-        sql = "SHOW abracadabra"
-
-        with pytest.raises(ParsingException):
-            parse_sql(sql, dialect=dialect)
-
     def test_show_unknown_condition_error(self, dialect):
         sql = "SHOW databases WITH"
         with pytest.raises(ParsingException):
