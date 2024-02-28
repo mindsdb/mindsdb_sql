@@ -79,7 +79,7 @@ class CreateJob(ASTNode):
 
         if_query_str = ''
         if self.if_query_str is not None:
-            if_query_str = f" IF '{self.if_query_str}'"
+            if_query_str = f" IF ({self.if_query_str})"
 
         out_str = f'CREATE JOB {"IF NOT EXISTS" if self.if_not_exists else ""} {self.name.to_string()} ({self.query_str}){start_str}{end_str}{repeat_str}{if_query_str}'
         return out_str

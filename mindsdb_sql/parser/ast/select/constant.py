@@ -15,7 +15,8 @@ class Constant(ASTNode):
 
     def get_string(self, *args, **kwargs):
         if isinstance(self.value, str) and self.with_quotes:
-            out_str = f"\'{self.value}\'"
+            val = self.value.replace("'", "\\'")
+            out_str = f"\'{val}\'"
         elif isinstance(self.value, bool):
             out_str = 'TRUE' if self.value else 'FALSE'
         elif isinstance(self.value, (dt.date, dt.datetime, dt.timedelta)):

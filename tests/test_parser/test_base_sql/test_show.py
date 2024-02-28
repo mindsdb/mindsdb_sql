@@ -36,12 +36,6 @@ class TestShow:
             assert str(ast) == str(expected_ast)
             assert ast.to_tree() == expected_ast.to_tree()
 
-    def test_show_unknown_category_error(self, dialect):
-        sql = "SHOW abracadabra"
-
-        with pytest.raises(ParsingException):
-            parse_sql(sql, dialect=dialect)
-
     def test_show_unknown_condition_error(self, dialect):
         sql = "SHOW databases WITH"
         with pytest.raises(ParsingException):
@@ -249,18 +243,6 @@ class TestShowNoSqlite:
 
     def test_custom(self, dialect):
 
-        for arg in ['STATUS', 'MUTEX']:
-            sql = f"SHOW ENGINE engine_name {arg}"
-            ast = parse_sql(sql, dialect=dialect)
-            expected_ast = Show(
-                category='ENGINE',
-                name='engine_name',
-                modes=[arg],
-            )
-
-            assert str(ast) == str(expected_ast)
-            assert ast.to_tree() == expected_ast.to_tree()
-
         for arg in ['FUNCTION', 'PROCEDURE']:
             sql = f"SHOW {arg} CODE obj_name"
             ast = parse_sql(sql, dialect=dialect)
@@ -309,6 +291,18 @@ class TestShowAdapted:
 
 
 class TestMindsdb:
+
+    def test_show_engine(self):
+        for arg in ['STATUS', 'MUTEX']:
+            sql = f"SHOW ENGINE engine_name {arg}"
+            ast = parse_sql(sql)
+            expected_ast = Show(
+                category='ENGINE engine_name',
+                name=arg,
+            )
+
+            assert str(ast) == str(expected_ast)
+            assert ast.to_tree() == expected_ast.to_tree()
 
     def test_show(self):
         sql = '''

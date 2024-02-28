@@ -44,10 +44,12 @@ class MindsDBParser(Parser):
         ('left', AND),
         ('right', UNOT),
         ('left', EQUALS, NEQUALS),
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, BETWEEN, IS, IS_NOT, NOT_LIKE, LIKE),
+        ('left', JSON_GET),
         ('left', PLUS, MINUS),
         ('left', STAR, DIVIDE),
         ('right', UMINUS),  # Unary minus operator, unary not
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, BETWEEN, IS, IS_NOT, NOT_LIKE, LIKE),
+
     )
 
     # Top-level statements
@@ -402,6 +404,8 @@ class MindsDBParser(Parser):
        'CHARSET',
        )
     def charset(self, p):
+        if hasattr(p, 'SET'):
+            return f'{p[0]} {p[1]}'
         return p[0]
 
     # set transaction
@@ -419,7 +423,7 @@ class MindsDBParser(Parser):
 
         params = {}
         if isolation_level is not None:
-            params['isolation_level'] = isolation_level
+            params['isolation level'] = isolation_level
         if access_mode is not None:
             params['access_mode'] = access_mode
 
@@ -523,75 +527,28 @@ class MindsDBParser(Parser):
             modes=modes
         )
 
-    @_('SCHEMAS',
-       'DATABASES',
-       'TABLES',
-       'OPEN TABLES',
-       'TRIGGERS',
-       'COLUMNS',
-       'FIELDS',
-       'PLUGINS',
-       'VARIABLES',
-       'INDEXES',
-       'KEYS',
-       'SESSION VARIABLES',
-       'GLOBAL VARIABLES',
-       'GLOBAL STATUS',
-       'SESSION STATUS',
-       'PROCEDURE STATUS',
-       'FUNCTION STATUS',
-       'TABLE STATUS',
-       'MASTER STATUS',
-       'STATUS',
-       'STORAGE ENGINES',
-       'PROCESSLIST',
-       'INDEX',
-       'CREATE TABLE',
-       'WARNINGS',
-       'ENGINES',
-       'CHARSET',
-       'CHARACTER SET',
-       'COLLATION',
-       'BINARY LOGS',
-       'MASTER LOGS',
-       'PRIVILEGES',
-       'PROFILES',
-       'REPLICAS',
-       'SLAVE HOSTS',
-       # Mindsdb specific
-       'VIEWS',
-       'STREAMS',
-       'PREDICTORS',
-       'INTEGRATIONS',
-       'DATASOURCES',
-       'PUBLICATIONS',
-       'DATASETS',
-       'MODELS',
-       'ML_ENGINES',
-       'HANDLERS',
-       'SEARCH_PATH',
-       'KNOWLEDGE_BASES',
-       'ALL')
+    @_(
+       'id',
+       'id id',
+    )
     def show_category(self, p):
-        return ' '.join([x for x in p])
+        if hasattr(p, 'id'):
+            return p.id
+        return f"{p.id0} {p.id1}"
 
     # custom show commands
-    @_('SHOW ENGINE identifier STATUS',
-       'SHOW ENGINE identifier MUTEX')
-    def show(self, p):
-        return Show(
-            category=p[1],
-            name=p.identifier.to_string(),
-            modes=[p[3]]
-        )
 
-    @_('SHOW FUNCTION CODE identifier',
-       'SHOW PROCEDURE CODE identifier')
+    @_('SHOW id id identifier')
     def show(self, p):
         category = p[1] + ' ' + p[2]
+
+        if p[1].lower() == 'engine':
+            name = p.identifier.parts[0]
+        else:
+            name = p.identifier.to_string()
         return Show(
             category=category,
-            name=p.identifier.to_string()
+            name=name
         )
 
     @_('SHOW REPLICA STATUS FOR CHANNEL id',
@@ -819,6 +776,7 @@ class MindsDBParser(Parser):
         'CREATE ANOMALY DETECTION MODEL identifier FROM identifier LPAREN raw_query RPAREN',
         'CREATE ANOMALY DETECTION MODEL identifier PREDICT result_columns',
         'CREATE ANOMALY DETECTION MODEL identifier PREDICT result_columns FROM identifier LPAREN raw_query RPAREN',
+        'CREATE ANOMALY DETECTION MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
         # TODO add IF_NOT_EXISTS elegantly (should be low level BNF expansion)
     )
     def create_anomaly_detection_model(self, p):
@@ -1135,14 +1093,6 @@ class MindsDBParser(Parser):
         select.where = where_expr
         return select
 
-    # Special cases for keyword-like identifiers
-    @_('select FROM TABLES')
-    def select(self, p):
-        select = p.select
-        ensure_select_keyword_order(select, 'FROM')
-        select.from_table = Identifier(p.TABLES)
-        return select
-
     @_('select FROM from_table_aliased',
        'select FROM join_tables_implicit',
        'select FROM join_tables')
@@ -1437,17 +1387,15 @@ class MindsDBParser(Parser):
        'expr LIKE expr',
        'expr NOT_LIKE expr',
        'expr CONCAT expr',
+       'expr JSON_GET constant',
+       'expr JSON_GET_STR constant',
        'expr IN expr')
     def expr(self, p):
         if hasattr(p, 'LAST'):
             arg1 = Last()
         else:
-            arg1 = p.expr1
-        if len(p) > 3:
-            op = ' '.join([p[i] for i in range(1, len(p)-1)])
-        else:
-            op = p[1]
-        return BinaryOperation(op=op, args=(p[0], arg1))
+            arg1 = p[2]
+        return BinaryOperation(op=p[1], args=(p[0], arg1))
 
     @_('MINUS expr %prec UMINUS',
        'NOT expr %prec UNOT', )
@@ -1645,6 +1593,7 @@ class MindsDBParser(Parser):
        'HORIZON',
        'HOSTS',
        'INDEXES',
+       'INDEX',
        'INTEGRATION',
        'INTEGRATIONS',
        'ISOLATION',
@@ -1686,6 +1635,7 @@ class MindsDBParser(Parser):
        'STREAM',
        'STREAMS',
        'TABLES',
+       'TABLE',
        'TRAIN',
        'TRANSACTION',
        'TRIGGERS',
@@ -1696,7 +1646,17 @@ class MindsDBParser(Parser):
        'WARNINGS',
        'MODEL',
        'MODELS',
-       'AGENT'
+       'AGENT',
+       'SCHEMAS',
+       'FUNCTION',
+       'charset',
+       'PROCEDURE',
+       'ML_ENGINES',
+       'HANDLERS',
+       'BINARY',
+       'KNOWLEDGE_BASES',
+       'ALL',
+       'CREATE',
        )
     def id(self, p):
         return p[0]

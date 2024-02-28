@@ -148,10 +148,10 @@ class TestMiscQueriesNoSqlite:
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Set(
             category='TRANSACTION',
-            params=dict(
-                isolation_level='REPEATABLE READ',
-                access_mode='READ WRITE',
-            ),
+            params={
+                'isolation level': 'REPEATABLE READ',
+                'access_mode': 'READ WRITE',
+            },
             scope='GLOBAL'
         )
 
@@ -164,10 +164,10 @@ class TestMiscQueriesNoSqlite:
 
         expected_ast = Set(
             category='TRANSACTION',
-            params=dict(
-                isolation_level='SERIALIZABLE',
-                access_mode='READ ONLY',
-            ),
+            params={
+                'isolation level': 'SERIALIZABLE',
+                'access_mode': 'READ ONLY',
+            },
             scope='SESSION'
         )
 
@@ -180,9 +180,9 @@ class TestMiscQueriesNoSqlite:
 
         expected_ast = Set(
             category='TRANSACTION',
-            params=dict(
-                isolation_level='READ UNCOMMITTED',
-            )
+            params={
+                'isolation level': 'READ UNCOMMITTED'
+            },
         )
 
         assert ast.to_tree() == expected_ast.to_tree()

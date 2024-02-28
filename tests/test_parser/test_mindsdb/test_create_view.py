@@ -15,7 +15,7 @@ class TestCreateView:
         assert tokens[1].value == 'VIEW'
         assert tokens[1].type == 'VIEW'
 
-    def test_create_view_raises_wrong_dialect(self):
+    def test_create_view_raises_wrong_dialect_error(self):
         sql = "CREATE VIEW my_view FROM integr AS ( SELECT * FROM pred )"
         for dialect in ['sqlite', 'mysql']:
             with pytest.raises(ParsingException):
