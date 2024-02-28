@@ -158,8 +158,28 @@ class TestSpecificSelects:
 
 
     def test_json(self):
-        sql = """SELECT col -> '2' from TAB1"""
-        # TODO
-        raise
+        sql = """SELECT col->1->'c' from TAB1"""
+
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = Select(
+            targets=[BinaryOperation(
+                op='->',
+                args=[
+                    BinaryOperation(
+                        op='->',
+                        args=[
+                            Identifier('col'),
+                            Constant(1)
+                        ]
+                    ),
+                    Constant('c')
+                ]
+            )],
+            from_table=Identifier(parts=['TAB1']),
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
 
 
