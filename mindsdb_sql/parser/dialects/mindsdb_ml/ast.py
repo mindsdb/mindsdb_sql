@@ -1,19 +1,24 @@
 import enum
 import datetime
 from datetime import timedelta
+import operator
+from typing import Union
+
 from prefect import flow, task, get_run_logger
 from prefect.tasks import task_input_hash
 from prefect.runtime import flow_run, task_run
-import operator
-from typing import Union
+from prefect.artifacts import create_link_artifact
+
 import ray
 import pandas as pd
 import numpy as np
 
+# initialize ray on import in order to enable Prefect to talk to Ray
+ray.init()
+
 """
 The top level query should initiate a flow, each node should have a task function that calls the tasks of it's sub-nodes.
-The sub-nodes can also start flows of thier own. Concurrency should be used when calling concurrent sub nodes.  
-
+The sub-nodes can also start flows of their own. Concurrency should be used when calling concurrent sub nodes.  
 """
 
 
@@ -36,6 +41,8 @@ def generate_task_name(task_name: str = None):
 
 class ASTNode:
     def __init__(self, **kwargs):
+        self.is_task = False
+
         pass
         # raise Exception("ASTNode must have either a value or left and right.")
 
@@ -145,6 +152,8 @@ class NativeQuery(ASTNode):
         self.integration = integration
         self.raw_query = raw_query
 
+        self.is_task=True
+
     def execute(self):
         @task(name='Native Query',
               description=str(self),
@@ -156,14 +165,17 @@ class NativeQuery(ASTNode):
 
             # Mock database return
             df = pd.DataFrame.from_dict({'sqft': np.random.rand(1000),
-                                        'location':np.random.rand(1000),
+                                         'location': np.random.rand(1000),
                                          'neighborhood': np.random.rand(1000),
                                          'days_on_market': np.random.rand(1000)
                                          })
 
             return ray.data.from_pandas(df)
 
-        return task_fn
+        # call the task
+        ray_data = task_fn()
+
+        return ray_data
 
     def __str__(self) -> str:
         return str(self.integration) + ' (' + str(self.raw_query) + ')'
@@ -584,6 +596,8 @@ class View(ASTNode):
         self.view_name = view_name
         self.native_query = native_query
 
+        self.is_task = False
+
     def execute(self):
         @flow(name='View',
               description=str(self),
@@ -591,14 +605,57 @@ class View(ASTNode):
               log_prints=True
               )
         def flow_fn():
-            """ submit query to MindsDB SQL Lite database"""
-            return self.native_query.execute()
+            """ call native query task"""
+
+            ray_data = self.native_query.execute()
+
+            destination = "local:///tmp/dummy_data/"
+            ray_data.write_parquet("local:///tmp/dummy_data/")
+
+            # save an artifact link.
+            create_link_artifact(key=str(self.view_name), link=destination, description="dummy data")
+
+            return ray_data
 
         return flow_fn()
 
     def __str__(self) -> str:
+        return f'CREATE VIEW {str(self.view_name)} FROM {str(self.native_query)}'
 
-        if not self.parentheses:
-            return str(self.raw_query)
-        else:
-            return '(' + str(self.raw_query) + ')'
+class Train(ASTNode):
+    """
+    A MindsDB Identifier. Terminal Node type.
+    """
+
+    def __init__(self,
+                 model_name: Identifier,
+                 view_name: Identifier,
+                 target_column: Identifier,
+                 params: Union[Identifier, IdentifierList],
+                 **kwargs):
+        super().__init__(**kwargs)
+
+        self.model_name = model_name
+        self.view_name = view_name
+        self.target_column = target_column
+        self.params = params
+
+        self.is_task = False
+
+    def execute(self):
+        @flow(name='Train',
+              description=str(self),
+              flow_run_name=generate_flow_run_name('View'),
+              log_prints=True
+              )
+        def flow_fn():
+            """ call native query task"""
+
+            ray_data =
+
+            return ray_data
+
+        return flow_fn()
+
+    def __str__(self) -> str:
+        return f'CREATE VIEW {str(self.view_name)} FROM {str(self.native_query)}'

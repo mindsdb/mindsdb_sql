@@ -244,3 +244,21 @@ class MindsDBParser(Parser):
         return View(view_name=p.id, native_query=p.native_query)
 
     ################################################ TRAIN #############################################################
+
+    @_('CREATE MODEL id FROM id PREDICT id using')
+    def train(self, p):
+        return Train(model_name=p[2], view_name=p[4], target_column=p[6], params=p.using)
+
+    @_('USING condition',
+       'USING LBRACE condition RBRACE',
+       'USING condition_list',
+       'USING LBRACE condition_list RBRACE')
+    def using(self, p):
+
+        if hasattr(p, 'condition'):
+            return p.condition
+        elif hasattr(p, 'condition_list'):
+            return p.condition_list
+        else:
+            return None
+
