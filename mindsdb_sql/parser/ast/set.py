@@ -49,7 +49,13 @@ class Set(ASTNode):
             return ', '.join(render_list)
 
         if self.params:
-            param_str = ' ' + ' '.join([f'{k} {v}' for k, v in self.params.items()])
+            params = []
+            for k, v in self.params.items():
+                if k.lower() == 'access_mode':
+                    params.append(v)
+                else:
+                    params.append(f'{k} {v}')
+            param_str = ' ' + ', '.join(params)
         else:
             param_str = ''
 

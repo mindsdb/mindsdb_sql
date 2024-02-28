@@ -44,10 +44,12 @@ class MindsDBParser(Parser):
         ('left', AND),
         ('right', UNOT),
         ('left', EQUALS, NEQUALS),
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, BETWEEN, IS, IS_NOT, NOT_LIKE, LIKE),
+        ('left', JSON_GET),
         ('left', PLUS, MINUS),
         ('left', STAR, DIVIDE),
         ('right', UMINUS),  # Unary minus operator, unary not
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, BETWEEN, IS, IS_NOT, NOT_LIKE, LIKE),
+
     )
 
     # Top-level statements
@@ -421,7 +423,7 @@ class MindsDBParser(Parser):
 
         params = {}
         if isolation_level is not None:
-            params['isolation_level'] = isolation_level
+            params['isolation level'] = isolation_level
         if access_mode is not None:
             params['access_mode'] = access_mode
 
@@ -535,21 +537,18 @@ class MindsDBParser(Parser):
         return f"{p.id0} {p.id1}"
 
     # custom show commands
-    @_('SHOW ENGINE identifier STATUS',
-       'SHOW ENGINE identifier MUTEX')
-    def show(self, p):
-        return Show(
-            category=p[1],
-            name=p.identifier.to_string(),
-            modes=[p[3]]
-        )
 
     @_('SHOW id id identifier')
     def show(self, p):
         category = p[1] + ' ' + p[2]
+
+        if p[1].lower() == 'engine':
+            name = p.identifier.parts[0]
+        else:
+            name = p.identifier.to_string()
         return Show(
             category=category,
-            name=p.identifier.to_string()
+            name=name
         )
 
     @_('SHOW REPLICA STATUS FOR CHANNEL id',
@@ -777,6 +776,7 @@ class MindsDBParser(Parser):
         'CREATE ANOMALY DETECTION MODEL identifier FROM identifier LPAREN raw_query RPAREN',
         'CREATE ANOMALY DETECTION MODEL identifier PREDICT result_columns',
         'CREATE ANOMALY DETECTION MODEL identifier PREDICT result_columns FROM identifier LPAREN raw_query RPAREN',
+        'CREATE ANOMALY DETECTION MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
         # TODO add IF_NOT_EXISTS elegantly (should be low level BNF expansion)
     )
     def create_anomaly_detection_model(self, p):
@@ -1387,17 +1387,15 @@ class MindsDBParser(Parser):
        'expr LIKE expr',
        'expr NOT_LIKE expr',
        'expr CONCAT expr',
+       'expr JSON_GET constant',
+       'expr JSON_GET_STR constant',
        'expr IN expr')
     def expr(self, p):
         if hasattr(p, 'LAST'):
             arg1 = Last()
         else:
-            arg1 = p.expr1
-        if len(p) > 3:
-            op = ' '.join([p[i] for i in range(1, len(p)-1)])
-        else:
-            op = p[1]
-        return BinaryOperation(op=op, args=(p[0], arg1))
+            arg1 = p[2]
+        return BinaryOperation(op=p[1], args=(p[0], arg1))
 
     @_('MINUS expr %prec UMINUS',
        'NOT expr %prec UNOT', )

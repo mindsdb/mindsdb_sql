@@ -39,7 +39,8 @@ class CreateChatBot(ASTNode):
         params = self.params.copy()
         params['model'] = self.model.to_string() if self.model else 'NULL'
         params['database'] = self.database.to_string()
-        params['agent'] = self.agent.to_string() if self.agent else 'NULL'
+        if self.agent:
+            params['agent'] = self.agent.to_string()
 
         using_ar = [f'{k}={repr(v)}' for k, v in params.items()]
 
