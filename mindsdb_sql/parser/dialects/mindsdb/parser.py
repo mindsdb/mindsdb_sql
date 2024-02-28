@@ -544,8 +544,7 @@ class MindsDBParser(Parser):
             modes=[p[3]]
         )
 
-    @_('SHOW FUNCTION CODE identifier',
-       'SHOW PROCEDURE CODE identifier')
+    @_('SHOW id id identifier')
     def show(self, p):
         category = p[1] + ' ' + p[2]
         return Show(
