@@ -69,11 +69,11 @@ class Show(ASTNode):
             in_str = ' ' + ' '.join(ar)
 
         modes_str = f' {" ".join(self.modes)}' if self.modes else ''
-        like_str = f' LIKE {self.like}' if self.like else ''
+        like_str = f" LIKE '{self.like}'" if self.like else ""
         where_str = f' WHERE {str(self.where)}' if self.where else ''
 
         # custom commands
-        if self.category in ('FUNCTION CODE', 'PROCEDURE CODE', 'ENGINE'):
+        if self.category in ('FUNCTION CODE', 'PROCEDURE CODE', 'ENGINE') or self.category.startswith('ENGINE '):
             return f'SHOW {self.category} {self.name}'
         elif self.category == 'REPLICA STATUS':
             channel = ''

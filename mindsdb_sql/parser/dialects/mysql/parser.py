@@ -176,7 +176,7 @@ class MySQLParser(SQLParser):
 
         params = {}
         if isolation_level is not None:
-            params['isolation_level'] = isolation_level
+            params['isolation level'] = isolation_level
         if access_mode is not None:
             params['access_mode'] = access_mode
 

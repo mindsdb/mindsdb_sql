@@ -423,7 +423,7 @@ class MindsDBParser(Parser):
 
         params = {}
         if isolation_level is not None:
-            params['isolation_level'] = isolation_level
+            params['isolation level'] = isolation_level
         if access_mode is not None:
             params['access_mode'] = access_mode
 
@@ -537,21 +537,18 @@ class MindsDBParser(Parser):
         return f"{p.id0} {p.id1}"
 
     # custom show commands
-    @_('SHOW ENGINE identifier STATUS',
-       'SHOW ENGINE identifier MUTEX')
-    def show(self, p):
-        return Show(
-            category=p[1],
-            name=p.identifier.to_string(),
-            modes=[p[3]]
-        )
 
     @_('SHOW id id identifier')
     def show(self, p):
         category = p[1] + ' ' + p[2]
+
+        if p[1].lower() == 'engine':
+            name = p.identifier.parts[0]
+        else:
+            name = p.identifier.to_string()
         return Show(
             category=category,
-            name=p.identifier.to_string()
+            name=name
         )
 
     @_('SHOW REPLICA STATUS FOR CHANNEL id',
