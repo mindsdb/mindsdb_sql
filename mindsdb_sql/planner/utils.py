@@ -299,6 +299,9 @@ def query_traversal(node, callback, is_table=False, is_target=False, parent_quer
             array.append(node_out)
         return array
 
+    # keep original node
+    return None
+
 
 def convert_join_to_list(join):
     # join tree to table list
