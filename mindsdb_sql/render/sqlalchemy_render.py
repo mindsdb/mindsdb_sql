@@ -156,9 +156,11 @@ class SqlalchemyRender:
                 sa_op = getattr(arg0, method)
 
                 col = sa_op(arg1)
-            else:
+            elif t.op.lower() in functions:
                 func = functions[t.op.lower()]
                 col = func(arg0, arg1)
+            else:
+                col = arg0.op(t.op)(arg1)
 
             if t.alias:
                 alias = self.get_alias(t.alias)
