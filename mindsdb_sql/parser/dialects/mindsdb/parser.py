@@ -690,16 +690,13 @@ class MindsDBParser(Parser):
         return DropTables(tables=[p.identifier], if_exists=p.if_exists_or_empty)
 
     # create table
-    @_('CREATE TABLE identifier select',  # TODO tests failing without it
-       'CREATE TABLE if_not_exists_or_empty identifier select',
-       'CREATE TABLE if_not_exists_or_empty identifier LPAREN select RPAREN',
-       'CREATE OR REPLACE TABLE identifier select',
-       'CREATE OR REPLACE TABLE identifier LPAREN select RPAREN')
+    @_(
+       'CREATE replace_or_empty TABLE if_not_exists_or_empty identifier select',
+       'CREATE replace_or_empty TABLE if_not_exists_or_empty identifier LPAREN select RPAREN',
+    )
     def create_table(self, p):
-        # TODO create table with columns
-        is_replace = False
-        if hasattr(p, 'REPLACE'):
-            is_replace = True
+        is_replace = getattr(p, 'replace_or_empty', False)
+
         return CreateTable(
             name=p.identifier,
             is_replace=is_replace,

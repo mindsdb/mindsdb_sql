@@ -14,7 +14,7 @@ class MindsDBLexer(Lexer):
     ignore_line_comment = r'--[^\n]*'
 
     tokens = {
-        USE, DROP, CREATE, DESCRIBE, RETRAIN,REPLACE,
+        USE, DROP, CREATE, DESCRIBE, RETRAIN, REPLACE,
 
         # Misc
         SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
