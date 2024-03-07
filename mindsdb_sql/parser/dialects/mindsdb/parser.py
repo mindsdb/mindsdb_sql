@@ -1657,6 +1657,8 @@ class MindsDBParser(Parser):
        'KNOWLEDGE_BASES',
        'ALL',
        'CREATE',
+       'LEFT',
+       'RIGHT',
        )
     def id(self, p):
         return p[0]
