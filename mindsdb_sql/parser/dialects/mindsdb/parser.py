@@ -16,7 +16,6 @@ from mindsdb_sql.parser.dialects.mindsdb.drop_job import DropJob
 from mindsdb_sql.parser.dialects.mindsdb.trigger import CreateTrigger, DropTrigger
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
-from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
 from mindsdb_sql.parser.dialects.mindsdb.knowledge_base import CreateKnowledgeBase, DropKnowledgeBase
 from mindsdb_sql.parser.dialects.mindsdb.skills import CreateSkill, DropSkill, UpdateSkill
 from mindsdb_sql.exceptions import ParsingException
@@ -707,11 +706,6 @@ class MindsDBParser(Parser):
             from_select=p.select,
             if_not_exists=getattr(p, 'if_not_exists_or_empty', False)
         )
-
-    @_('CREATE TABLE identifier USING kw_parameter_list')
-    def create_table(self, p):
-        params = p.kw_parameter_list
-        return CreateFile(name=p.identifier, **params)
 
     # create predictor
 
