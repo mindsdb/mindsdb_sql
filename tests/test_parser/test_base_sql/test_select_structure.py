@@ -1019,3 +1019,20 @@ class TestMindsdb:
 
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_select_left(self):
+        sql = f'select left(a, 1) from tab1'
+        ast = parse_sql(sql)
+
+        expected_ast = Select(
+            targets=[
+                Function(op='left', args=[
+                    Identifier('a'),
+                    Constant(1)
+                ])
+            ],
+            from_table=Identifier('tab1')
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)

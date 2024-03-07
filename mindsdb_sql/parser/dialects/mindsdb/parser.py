@@ -1295,20 +1295,20 @@ class MindsDBParser(Parser):
             p.expr.parentheses = True
         return p.expr
 
-    @_('id LPAREN expr FROM expr RPAREN')
+    @_('function_name LPAREN expr FROM expr RPAREN')
     def function(self, p):
-        return Function(op=p.id, args=[p.expr0], from_arg=p.expr1)
+        return Function(op=p[0], args=[p.expr0], from_arg=p.expr1)
 
     @_('DATABASE LPAREN RPAREN')
     def function(self, p):
         return Function(op=p.DATABASE, args=[])
 
-    @_('id LPAREN DISTINCT expr_list RPAREN')
+    @_('function_name LPAREN DISTINCT expr_list RPAREN')
     def function(self, p):
-        return Function(op=p.id, distinct=True, args=p.expr_list)
+        return Function(op=p[0], distinct=True, args=p.expr_list)
 
-    @_('id LPAREN expr_list_or_nothing RPAREN',
-       'id LPAREN star RPAREN')
+    @_('function_name LPAREN expr_list_or_nothing RPAREN',
+       'function_name LPAREN star RPAREN')
     def function(self, p):
         if hasattr(p, 'star'):
             args = [p.star]
@@ -1316,7 +1316,7 @@ class MindsDBParser(Parser):
             args = p.expr_list_or_nothing
         if not args:
             args = []
-        return Function(op=p.id, args=args)
+        return Function(op=p[0], args=args)
 
     # arguments are optional in functions, so that things like `select database()` are possible
     @_('expr BETWEEN expr AND expr')
@@ -1566,6 +1566,13 @@ class MindsDBParser(Parser):
     def parameter(self, p):
         return Parameter(value=p.PARAMETER)
 
+    @_('id',
+       'FULL',
+       'RIGHT',
+       'LEFT')
+    def function_name(self, p):
+        return p[0]
+
     # convert to types
     @_('ID',
        'BEGIN',
@@ -1588,7 +1595,6 @@ class MindsDBParser(Parser):
        'ENGINES',
        'EXTENDED',
        'FIELDS',
-       # 'FULL', # fixme: is parsed as alias
        'GLOBAL',
        'HORIZON',
        'HOSTS',
@@ -1657,8 +1663,6 @@ class MindsDBParser(Parser):
        'KNOWLEDGE_BASES',
        'ALL',
        'CREATE',
-       'LEFT',
-       'RIGHT',
        )
     def id(self, p):
         return p[0]
