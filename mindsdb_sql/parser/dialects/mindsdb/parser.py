@@ -880,19 +880,14 @@ class MindsDBParser(Parser):
         return DropMLEngine(name=p.identifier, if_exists=p.if_exists_or_empty)
 
     # CREATE INTEGRATION
-    @_('CREATE database_engine',
-       'CREATE database_engine COMMA PARAMETERS EQUALS json',
-       'CREATE database_engine COMMA PARAMETERS json',
-       'CREATE database_engine PARAMETERS EQUALS json',
-       'CREATE database_engine PARAMETERS json',
-       'CREATE OR REPLACE database_engine COMMA PARAMETERS EQUALS json',
-       'CREATE OR REPLACE database_engine COMMA PARAMETERS json',
-       'CREATE OR REPLACE database_engine PARAMETERS EQUALS json',
-       'CREATE OR REPLACE database_engine PARAMETERS json')
+    @_('CREATE replace_or_empty database_engine',
+       'CREATE replace_or_empty database_engine COMMA PARAMETERS EQUALS json',
+       'CREATE replace_or_empty database_engine COMMA PARAMETERS json',
+       'CREATE replace_or_empty database_engine PARAMETERS EQUALS json',
+       'CREATE replace_or_empty database_engine PARAMETERS json',
+       )
     def create_integration(self, p):
-        is_replace = False
-        if hasattr(p, 'REPLACE'):
-            is_replace = True
+        is_replace = getattr(p, 'replace_or_empty', False)
 
         parameters = None
         if hasattr(p, 'json'):
