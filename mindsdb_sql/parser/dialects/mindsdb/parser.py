@@ -690,6 +690,31 @@ class MindsDBParser(Parser):
         return DropTables(tables=[p.identifier], if_exists=p.if_exists_or_empty)
 
     # create table
+    @_('id id',
+       'id id LPAREN INTEGER RPAREN')
+    def table_column(self, p):
+        return TableColumn(
+            name=p[0],
+            type=p[1],
+            length=getattr(p, 'INTEGER', None)
+        )
+
+    @_('table_column',
+       'table_column_list COMMA table_column')
+    def table_column_list(self, p):
+        items = getattr(p, 'table_column_list', [])
+        items.append(p.table_column)
+        return items
+
+    @_('CREATE replace_or_empty TABLE if_not_exists_or_empty identifier LPAREN table_column_list RPAREN')
+    def create_table(self, p):
+        return CreateTable(
+            name=p.identifier,
+            columns=p.table_column_list,
+            is_replace=getattr(p, 'replace_or_empty', False),
+            if_not_exists=getattr(p, 'if_not_exists_or_empty', False)
+        )
+
     @_(
        'CREATE replace_or_empty TABLE if_not_exists_or_empty identifier select',
        'CREATE replace_or_empty TABLE if_not_exists_or_empty identifier LPAREN select RPAREN',
