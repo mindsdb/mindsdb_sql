@@ -1,4 +1,4 @@
-import pytest
+from textwrap import dedent
 from mindsdb_sql import parse_sql
 
 from mindsdb_sql.parser.ast import *
@@ -34,22 +34,26 @@ class TestSql:
 
     def test_escaping(self):
         expected_ast = Select(
-            targets=[Constant(value="a ' \" b")]
+            targets=[
+                Constant(value="a ' \" b"),
+                Constant(value="a ' \" b"),
+                Constant(value="a \\n b"),
+                Constant(value="a \\\n b"),
+                Constant(value="a \\\n b"),
+                Constant(value="a\nb"),
+            ]
         )
 
-        sql = """
-          select 'a \\' \\" b'
-        """
-
-        ast = parse_sql(sql)
-
-        assert str(ast).lower() == str(expected_ast).lower()
-        assert ast.to_tree() == expected_ast.to_tree()
-
-        # in double quotes
-        sql = """
-          select "a \\' \\" b"
-        """
+        sql = dedent('''
+select
+'a \\' \\" b',  -- double quote
+"a \\' \\" b",  -- single quote
+"a \\n b",
+"a \\\n b", -- double quote
+'a \\\n b', -- single quote
+"a
+b"
+        ''')
 
         ast = parse_sql(sql)
 

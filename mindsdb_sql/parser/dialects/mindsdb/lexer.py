@@ -14,7 +14,7 @@ class MindsDBLexer(Lexer):
     ignore_line_comment = r'--[^\n]*'
 
     tokens = {
-        USE, DROP, CREATE, DESCRIBE, RETRAIN,REPLACE,
+        USE, DROP, CREATE, DESCRIBE, RETRAIN, REPLACE,
 
         # Misc
         SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
@@ -308,12 +308,12 @@ class MindsDBLexer(Lexer):
     def INTEGER(self, t):
         return t
 
-    @_(r"'(?:[^\'\\]|\\.)*'")
+    @_(r"'(?:\\.|[^'])*'")
     def QUOTE_STRING(self, t):
         t.value = t.value.replace('\\"', '"').replace("\\'", "'")
         return t
 
-    @_(r'"(?:[^\"\\]|\\.)*"')
+    @_(r'"(?:\\.|[^"])*"')
     def DQUOTE_STRING(self, t):
         t.value = t.value.replace('\\"', '"').replace("\\'", "'")
         return t
