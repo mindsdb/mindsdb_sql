@@ -766,7 +766,7 @@ class SQLParser(Parser):
     def empty(self, p):
         pass
 
-    def error(self, p):
+    def error(self, p, expected_tokens=None):
         if p:
             raise ParsingException(f"Syntax error at token {p.type}: \"{p.value}\"")
         else:
