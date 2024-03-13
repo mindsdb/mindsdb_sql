@@ -1219,8 +1219,8 @@ class MindsDBParser(Parser):
        'result_column quote_string')
     def result_column(self, p):
         col = p.result_column
-        if col.alias:
-            raise ParsingException(f'Attempt to provide two aliases for {str(col)}')
+        # if col.alias:
+        #     raise ParsingException(f'Attempt to provide two aliases for {str(col)}')
         if hasattr(p, 'dquote_string'):
             alias = Identifier(p.dquote_string)
         elif hasattr(p, 'quote_string'):
@@ -1757,8 +1757,20 @@ class MindsDBParser(Parser):
     def empty(self, p):
         pass
 
-    def error(self, p):
-        if p:
-            raise ParsingException(f"Syntax error at token {p.type}: \"{p.value}\"")
-        else:
-            raise ParsingException("Syntax error at EOF")
+    def error(self, p, expected_tokens=None):
+
+        if not hasattr(self, 'used_tokens'):
+            # failback mode if user has another sly version module installed
+            if p:
+                raise ParsingException(f"Syntax error at token {p.type}: \"{p.value}\"")
+            else:
+                raise ParsingException("Syntax error at EOF")
+
+        # save error info for future usage
+        self.error_info = dict(
+            tokens=self.used_tokens.copy() + list(self.tokens),
+            bad_token=p,
+            expected_tokens=expected_tokens
+        )
+        # don't raise exception
+        return
