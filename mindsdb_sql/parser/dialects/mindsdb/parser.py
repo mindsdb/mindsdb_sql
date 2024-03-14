@@ -1329,6 +1329,10 @@ class MindsDBParser(Parser):
             args = []
         return Function(op=p[0], args=args)
 
+    @_('INTERVAL string')
+    def expr(self, p):
+        return Interval(p.string)
+
     # arguments are optional in functions, so that things like `select database()` are possible
     @_('expr BETWEEN expr AND expr')
     def expr(self, p):
@@ -1612,6 +1616,7 @@ class MindsDBParser(Parser):
        'INDEX',
        'INTEGRATION',
        'INTEGRATIONS',
+       'INTERVAL',
        'ISOLATION',
        'KEYS',
        'LATEST',
