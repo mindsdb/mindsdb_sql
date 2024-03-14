@@ -72,7 +72,7 @@ class MindsDBLexer(Lexer):
         EQUALS, NEQUALS, GREATER, GEQ, LESS, LEQ,
         AND, OR, NOT, IS, IS_NOT,
         IN, LIKE, NOT_LIKE, CONCAT, BETWEEN, WINDOW, OVER, PARTITION_BY,
-        JSON_GET, JSON_GET_STR,
+        JSON_GET, JSON_GET_STR, INTERVAL,
 
         # Data types
         CAST, ID, INTEGER, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE,
@@ -287,6 +287,7 @@ class MindsDBLexer(Lexer):
     CAST = r'\bCAST\b'
     CONCAT = r'\|\|'
     BETWEEN = r'\bBETWEEN\b'
+    INTERVAL = r'\bINTERVAL\b'
     WINDOW = r'\bWINDOW\b'
     OVER = r'\bOVER\b'
     PARTITION_BY = r'\bPARTITION BY\b'

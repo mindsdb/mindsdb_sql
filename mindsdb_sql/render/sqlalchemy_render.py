@@ -2,9 +2,11 @@ import datetime as dt
 
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import aliased
 from sqlalchemy.dialects import mysql, postgresql, sqlite, mssql, oracle
 from sqlalchemy.schema import CreateTable, DropTable
+from sqlalchemy.sql import ColumnElement
 
 from mindsdb_sql.parser import ast
 
@@ -17,6 +19,17 @@ sa_type_names = [
 
 class RenderError(Exception):
     ...
+
+
+# https://github.com/sqlalchemy/sqlalchemy/discussions/9483?sort=old#discussioncomment-5312979
+class INTERVAL(ColumnElement):
+    def __init__(self, info):
+        self.info = info
+        self.type = sa.Interval()
+
+@compiles(INTERVAL)
+def _compile_interval(element, compiler, **kw):
+    return f"INTERVAL '{element.info}'"
 
 
 class SqlalchemyRender:
@@ -186,6 +199,12 @@ class SqlalchemyRender:
             lim_up = self.to_expression(t.args[2])
 
             col = sa.between(col0, lim_down, lim_up)
+        elif isinstance(t, ast.Interval):
+            col = INTERVAL(t.args[0])
+            if t.alias:
+                alias = self.get_alias(t.alias)
+                col = col.label(alias)
+
         elif isinstance(t, ast.WindowFunction):
             func = self.to_expression(t.function)
 
