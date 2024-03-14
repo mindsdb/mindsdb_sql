@@ -116,7 +116,7 @@ class ErrorHandling:
                 value = value.replace('\\b', '').replace('\\', '')
 
                 # doesn't content regexp
-                if '\\s' not in value:
+                if '\\s' not in value and '[' not in value:
                     expected[value] = token_name
 
         suggestions = []
