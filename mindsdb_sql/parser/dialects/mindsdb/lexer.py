@@ -1,5 +1,6 @@
 import re
 from sly import Lexer
+from sly.lex import LexError
 
 """
 Unfortunately we can't inherit from base SQLLexer, because the order of rules is important.
@@ -355,3 +356,25 @@ class MindsDBLexer(Lexer):
             t.value = t.value.strip('`')
         return t
 
+    def error(self, t):
+
+        # convert to lines
+        lines = []
+        shift = 0
+        error_line = 0
+        error_index = 0
+        for i, line in enumerate(self.text.split('\n')):
+            if 0 <= t.index - shift < len(line):
+                error_line = i
+                error_index = t.index - shift
+            lines.append(line)
+            shift += len(line) + 1
+
+        msgs = [f'Illegal character {t.value[0]!r}:']
+        # show error code
+        for line in lines[error_line - 1: error_line + 1]:
+            msgs.append('>' + line)
+
+        msgs.append('-' * (error_index + 1) + '^')
+
+        raise LexError('\n'.join(msgs), t.value, self.index)
