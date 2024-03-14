@@ -73,6 +73,32 @@ SLY does not support inheritance, therefore every dialect is described completel
   - get_string - to return object as sql expression (or sub-expression)
   - copy - to copy AST-tree to new object
 
+### Error handling
+
+For better user experience parsing error contains useful information about problem location and possible solution to solve it. 
+1. it shows location of error if 
+  - character isn't parsed (by lexer)
+  - token is unexpected (by parser)
+2. it tries to propose correct token instead (or before) error location. Possible options
+  - Keyword will be showed as is.
+  - '[number]' - if float and integer is expected
+  - '[string]' - if string is expected
+  - '[identifier]' - if name of the objects is expected. For example, they are bold words here:
+    - "select **x** as **name** from **tbl1** where **col**=1"
+
+How suggestion works:
+It uses next possible tokens defined by syntax rules.
+If this is the end of the query: just shows these tokens.
+Else:
+- it tries to replace bad token with other token from list of possible tokens
+- tries to parse query once again, if there is no error:
+  - add this token to suggestion list
+- second iteration: put possible token before bad token (instead of replacement) and repeat the same operation.
+
+Example:
+![image](https://github.com/mindsdb/mindsdb_sql/assets/8502631/c4707087-ca6e-47f6-aaba-db3a641947a6)
+
+
 # Planner
 
 
