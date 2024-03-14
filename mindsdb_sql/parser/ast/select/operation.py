@@ -167,3 +167,19 @@ class Object(ASTNode):
 
     def __repr__(self):
         return self.to_tree()
+
+
+class Interval(Operation):
+
+    def __init__(self, info):
+        super().__init__(op='interval', args=[info, ])
+
+    def get_string(self, *args, **kwargs):
+        return f'INTERVAL {repr(self.args[0])}'
+
+    def to_tree(self, *args, level=0, **kwargs):
+        return self.get_string( *args, **kwargs)
+
+    def assert_arguments(self):
+        if len(self.args) != 1:
+            raise ParsingException(f'Expected one argument for operation "{self.op}"')

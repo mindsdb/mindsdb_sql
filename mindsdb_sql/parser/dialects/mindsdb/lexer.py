@@ -1,5 +1,6 @@
 import re
 from sly import Lexer
+from sly.lex import LexError
 
 """
 Unfortunately we can't inherit from base SQLLexer, because the order of rules is important.
@@ -14,7 +15,7 @@ class MindsDBLexer(Lexer):
     ignore_line_comment = r'--[^\n]*'
 
     tokens = {
-        USE, DROP, CREATE, DESCRIBE, RETRAIN,REPLACE,
+        USE, DROP, CREATE, DESCRIBE, RETRAIN, REPLACE,
 
         # Misc
         SET, START, TRANSACTION, COMMIT, ROLLBACK, ALTER, EXPLAIN,
@@ -72,7 +73,7 @@ class MindsDBLexer(Lexer):
         EQUALS, NEQUALS, GREATER, GEQ, LESS, LEQ,
         AND, OR, NOT, IS, IS_NOT,
         IN, LIKE, NOT_LIKE, CONCAT, BETWEEN, WINDOW, OVER, PARTITION_BY,
-        JSON_GET, JSON_GET_STR,
+        JSON_GET, JSON_GET_STR, INTERVAL,
 
         # Data types
         CAST, ID, INTEGER, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE,
@@ -287,6 +288,7 @@ class MindsDBLexer(Lexer):
     CAST = r'\bCAST\b'
     CONCAT = r'\|\|'
     BETWEEN = r'\bBETWEEN\b'
+    INTERVAL = r'\bINTERVAL\b'
     WINDOW = r'\bWINDOW\b'
     OVER = r'\bOVER\b'
     PARTITION_BY = r'\bPARTITION BY\b'
@@ -308,12 +310,12 @@ class MindsDBLexer(Lexer):
     def INTEGER(self, t):
         return t
 
-    @_(r"'(?:[^\'\\]|\\.)*'")
+    @_(r"'(?:\\.|[^'])*'")
     def QUOTE_STRING(self, t):
         t.value = t.value.replace('\\"', '"').replace("\\'", "'")
         return t
 
-    @_(r'"(?:[^\"\\]|\\.)*"')
+    @_(r'"(?:\\.|[^"])*"')
     def DQUOTE_STRING(self, t):
         t.value = t.value.replace('\\"', '"').replace("\\'", "'")
         return t
@@ -354,3 +356,25 @@ class MindsDBLexer(Lexer):
             t.value = t.value.strip('`')
         return t
 
+    def error(self, t):
+
+        # convert to lines
+        lines = []
+        shift = 0
+        error_line = 0
+        error_index = 0
+        for i, line in enumerate(self.text.split('\n')):
+            if 0 <= t.index - shift < len(line):
+                error_line = i
+                error_index = t.index - shift
+            lines.append(line)
+            shift += len(line) + 1
+
+        msgs = [f'Illegal character {t.value[0]!r}:']
+        # show error code
+        for line in lines[error_line - 1: error_line + 1]:
+            msgs.append('>' + line)
+
+        msgs.append('-' * (error_index + 1) + '^')
+
+        raise LexError('\n'.join(msgs), t.value, self.index)

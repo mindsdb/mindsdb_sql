@@ -31,7 +31,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # -----------------------------------------------------------------------------
 
-__all__ = ['Lexer', 'LexerStateChange']
+__all__ = ['Lexer', 'LexerStateChange', 'Token']
 
 import re
 import copy

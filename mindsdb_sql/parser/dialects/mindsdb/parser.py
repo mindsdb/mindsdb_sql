@@ -16,7 +16,6 @@ from mindsdb_sql.parser.dialects.mindsdb.drop_job import DropJob
 from mindsdb_sql.parser.dialects.mindsdb.trigger import CreateTrigger, DropTrigger
 from mindsdb_sql.parser.dialects.mindsdb.latest import Latest
 from mindsdb_sql.parser.dialects.mindsdb.evaluate import Evaluate
-from mindsdb_sql.parser.dialects.mindsdb.create_file import CreateFile
 from mindsdb_sql.parser.dialects.mindsdb.knowledge_base import CreateKnowledgeBase, DropKnowledgeBase
 from mindsdb_sql.parser.dialects.mindsdb.skills import CreateSkill, DropSkill, UpdateSkill
 from mindsdb_sql.exceptions import ParsingException
@@ -691,27 +690,44 @@ class MindsDBParser(Parser):
         return DropTables(tables=[p.identifier], if_exists=p.if_exists_or_empty)
 
     # create table
-    @_('CREATE TABLE identifier select',  # TODO tests failing without it
-       'CREATE TABLE if_not_exists_or_empty identifier select',
-       'CREATE TABLE if_not_exists_or_empty identifier LPAREN select RPAREN',
-       'CREATE OR REPLACE TABLE identifier select',
-       'CREATE OR REPLACE TABLE identifier LPAREN select RPAREN')
+    @_('id id',
+       'id id LPAREN INTEGER RPAREN')
+    def table_column(self, p):
+        return TableColumn(
+            name=p[0],
+            type=p[1],
+            length=getattr(p, 'INTEGER', None)
+        )
+
+    @_('table_column',
+       'table_column_list COMMA table_column')
+    def table_column_list(self, p):
+        items = getattr(p, 'table_column_list', [])
+        items.append(p.table_column)
+        return items
+
+    @_('CREATE replace_or_empty TABLE if_not_exists_or_empty identifier LPAREN table_column_list RPAREN')
     def create_table(self, p):
-        # TODO create table with columns
-        is_replace = False
-        if hasattr(p, 'REPLACE'):
-            is_replace = True
+        return CreateTable(
+            name=p.identifier,
+            columns=p.table_column_list,
+            is_replace=getattr(p, 'replace_or_empty', False),
+            if_not_exists=getattr(p, 'if_not_exists_or_empty', False)
+        )
+
+    @_(
+       'CREATE replace_or_empty TABLE if_not_exists_or_empty identifier select',
+       'CREATE replace_or_empty TABLE if_not_exists_or_empty identifier LPAREN select RPAREN',
+    )
+    def create_table(self, p):
+        is_replace = getattr(p, 'replace_or_empty', False)
+
         return CreateTable(
             name=p.identifier,
             is_replace=is_replace,
             from_select=p.select,
             if_not_exists=getattr(p, 'if_not_exists_or_empty', False)
         )
-
-    @_('CREATE TABLE identifier USING kw_parameter_list')
-    def create_table(self, p):
-        params = p.kw_parameter_list
-        return CreateFile(name=p.identifier, **params)
 
     # create predictor
 
@@ -889,19 +905,14 @@ class MindsDBParser(Parser):
         return DropMLEngine(name=p.identifier, if_exists=p.if_exists_or_empty)
 
     # CREATE INTEGRATION
-    @_('CREATE database_engine',
-       'CREATE database_engine COMMA PARAMETERS EQUALS json',
-       'CREATE database_engine COMMA PARAMETERS json',
-       'CREATE database_engine PARAMETERS EQUALS json',
-       'CREATE database_engine PARAMETERS json',
-       'CREATE OR REPLACE database_engine COMMA PARAMETERS EQUALS json',
-       'CREATE OR REPLACE database_engine COMMA PARAMETERS json',
-       'CREATE OR REPLACE database_engine PARAMETERS EQUALS json',
-       'CREATE OR REPLACE database_engine PARAMETERS json')
+    @_('CREATE replace_or_empty database_engine',
+       'CREATE replace_or_empty database_engine COMMA PARAMETERS EQUALS json',
+       'CREATE replace_or_empty database_engine COMMA PARAMETERS json',
+       'CREATE replace_or_empty database_engine PARAMETERS EQUALS json',
+       'CREATE replace_or_empty database_engine PARAMETERS json',
+       )
     def create_integration(self, p):
-        is_replace = False
-        if hasattr(p, 'REPLACE'):
-            is_replace = True
+        is_replace = getattr(p, 'replace_or_empty', False)
 
         parameters = None
         if hasattr(p, 'json'):
@@ -1208,8 +1219,8 @@ class MindsDBParser(Parser):
        'result_column quote_string')
     def result_column(self, p):
         col = p.result_column
-        if col.alias:
-            raise ParsingException(f'Attempt to provide two aliases for {str(col)}')
+        # if col.alias:
+        #     raise ParsingException(f'Attempt to provide two aliases for {str(col)}')
         if hasattr(p, 'dquote_string'):
             alias = Identifier(p.dquote_string)
         elif hasattr(p, 'quote_string'):
@@ -1295,20 +1306,20 @@ class MindsDBParser(Parser):
             p.expr.parentheses = True
         return p.expr
 
-    @_('id LPAREN expr FROM expr RPAREN')
+    @_('function_name LPAREN expr FROM expr RPAREN')
     def function(self, p):
-        return Function(op=p.id, args=[p.expr0], from_arg=p.expr1)
+        return Function(op=p[0], args=[p.expr0], from_arg=p.expr1)
 
     @_('DATABASE LPAREN RPAREN')
     def function(self, p):
         return Function(op=p.DATABASE, args=[])
 
-    @_('id LPAREN DISTINCT expr_list RPAREN')
+    @_('function_name LPAREN DISTINCT expr_list RPAREN')
     def function(self, p):
-        return Function(op=p.id, distinct=True, args=p.expr_list)
+        return Function(op=p[0], distinct=True, args=p.expr_list)
 
-    @_('id LPAREN expr_list_or_nothing RPAREN',
-       'id LPAREN star RPAREN')
+    @_('function_name LPAREN expr_list_or_nothing RPAREN',
+       'function_name LPAREN star RPAREN')
     def function(self, p):
         if hasattr(p, 'star'):
             args = [p.star]
@@ -1316,7 +1327,11 @@ class MindsDBParser(Parser):
             args = p.expr_list_or_nothing
         if not args:
             args = []
-        return Function(op=p.id, args=args)
+        return Function(op=p[0], args=args)
+
+    @_('INTERVAL string')
+    def expr(self, p):
+        return Interval(p.string)
 
     # arguments are optional in functions, so that things like `select database()` are possible
     @_('expr BETWEEN expr AND expr')
@@ -1566,6 +1581,13 @@ class MindsDBParser(Parser):
     def parameter(self, p):
         return Parameter(value=p.PARAMETER)
 
+    @_('id',
+       'FULL',
+       'RIGHT',
+       'LEFT')
+    def function_name(self, p):
+        return p[0]
+
     # convert to types
     @_('ID',
        'BEGIN',
@@ -1577,7 +1599,6 @@ class MindsDBParser(Parser):
        'COLUMNS',
        'COMMIT',
        'COMMITTED',
-       'CONCAT',
        'DATASET',
        'DATASETS',
        'DATABASE',
@@ -1588,7 +1609,6 @@ class MindsDBParser(Parser):
        'ENGINES',
        'EXTENDED',
        'FIELDS',
-       # 'FULL', # fixme: is parsed as alias
        'GLOBAL',
        'HORIZON',
        'HOSTS',
@@ -1596,6 +1616,7 @@ class MindsDBParser(Parser):
        'INDEX',
        'INTEGRATION',
        'INTEGRATIONS',
+       'INTERVAL',
        'ISOLATION',
        'KEYS',
        'LATEST',
@@ -1607,7 +1628,6 @@ class MindsDBParser(Parser):
        'OFFSET',
        'ONLY',
        'OPEN',
-       'PARAMETER',
        'PARAMETERS',
        'PERSIST',
        'PLUGINS',
@@ -1742,8 +1762,20 @@ class MindsDBParser(Parser):
     def empty(self, p):
         pass
 
-    def error(self, p):
-        if p:
-            raise ParsingException(f"Syntax error at token {p.type}: \"{p.value}\"")
-        else:
-            raise ParsingException("Syntax error at EOF")
+    def error(self, p, expected_tokens=None):
+
+        if not hasattr(self, 'used_tokens'):
+            # failback mode if user has another sly version module installed
+            if p:
+                raise ParsingException(f"Syntax error at token {p.type}: \"{p.value}\"")
+            else:
+                raise ParsingException("Syntax error at EOF")
+
+        # save error info for future usage
+        self.error_info = dict(
+            tokens=self.used_tokens.copy() + list(self.tokens),
+            bad_token=p,
+            expected_tokens=expected_tokens
+        )
+        # don't raise exception
+        return

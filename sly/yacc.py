@@ -2030,7 +2030,7 @@ class Parser(metaclass=ParserMeta):
     # ----------------------------------------------------------------------
     # Parsing Support.  This is the parsing runtime that users use to
     # ----------------------------------------------------------------------
-    def error(self, token):
+    def error(self, token, expected_tokens=None):
         '''
         Default error handling function.  This may be subclassed.
         '''
@@ -2076,6 +2076,7 @@ class Parser(metaclass=ParserMeta):
 
         # Set up the state and symbol stacks
         self.tokens = tokens
+        self.used_tokens = []
         self.statestack = statestack = []                 # Stack of parsing states
         self.symstack = symstack = []                     # Stack of grammar symbols
         pslice._stack = symstack                          # Associate the stack with the production
@@ -2096,6 +2097,7 @@ class Parser(metaclass=ParserMeta):
                 if not lookahead:
                     if not lookaheadstack:
                         lookahead = next(tokens, None)  # Get the next token
+                        self.used_tokens.append(lookahead)
                     else:
                         lookahead = lookaheadstack.pop()
                     if not lookahead:
@@ -2187,7 +2189,7 @@ class Parser(metaclass=ParserMeta):
                     else:
                         errtoken = lookahead
 
-                    tok = self.error(errtoken)
+                    tok = self.error(errtoken, expected_tokens=list(actions[self.state].keys()))
                     if tok:
                         # User must have done some kind of panic
                         # mode recovery on their own.  The

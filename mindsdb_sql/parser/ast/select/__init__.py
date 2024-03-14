@@ -7,7 +7,8 @@ from .identifier import Identifier
 from .join import Join
 from .type_cast import TypeCast
 from .tuple import Tuple
-from .operation import Operation, BinaryOperation, UnaryOperation, BetweenOperation, Function, WindowFunction, Object
+from .operation import (Operation, BinaryOperation, UnaryOperation, BetweenOperation,
+                        Function, WindowFunction, Object, Interval)
 from .order_by import OrderBy
 from .parameter import Parameter
 from .case import Case

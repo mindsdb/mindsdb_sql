@@ -14,6 +14,7 @@ from tests.test_parser.test_base_sql import (
     test_select_common_table_expression,
     test_select_structure,
     test_union,
+    test_misc_sql_queries,
 )
 
 modules = (
@@ -23,6 +24,7 @@ modules = (
     test_select_common_table_expression,
     test_select_structure,
     test_union,
+    test_misc_sql_queries
 )
 
 
