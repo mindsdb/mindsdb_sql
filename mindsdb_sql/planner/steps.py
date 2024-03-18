@@ -227,6 +227,15 @@ class InsertToTable(PlanStep):
         self.query = query
 
 
+class CreateTableStep(PlanStep):
+    def __init__(self, table, columns=None, is_replace=False, *args, **kwargs):
+        """Fills table with content of dataframe"""
+        super().__init__(*args, **kwargs)
+        self.table = table
+        self.columns = columns
+        self.is_replace = is_replace
+
+
 class UpdateToTable(PlanStep):
     def __init__(self, table, dataframe, update_command, *args, **kwargs):
         """Fills table with content of dataframe"""
