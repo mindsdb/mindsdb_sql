@@ -6,8 +6,7 @@ from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, ApplyPredictorStep,
-                                       ApplyPredictorRowStep, GroupByStep, SubSelectStep, UpdateToTable,
+from mindsdb_sql.planner.steps import (FetchDataframeStep, CreateTableStep, SubSelectStep, UpdateToTable,
                                        DeleteStep)
 
 
@@ -679,6 +678,36 @@ class TestPlanIntegrationSelect:
                             Parameter(Result(0))
                         ]
                     )
+                ),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=[{'name': 'int1', 'class_type': 'api', 'type': 'data'}, 'int2'],
+            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}]
+        )
+
+        assert plan.steps == expected_plan.steps
+
+    def test_create_table(self):
+        query = parse_sql('''
+            CREATE or replace table int2.tab1 (
+            id int8,
+            data varchar
+        ) 
+        ''', dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                CreateTableStep(
+                    table=Identifier('int2.tab1'),
+                    columns=[
+                        TableColumn(name='id', type='int8'),
+                        TableColumn(name='data', type='varchar'),
+                    ],
+                    is_replace=True
                 ),
             ],
         )
