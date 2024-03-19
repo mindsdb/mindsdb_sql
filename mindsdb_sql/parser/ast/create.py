@@ -16,6 +16,17 @@ class TableColumn():
         self.default = None
         self.length = length
 
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+
+        for k in ['name', 'is_primary_key', 'type', 'default', 'length']:
+
+            if getattr(self, k) != getattr(other, k):
+                return False
+
+        return True
+
 
 class CreateTable(ASTNode):
     def __init__(self,
