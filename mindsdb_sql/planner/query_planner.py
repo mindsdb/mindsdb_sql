@@ -151,8 +151,6 @@ class QueryPlanner:
                     if node.parts[:len(prefix)] != prefix:
                         raise PlanningException(f'Tried to query column {node.to_string()} from table'
                                                 f' {table.to_string()}, but a different table name has been specified.')
-                else:
-                    node.parts = prefix + node.parts
 
                 # keep column name for target
                 if is_target:
