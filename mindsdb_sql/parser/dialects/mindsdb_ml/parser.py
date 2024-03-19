@@ -11,8 +11,10 @@ class MindsDBParser(Parser):
     log = ParserLogger()
     tokens = MindsDBLexer.tokens
 
+    mindsdb_tokens = ['SELECT', 'CREATE', 'ID', 'MODEL', 'PREDICT', 'VIEW']
+
     sql_tokens = tokens.copy()
-    for parsed in ['SELECT', 'CREATE', 'ID', 'NAT_ID', 'AMB_ID', 'MINDS_ID']:
+    for parsed in mindsdb_tokens:
         sql_tokens.remove(parsed)
 
     # Get a list of low priority tokens to set for left (reduce) priority
@@ -23,9 +25,12 @@ class MindsDBParser(Parser):
     for parsed in right_precedence_tokens:
         left_precedence_tokens.remove(parsed)
 
+    right_precedence_tokens = right_precedence_tokens
+
     precedence = (
         ('left', *list(left_precedence_tokens)),
         ('right', *list(right_precedence_tokens)),
+        ('right', *list(mindsdb_tokens))
     )
 
     def register_integrations(self, mindsdb_obs, native_ints):
@@ -137,11 +142,11 @@ class MindsDBParser(Parser):
     def id(self, p):
         return Identifier(column=p[0])
 
-    @_('ID DOT ID')
+    @_('id DOT id')
     def id(self, p):
         return Identifier(column=p[2], table=p[0])
 
-    @_('ID DOT ID AS ID')
+    @_('id DOT id AS id')
     def id(self, p):
         return Identifier(column=p[2], table=p[0], alias=p[4])
 
@@ -239,13 +244,13 @@ class MindsDBParser(Parser):
 
     ################################################ VIEWS #############################################################
 
-    @_('CREATE VIEW id FROM native_query')
+    @_('create id FROM native_query')
     def view(self, p):
         return View(view_name=p.id, native_query=p.native_query)
 
     ################################################ TRAIN #############################################################
 
-    @_('CREATE MODEL id FROM id PREDICT id using')
+    @_('create id FROM id PREDICT id using')
     def train(self, p):
         return Train(model_name=p[2], view_name=p[4], target_column=p[6], params=p.using)
 
@@ -261,4 +266,12 @@ class MindsDBParser(Parser):
             return p.condition_list
         else:
             return None
+
+    @_('CREATE MODEL',
+       'CREATE VIEW')
+    def create(self, p):
+        if hasattr(p, 'MODEL'):
+            return 'CREATE MODEL'
+        elif hasattr(p, 'VIEW'):
+            return 'CREATE VIEW'
 

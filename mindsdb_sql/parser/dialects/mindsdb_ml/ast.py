@@ -16,6 +16,10 @@ import numpy as np
 # initialize ray on import in order to enable Prefect to talk to Ray
 ray.init()
 
+# global mocked destination for saving Ray dataset
+destination = "local:///tmp/dummy_data/"
+
+
 """
 The top level query should initiate a flow, each node should have a task function that calls the tasks of it's sub-nodes.
 The sub-nodes can also start flows of their own. Concurrency should be used when calling concurrent sub nodes.  
@@ -590,6 +594,8 @@ class View(ASTNode):
     A MindsDB Identifier. Terminal Node type.
     """
 
+    global destination
+
     def __init__(self, view_name: str, native_query: NativeQuery, **kwargs):
         super().__init__(**kwargs)
 
@@ -609,7 +615,6 @@ class View(ASTNode):
 
             ray_data = self.native_query.execute()
 
-            destination = "local:///tmp/dummy_data/"
             ray_data.write_parquet("local:///tmp/dummy_data/")
 
             # save an artifact link.
@@ -626,6 +631,8 @@ class Train(ASTNode):
     """
     A MindsDB Identifier. Terminal Node type.
     """
+
+    global destination
 
     def __init__(self,
                  model_name: Identifier,
@@ -645,13 +652,13 @@ class Train(ASTNode):
     def execute(self):
         @flow(name='Train',
               description=str(self),
-              flow_run_name=generate_flow_run_name('View'),
+              flow_run_name=generate_flow_run_name('Train'),
               log_prints=True
               )
         def flow_fn():
             """ call native query task"""
 
-            ray_data =
+            ray_data = ray.data.read_parquet(destination)
 
             return ray_data
 
