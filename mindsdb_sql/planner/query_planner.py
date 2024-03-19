@@ -10,7 +10,7 @@ from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, ApplyPredictorStep,
                                        ApplyPredictorRowStep, UnionStep, GetPredictorColumns, SaveToTable,
                                        InsertToTable, UpdateToTable, SubSelectStep,
-                                       DeleteStep, DataStep)
+                                       DeleteStep, DataStep, CreateTableStep)
 from mindsdb_sql.planner.utils import (disambiguate_predictor_column_identifier,
                                        get_deepest_select,
                                        recursively_extract_column_values,
@@ -532,8 +532,16 @@ class QueryPlanner:
                 out_identifiers.append(new_identifier)
         return self.plan.add_step(ProjectStep(dataframe=dataframe, columns=out_identifiers, ignore_doubles=ignore_doubles))
 
-    def plan_create_table(self, query):
+    def plan_create_table(self, query: CreateTable):
         if query.from_select is None:
+            if query.columns is not None:
+                self.plan.add_step(CreateTableStep(
+                    table=query.name,
+                    columns=query.columns,
+                    is_replace=query.is_replace,
+                ))
+                return
+
             raise PlanningException(f'Not implemented "create table": {query.to_string()}')
 
         integration_name = query.name.parts[0]

@@ -1,3 +1,4 @@
+import re
 import datetime as dt
 
 import sqlalchemy as sa
@@ -285,8 +286,10 @@ class SqlalchemyRender:
             return typename
 
         typename = typename.upper()
-        if typename == 'INT64':
+        if re.match('^INT[\d]*$', typename):
             typename = 'BIGINT'
+        if re.match('^FLOAT[\d]*$', typename):
+            typename = 'FLOAT'
         type = self.types_map[typename]
         return type
 
