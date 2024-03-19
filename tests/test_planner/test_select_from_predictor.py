@@ -247,7 +247,7 @@ class TestPlanSelectFromPredictor:
             steps=[
                 FetchDataframeStep(
                     integration='int1',
-                    query=parse_sql('select t1.id as id from t1'),
+                    query=parse_sql('select id as id from t1'),
                 ),
                 ApplyPredictorRowStep(
                     namespace='mindsdb',
@@ -276,7 +276,7 @@ class TestPlanSelectFromPredictor:
             steps=[
                 FetchDataframeStep(
                     integration='int1',
-                    query=parse_sql('select tab1.id as id from tab1'),
+                    query=parse_sql('select id as id from tab1'),
                 ),
                 FetchDataframeStep(
                     integration='mindsdb',
@@ -286,7 +286,7 @@ class TestPlanSelectFromPredictor:
                         where=BinaryOperation(
                             op='in',
                             args=[
-                                Identifier(parts=['v1', 'x1']),
+                                Identifier(parts=['x1']),
                                 Parameter(Result(0))
                             ]
                         )
@@ -308,7 +308,7 @@ class TestPlanSelectFromPredictor:
     def test_select_from_view_subselect_view(self):
         query = parse_sql('''
             select * from v1
-            where x1 in (select id from v2)
+            where x1 in (select v2.id from v2)
         ''', dialect='mindsdb')
 
         expected_plan = QueryPlan(
@@ -326,7 +326,7 @@ class TestPlanSelectFromPredictor:
                         where=BinaryOperation(
                             op='in',
                             args=[
-                                Identifier(parts=['v1', 'x1']),
+                                Identifier(parts=['x1']),
                                 Parameter(Result(0))
                             ]
                         )
@@ -408,7 +408,7 @@ class TestNestedSelect:
                     where=BinaryOperation(
                         op='=',
                         args=[
-                            Identifier(parts=['test_tabl', 'search_vector']),
+                            Identifier(parts=['search_vector']),
                             Parameter(Result(1))
                         ]
                     )
@@ -446,7 +446,7 @@ class TestNestedSelect:
             FetchDataframeStep(
                 step_num=0,
                 integration='chromadb',
-                query=parse_sql('SELECT test_tabl.content AS content FROM test_tabl LIMIT 1')
+                query=parse_sql('SELECT content AS content FROM test_tabl LIMIT 1')
             ),
             ApplyPredictorRowStep(
                 step_num=1,

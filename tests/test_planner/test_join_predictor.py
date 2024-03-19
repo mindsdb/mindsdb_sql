@@ -348,7 +348,7 @@ class TestPlanJoinPredictor:
             default_namespace='mindsdb',
             steps=[
                 FetchDataframeStep(integration='int',
-                                   query=parse_sql('select covid.col as col from covid limit 10')),
+                                   query=parse_sql('select col as col from covid limit 10')),
                 SubSelectStep(query=Select(targets=[Star()]), dataframe=Result(0), table_name='t'),
                 ApplyPredictorStep(namespace='mindsdb', dataframe=Result(1), predictor=Identifier('pred')),
                 JoinStep(left=Result(1), right=Result(2),
@@ -700,11 +700,11 @@ class TestPredictorParams:
             steps=[
                 # nested queries
                 FetchDataframeStep(integration='int',
-                                   query=parse_sql('select tab0.a as a from tab0 where tab0.x=0')),
+                                   query=parse_sql('select a as a from tab0 where x=0')),
                 FetchDataframeStep(integration='int',
-                                   query=parse_sql('select tab3.a as a from tab3 where tab3.x=3')),
+                                   query=parse_sql('select a as a from tab3 where x=3')),
                 FetchDataframeStep(integration='int',
-                                   query=parse_sql('select tab4.a as a from tab4 where tab4.x=4')),
+                                   query=parse_sql('select a as a from tab4 where x=4')),
                 # tables
                 FetchDataframeStep(integration='int',
                                    query=parse_sql('select * from tab1 as t1 where b=1')),
