@@ -8,6 +8,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.dialects import mysql, postgresql, sqlite, mssql, oracle
 from sqlalchemy.schema import CreateTable, DropTable
 from sqlalchemy.sql import ColumnElement
+from sqlalchemy.sql import functions as sa_fnc
 
 from mindsdb_sql.parser import ast
 
@@ -114,7 +115,20 @@ class SqlalchemyRender:
                     alias = str(t.value)
             col = col.label(alias)
         elif isinstance(t, ast.Identifier):
-            col = self.to_column(t.parts)
+            # sql functions
+            col = None
+            if len(t.parts) == 1:
+                name = t.parts[0].upper()
+                if name == 'CURRENT_DATE':
+                    col = sa_fnc.current_date()
+                elif name == 'CURRENT_TIME':
+                    col = sa_fnc.current_time()
+                elif name == 'CURRENT_TIMESTAMP':
+                    col = sa_fnc.current_timestamp()
+                elif name == 'CURRENT_USER':
+                    col = sa_fnc.current_user()
+            if col is None:
+                col = self.to_column(t.parts)
             if t.alias:
                 col = col.label(self.get_alias(t.alias))
         elif isinstance(t, ast.Select):
