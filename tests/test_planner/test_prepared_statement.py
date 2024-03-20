@@ -43,6 +43,7 @@ class FakeExecutor:
                     {'name': 'column1', 'type': 'str'},
                     {'name': 'column2', 'type': 'str'},
                     {'name': 'column3', 'type': 'str'},
+                    {'name': 'col1', 'type': 'str'},
                     {'name': 'asset', 'type': 'float'},
                     {'name': 'time', 'type': 'datetime'},
                     {'name': 'predicted', 'type': 'float'},

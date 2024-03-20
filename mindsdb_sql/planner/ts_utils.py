@@ -66,6 +66,8 @@ def validate_ts_where_condition(op, allowed_columns, allow_and=True):
             if arg.parts[-1].lower() not in allowed_columns:
                 raise PlanningException(
                     f'For time series predictor only the following columns are allowed in WHERE: {str(allowed_columns)}, found instead: {str(arg)}.')
+            # remove alias
+            arg.parts = [arg.parts[-1]]
 
     if isinstance(op.args[0], Operation):
         validate_ts_where_condition(op.args[0], allowed_columns, allow_and=True)

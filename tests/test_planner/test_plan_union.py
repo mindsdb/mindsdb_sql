@@ -30,15 +30,15 @@ class TestPlanUnion:
             steps=[
                 # Query 1
                 FetchDataframeStep(integration='int',
-                                   query=Select(targets=[Identifier('tab.column1', alias=Identifier('column1')),
+                                   query=Select(targets=[Identifier('column1', alias=Identifier('column1')),
                                                          Constant(None, alias=Identifier('predicted'))],
                                                 from_table=Identifier('tab'),
                                                 where=BinaryOperation('and', args=[
                                                     BinaryOperation('=',
-                                                                    args=[Identifier('tab.column1'),
-                                                                          Identifier('tab.column2')]),
+                                                                    args=[Identifier('column1'),
+                                                                          Identifier('column2')]),
                                                     BinaryOperation('>',
-                                                                    args=[Identifier('tab.column3'),
+                                                                    args=[Identifier('column3'),
                                                                           Constant(0)]),
                                                 ])
                                                 )),
