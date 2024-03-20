@@ -195,13 +195,16 @@ class PlanJoinTSPredictorQuery:
         allowed_columns = [predictor_time_column_name.lower()]
         if len(predictor_group_by_names) > 0:
             allowed_columns += [i.lower() for i in predictor_group_by_names]
-        validate_ts_where_condition(query.where, allowed_columns=allowed_columns)
 
-        time_filter = find_time_filter(query.where, time_column_name=predictor_time_column_name)
+        no_time_filter_query = copy.deepcopy(query)
+
+        preparation_where = no_time_filter_query.where
+
+        validate_ts_where_condition(preparation_where, allowed_columns=allowed_columns)
+
+        time_filter = find_time_filter(preparation_where, time_column_name=predictor_time_column_name)
 
         order_by = [OrderBy(Identifier(parts=[predictor_time_column_name]), direction='DESC')]
-
-        preparation_where = copy.deepcopy(query.where)
 
         query_modifiers = query.modifiers
 
@@ -342,7 +345,6 @@ class PlanJoinTSPredictorQuery:
                     steps=[self.planner.get_integration_select_step(s) for s in integration_selects], reduce='union')
 
             # get groping values
-            no_time_filter_query = copy.deepcopy(query)
             no_time_filter_query.where = find_and_remove_time_filter(no_time_filter_query.where, time_filter)
             select_partitions_step = self.plan_fetch_timeseries_partitions(no_time_filter_query, table, predictor_group_by_names)
 
