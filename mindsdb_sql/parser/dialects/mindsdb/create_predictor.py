@@ -157,3 +157,10 @@ class CreateAnomalyDetectionModel(CreatePredictorBase):
         super().__init__(*args, **kwargs)
         self._object = 'ANOMALY DETECTION MODEL'
         self.task = Identifier('AnomalyDetection')
+
+
+class CreateForecastingModel(CreatePredictorBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._command = 'CREATE FORECASTING MODEL'
+        self.task = Identifier('Forecasting')
