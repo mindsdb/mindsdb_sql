@@ -630,6 +630,20 @@ class SqlalchemyRender:
 
         return stmt
 
+    def prepare_delete(self, ast_query: ast.Delete):
+        schema, table_name = self.get_table_name(ast_query.table)
+
+        columns = []
+
+        table = sa.table(table_name, schema=schema, *columns)
+
+        stmt = table.delete()
+
+        if ast_query.where is not None:
+            stmt = stmt.where(self.to_expression(ast_query.where))
+
+        return stmt
+
     def get_query(self, ast_query):
         if isinstance(ast_query, ast.Select):
             stmt = self.prepare_select(ast_query)
@@ -637,6 +651,8 @@ class SqlalchemyRender:
             stmt = self.prepare_insert(ast_query)
         elif isinstance(ast_query, ast.Update):
             stmt = self.prepare_update(ast_query)
+        elif isinstance(ast_query, ast.Delete):
+            stmt = self.prepare_delete(ast_query)
         elif isinstance(ast_query, ast.CreateTable):
             stmt = self.prepare_create_table(ast_query)
         elif isinstance(ast_query, ast.DropTables):
