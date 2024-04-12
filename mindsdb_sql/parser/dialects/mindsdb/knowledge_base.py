@@ -51,18 +51,23 @@ class CreateKnowledgeBase(ASTNode):
     def get_string(self, *args, **kwargs):
         params = self.params.copy()
         using_ar = [f"{k}={repr(v)}" for k, v in params.items()]
-        using_str = ", ".join(using_ar)
         from_query_str = (
             f"FROM ({self.from_query.get_string()})" if self.from_query else ""
         )
-        storage_str = f"  STORAGE = {self.storage.to_string()}" if self.storage else ""
-        model_str = f"  MODEL = {self.model.to_string()},\n" if self.model else ""
+        if self.storage:
+            using_ar.append(f"  STORAGE = {self.storage.to_string()}")
+        if self.model:
+            using_ar.append(f"  MODEL = {self.model.to_string()}")
+
+        if using_ar:
+            using_str = "USING " + ", ".join(using_ar)
+        else:
+            using_str = ""
 
         out_str = (
-            f"CREATE KNOWLEDGE_BASE {'IF NOT EXISTS' if self.if_not_exists else ''}{self.name.to_string()} "
+            f"CREATE KNOWLEDGE_BASE {'IF NOT EXISTS ' if self.if_not_exists else ''}{self.name.to_string()} "
             f"{from_query_str} "
-            f"USING {using_str},"
-            f"{model_str}{storage_str}"
+            f"{using_str}"
         )
 
         return out_str
@@ -95,5 +100,5 @@ class DropKnowledgeBase(ASTNode):
         return out_str
 
     def get_string(self, *args, **kwargs):
-        out_str = f'DROP KNOWLEDGE_BASE {"IF EXISTS" if self.if_exists else ""}{self.name.to_string()}'
+        out_str = f'DROP KNOWLEDGE_BASE {"IF EXISTS " if self.if_exists else ""}{self.name.to_string()}'
         return out_str
