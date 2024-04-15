@@ -638,10 +638,23 @@ class MindsDBParser(Parser):
     def describe(self, p):
         return Describe(value=p.identifier)
 
-    @_('DESCRIBE PREDICTOR identifier',
-       'DESCRIBE MODEL identifier')
+    @_('DESCRIBE JOB identifier',
+       'DESCRIBE SKILL identifier',
+       'DESCRIBE CHATBOT identifier',
+       'DESCRIBE TRIGGER identifier',
+       'DESCRIBE KNOWLEDGE_BASE identifier',
+       'DESCRIBE PROJECT identifier',
+       'DESCRIBE ML_ENGINE identifier',
+       'DESCRIBE identifier identifier',
+       )
     def describe(self, p):
-        return Describe(value=p.identifier, type='predictor')
+        if isinstance(p[1], Identifier):
+            type = p[1].parts[-1]
+        else:
+            type = p[1]
+        type = type.replace(' ', '_')
+        return Describe(value=p[2], type=type)
+
 
     # USE
 
