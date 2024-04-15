@@ -49,16 +49,19 @@ class CreateKnowledgeBase(ASTNode):
         return out_str
 
     def get_string(self, *args, **kwargs):
-        params = self.params.copy()
-        using_ar = [f"{k}={repr(v)}" for k, v in params.items()]
         from_query_str = (
             f"FROM ({self.from_query.get_string()})" if self.from_query else ""
         )
-        if self.storage:
-            using_ar.append(f"  STORAGE = {self.storage.to_string()}")
-        if self.model:
-            using_ar.append(f"  MODEL = {self.model.to_string()}")
 
+        using_ar = []
+        if self.storage:
+            using_ar.append(f"  STORAGE={self.storage.to_string()}")
+        if self.model:
+            using_ar.append(f"  MODEL={self.model.to_string()}")
+
+        params = self.params.copy()
+        if params:
+            using_ar += [f"{k}={repr(v)}" for k, v in params.items()]
         if using_ar:
             using_str = "USING " + ", ".join(using_ar)
         else:
