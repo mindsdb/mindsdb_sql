@@ -365,15 +365,15 @@ class MindsDBParser(Parser):
     # set names
     @_('id id',
        'id constant',
+       'id identifier',
        'id id COLLATE constant',
        'id id COLLATE id',
        'id constant COLLATE constant',
        'id constant COLLATE id')
     def set_item(self, p):
         category = p[0]
-        if category.lower() != 'names':
-            raise ParsingException(f'Expected "SET names", got "SET {category}"')
-        if isinstance(p[1], Constant):
+
+        if isinstance(p[1], (Constant, Identifier)):
             value = p[1]
         else:
             # is id
@@ -381,6 +381,9 @@ class MindsDBParser(Parser):
 
         params = {}
         if hasattr(p, 'COLLATE'):
+            if category.lower() != 'names':
+                raise ParsingException(f'Expected "SET names", got "SET {category}"')
+
             if isinstance(p[3], Constant):
                 val = p[3]
             else:
@@ -776,6 +779,7 @@ class MindsDBParser(Parser):
     @_('CREATE replace_or_empty PREDICTOR if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
        'CREATE replace_or_empty PREDICTOR if_not_exists_or_empty identifier PREDICT result_columns',
        'CREATE replace_or_empty MODEL if_not_exists_or_empty identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
+       'CREATE replace_or_empty MODEL if_not_exists_or_empty identifier FROM LPAREN raw_query RPAREN PREDICT result_columns',
        'CREATE replace_or_empty MODEL if_not_exists_or_empty identifier PREDICT result_columns'
        )
     def create_predictor(self, p):
@@ -837,11 +841,15 @@ class MindsDBParser(Parser):
 
     @_('RETRAIN identifier',
        'RETRAIN identifier PREDICT result_columns',
+       'RETRAIN identifier FROM LPAREN raw_query RPAREN',
+       'RETRAIN identifier FROM LPAREN raw_query RPAREN PREDICT result_columns',
        'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN',
        'RETRAIN identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns',
        'RETRAIN MODEL identifier',
        'RETRAIN MODEL identifier PREDICT result_columns',
+       'RETRAIN MODEL identifier FROM LPAREN raw_query RPAREN',
        'RETRAIN MODEL identifier FROM identifier LPAREN raw_query RPAREN',
+       'RETRAIN MODEL identifier FROM LPAREN raw_query RPAREN PREDICT result_columns',
        'RETRAIN MODEL identifier FROM identifier LPAREN raw_query RPAREN PREDICT result_columns')
     def create_predictor(self, p):
         query_str = None
@@ -862,7 +870,9 @@ class MindsDBParser(Parser):
         )
 
     @_('FINETUNE identifier FROM identifier LPAREN raw_query RPAREN',
-       'FINETUNE MODEL identifier FROM identifier LPAREN raw_query RPAREN')
+       'FINETUNE identifier FROM LPAREN raw_query RPAREN',
+       'FINETUNE MODEL identifier FROM identifier LPAREN raw_query RPAREN',
+       'FINETUNE MODEL identifier FROM LPAREN raw_query RPAREN')
     def create_predictor(self, p):
         query_str = None
         if hasattr(p, 'raw_query'):

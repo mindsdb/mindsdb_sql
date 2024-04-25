@@ -11,7 +11,6 @@ class CreatePredictorBase(ASTNode):
                  targets=None,
                  integration_name=None,
                  query_str=None,
-                 datasource_name=None,
                  order_by=None,
                  group_by=None,
                  window=None,
@@ -26,7 +25,6 @@ class CreatePredictorBase(ASTNode):
         self.integration_name = integration_name
         self.query_str = query_str
         self.targets = targets
-        self.datasource_name = datasource_name
         self.order_by = order_by
         self.group_by = group_by
         self.window = window
@@ -49,10 +47,6 @@ class CreatePredictorBase(ASTNode):
             integration_name_str = 'None'
 
         query_str = f'\n{ind1}query={self.query_str},'
-
-        datasource_name_str = ''
-        if self.datasource_name:
-            datasource_name_str = f'\n{ind1}datasource_name={self.datasource_name.to_tree()},'
 
         if self.targets is not None:
             target_trees = ',\n'.join([t.to_tree(level=level+2) for t in self.targets])
@@ -83,7 +77,6 @@ class CreatePredictorBase(ASTNode):
                   f'{name_str}' \
                   f'{integration_name_str}' \
                   f'{query_str}' \
-                  f'{datasource_name_str}' \
                   f'{targets_str}' \
                   f'{order_by_str}' \
                   f'{group_by_str}' \
@@ -119,22 +112,20 @@ class CreatePredictorBase(ASTNode):
                 using_ar.append(f'{Identifier(key).to_string()}={value}')
 
             using_str = f'USING ' + ', '.join(using_ar)
-        datasource_name_str = f'AS {self.datasource_name.to_string()} ' if self.datasource_name is not None else ''
 
         query_str = ''
         if self.query_str is not None:
-            query_str = f'({self.query_str}) '
+            integration_name_str = ''
+            if self.integration_name is not None:
+                integration_name_str = f' {self.integration_name.to_string()}'
 
-        integration_name_str = ''
-        if self.integration_name is not None:
-            integration_name_str = f'FROM {self.integration_name.to_string()} '
+            query_str = f'FROM{integration_name_str} ({self.query_str}) '
 
         or_replace_str = ' OR REPLACE' if self.is_replace else ''
         if_not_exists_str = 'IF NOT EXISTS ' if self.if_not_exists else ''
         object_str = self._object + ' ' if self._object else ''
 
-        out_str = f'{self._action}{or_replace_str} {object_str}{if_not_exists_str}{self.name.to_string()} {integration_name_str}{query_str}' \
-                  f'{datasource_name_str}' \
+        out_str = f'{self._action}{or_replace_str} {object_str}{if_not_exists_str}{self.name.to_string()} {query_str}' \
                   f'{targets_str} ' \
                   f'{order_by_str}' \
                   f'{group_by_str}' \
@@ -148,7 +139,7 @@ class CreatePredictorBase(ASTNode):
 class CreatePredictor(CreatePredictorBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._object = 'PREDICTOR'
+        self._object = 'MODEL'
 
 
 # Models by task type
