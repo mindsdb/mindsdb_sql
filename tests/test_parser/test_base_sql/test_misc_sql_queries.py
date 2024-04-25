@@ -221,6 +221,15 @@ class TestMindsdb:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_set_version(self):
+        sql = "SET active model_name.1"
+
+        ast = parse_sql(sql)
+        expected_ast = Set(category='active', value=Identifier(parts=['model_name', '1']))
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
     def test_interval(self):
         sql = """
            select interval '1 day'+1 from aaa
