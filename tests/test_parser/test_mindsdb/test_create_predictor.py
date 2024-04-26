@@ -60,7 +60,7 @@ class TestCreatePredictor:
         assert ast.to_tree() == ast2.to_tree()
 
     def test_create_predictor_minimal(self):
-        sql = """CREATE PREDICTOR IF NOT EXISTS pred
+        sql = """CREATE MODEL IF NOT EXISTS pred
                 FROM integration_name 
                 (select * FROM table_name)
                 PREDICT f1 as f1_alias, f2
@@ -196,3 +196,45 @@ class TestCreatePredictor:
 
             assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
             assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_optional_db(self):
+        sql = "CREATE MODEL xxx from (select 1) PREDICT sss"
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = CreatePredictor(
+            name=Identifier('xxx'),
+            query_str='select 1',
+            targets=[Identifier('sss')],
+        )
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        # retrain
+        sql = "RETRAIN MODEL xxx from (select 1)"
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = RetrainPredictor(
+            name=Identifier('xxx'),
+            query_str='select 1',
+        )
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        sql = "RETRAIN xxx from (select 1)"
+        ast = parse_sql(sql, dialect='mindsdb')
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        # finetune
+        sql = "FINETUNE MODEL xxx from (select 1)"
+        ast = parse_sql(sql, dialect='mindsdb')
+        expected_ast = FinetunePredictor(
+            name=Identifier('xxx'),
+            query_str='select 1',
+        )
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        sql = "FINETUNE xxx from (select 1)"
+        ast = parse_sql(sql, dialect='mindsdb')
+        assert to_single_line(str(ast)) == to_single_line(str(expected_ast))
+        assert ast.to_tree() == expected_ast.to_tree()
+
