@@ -19,6 +19,7 @@ class TableInfo:
     conditions: List = None
     sub_select: ast.ASTNode = None
     predictor_info: dict = None
+    join_condition = None
 
 
 class PlanJoin:
@@ -147,7 +148,7 @@ class PlanJoinTablesQuery:
         if parts in self.tables_idx:
             return self.tables_idx[parts]
 
-    def get_join_sequence(self, node):
+    def get_join_sequence(self, node, condition=None):
         sequence = []
         if isinstance(node, Identifier):
             # resolve identifier
@@ -158,6 +159,8 @@ class PlanJoinTablesQuery:
 
             table_info.predictor_info = self.planner.get_predictor(node)
 
+            if condition is not None:
+                table_info.join_condition = condition
             sequence.append(table_info)
 
         elif isinstance(node, Join):
@@ -168,7 +171,7 @@ class PlanJoinTablesQuery:
             for item in sequence2:
                 sequence.append(item)
 
-            sequence2 = self.get_join_sequence(node.right)
+            sequence2 = self.get_join_sequence(node.right, condition=node.condition)
             if len(sequence2) != 1:
                 raise PlanningException('Unexpected join nesting behavior')
 
@@ -401,6 +404,37 @@ class PlanJoinTablesQuery:
         self.planner.plan.add_step(step)
         self.step_stack.append(step)
 
+    def join_condition_to_columns_map(self, model_table):
+
+        columns_map = {}
+
+        def _check_conditions(node, **kwargs):
+            if not isinstance(node, BinaryOperation):
+                return
+
+            arg1, arg2 = node.args
+            if not (isinstance(arg1, Identifier) and isinstance(arg2, Identifier)):
+                return
+
+            table1 = self.get_table_for_column(arg1)
+            table2 = self.get_table_for_column(arg2)
+
+            if table1 is model_table:
+                # model is on the left
+                columns_map[arg1.parts[-1]] = arg2
+            elif table2 is model_table:
+                # model is on the right
+                columns_map[arg2.parts[-1]] = arg1
+            else:
+                # not found, skip
+                return
+
+            # exclude condition
+            node.args = [Constant(0), Constant(0)]
+
+        query_traversal(model_table.join_condition, _check_conditions)
+        return columns_map
+
     def process_predictor(self, item, query_in):
         if len(self.step_stack) == 0:
             raise NotImplementedError("Predictor can't be first element of join syntax")
@@ -414,6 +448,10 @@ class PlanJoinTablesQuery:
             predict_target = predict_target[0]
         if predict_target is not None:
             predict_target = predict_target.lower()
+
+        columns_map = None
+        if item.join_condition:
+            columns_map = self.join_condition_to_columns_map(item)
 
         if item.conditions:
             row_dict = {}
@@ -450,5 +488,6 @@ class PlanJoinTablesQuery:
             predictor=item.table,
             params=model_params,
             row_dict=row_dict,
+            columns_map=columns_map,
         ))
         self.step_stack.append(predictor_step)

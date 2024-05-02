@@ -772,3 +772,45 @@ class TestPredictorParams:
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
 
         assert plan.steps == expected_plan.steps
+
+    def test_model_column_map(self):
+
+        sql = '''
+            select * from int.tab1 a
+            join proj.pred.1 p on a.data1 = p.data2 and p.x = a.y
+        '''
+
+        # subquery = parse_sql("""
+        #     select * from x
+        #     where a.x=1 and 0=0 and p.ttt=2 and a.y=3 and 0=0
+        # """)
+        # subquery.from_table = None
+
+        query = parse_sql(sql)
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=parse_sql('select * from tab1 as a')),
+                ApplyPredictorStep(
+                    namespace='proj', dataframe=Result(0),
+                    predictor=Identifier('pred.1', alias=Identifier('p')),
+                    columns_map={'data2': Identifier('a.data1'), 'x': Identifier('a.y')}
+                ),
+                JoinStep(left=Result(0), right=Result(1),
+                    query=Join(
+                        left=Identifier('tab1'),
+                        right=Identifier('tab2'),
+                        join_type=JoinType.JOIN,
+                        condition=BinaryOperation('and', args=[
+                            BinaryOperation('=', args=[Constant(0), Constant(0)]),
+                            BinaryOperation('=', args=[Constant(0), Constant(0)])
+                        ])
+                    ),
+                ),
+            ],
+        )
+
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb',
+                          predictor_metadata=[{'name': 'pred', 'integration_name': 'proj', 'to_predict': ['ttt']}])
+
+        assert plan.steps == expected_plan.steps
