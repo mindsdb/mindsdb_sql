@@ -582,3 +582,20 @@ class TestOperationsMindsdb:
             assert str(ast).lower() == sql.lower()
             assert str(ast) == str(expected_ast)
             assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_function_with_namespace(self):
+
+        sql = 'SELECT engine.extract(1, 2)'
+        ast = parse_sql(sql)
+
+        expected_ast = Select(
+            targets=[Function(
+                op='extract',
+                args=[Constant(1), Constant(2)],
+                namespace='engine'
+            )],
+        )
+
+        assert str(ast).lower() == sql.lower()
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
