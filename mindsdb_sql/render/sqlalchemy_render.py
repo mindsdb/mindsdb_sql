@@ -564,7 +564,8 @@ class SqlalchemyRender:
         )
         return DropTable(table, if_exists=ast_query.if_exists)
 
-    def prepare_insert(self, ast_query):
+    def prepare_insert(self, ast_query, with_params=False):
+        params = None
         schema, table_name = self.get_table_name(ast_query.table)
 
         names = []
@@ -588,12 +589,22 @@ class SqlalchemyRender:
 
         if ast_query.values is not None:
             values = []
-            for row in ast_query.values:
-                row = [
-                    self.to_expression(val)
-                    for val in row
-                ]
-                values.append(row)
+
+            if ast_query.is_plain and with_params:
+
+                for i in range(len(ast_query.columns)):
+                    values.append(sa.column('%s', is_literal=True))
+
+                values = [values]
+                params = ast_query.values
+            else:
+
+                for row in ast_query.values:
+                    row = [
+                        self.to_expression(val)
+                        for val in row
+                    ]
+                    values.append(row)
 
             stmt = table.insert().values(values)
         else:
@@ -601,7 +612,7 @@ class SqlalchemyRender:
             subquery = self.prepare_select(ast_query.from_select)
             stmt = table.insert().from_select(names, subquery)
 
-        return stmt
+        return stmt, params
 
     def prepare_update(self, ast_query):
         if ast_query.from_select is not None:
@@ -644,11 +655,12 @@ class SqlalchemyRender:
 
         return stmt
 
-    def get_query(self, ast_query):
+    def get_query(self, ast_query, with_params=False):
+        params = None
         if isinstance(ast_query, ast.Select):
             stmt = self.prepare_select(ast_query)
         elif isinstance(ast_query, ast.Insert):
-            stmt = self.prepare_insert(ast_query)
+            stmt, params = self.prepare_insert(ast_query, with_params=with_params)
         elif isinstance(ast_query, ast.Update):
             stmt = self.prepare_update(ast_query)
         elif isinstance(ast_query, ast.Delete):
@@ -659,20 +671,38 @@ class SqlalchemyRender:
             stmt = self.prepare_drop_table(ast_query)
         else:
             raise NotImplementedError(f'Unknown statement: {ast_query.__class__.__name__}')
-        return stmt
+        return stmt, params
 
     def get_string(self, ast_query, with_failback=True):
+        """
+        Render query to sql string
+
+        :param ast_query: query to render
+        :param with_failback:  switch to standard render in case of error
+        :return:
+        """
+        sql, _ = self.get_exec_params(ast_query, with_failback=with_failback, with_params=False)
+        return sql
+
+    def get_exec_params(self, ast_query, with_failback=True, with_params=True):
+        """
+        Render query with separated parameters and placeholders
+        :param ast_query: query to render
+        :param with_failback: switch to standard render in case of error
+        :return: sql query and parameters
+        """
+
         if isinstance(ast_query, (ast.CreateTable, ast.DropTables)):
             render_func = render_ddl_query
         else:
             render_func = render_dml_query
 
         try:
-            stmt = self.get_query(ast_query)
+            stmt, params = self.get_query(ast_query, with_params=with_params)
 
             sql = render_func(stmt, self.dialect)
 
-            return sql
+            return sql, params
 
         except (SQLAlchemyError, NotImplementedError) as e:
             if not with_failback:
@@ -681,7 +711,7 @@ class SqlalchemyRender:
             sql_query = str(ast_query)
             if self.dialect.name == 'postgresql':
                 sql_query = sql_query.replace('`', '')
-            return sql_query
+            return sql_query, None
 
 
 def render_dml_query(statement, dialect):
@@ -689,6 +719,7 @@ def render_dml_query(statement, dialect):
     class LiteralCompiler(dialect.statement_compiler):
 
         def render_literal_value(self, value, type_):
+
             if isinstance(value, (str, dt.date, dt.datetime, dt.timedelta)):
                 return "'{}'".format(str(value).replace("'", "''"))
 
