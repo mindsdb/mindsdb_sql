@@ -204,10 +204,14 @@ class QueryPlanner:
         # get all predictors
         mdb_entities = []
         predictors = []
+        user_functions = []
         # projects = set()
         integrations = set()
 
-        def find_predictors(node, is_table, **kwargs):
+        def find_objects(node, is_table, **kwargs):
+            if isinstance(node, Function):
+                if node.namespace is not None:
+                    user_functions.append(node)
 
             if is_table:
                 if isinstance(node, ast.Identifier):
@@ -225,8 +229,13 @@ class QueryPlanner:
                 if isinstance(node, ast.NativeQuery) or isinstance(node, ast.Data):
                     mdb_entities.append(node)
 
-        query_traversal(query, find_predictors)
-        return {'mdb_entities': mdb_entities, 'integrations': integrations, 'predictors': predictors}
+        query_traversal(query, find_objects)
+        return {
+            'mdb_entities': mdb_entities,
+            'integrations': integrations,
+            'predictors': predictors,
+            'user_functions': user_functions
+        }
 
     def get_nested_selects_plan_fnc(self, main_integration, force=False):
         # returns function for traversal over query and inject fetch data query instead of subselects
@@ -255,7 +264,11 @@ class QueryPlanner:
         if len(query_info['integrations']) == 0 and len(query_info['predictors']) >= 1:
             # select from predictor
             return self.plan_select_from_predictor(query)
-        elif len(query_info['integrations']) == 1 and len(query_info['mdb_entities']) == 0:
+        elif (
+            len(query_info['integrations']) == 1
+            and len(query_info['mdb_entities']) == 0
+            and len(query_info['user_functions']) == 0
+        ):
 
             int_name = list(query_info['integrations'])[0]
             if self.integrations.get(int_name, {}).get('class_type') != 'api':
@@ -278,9 +291,62 @@ class QueryPlanner:
             return self.plan_select_from_predictor(query)
         elif is_api_db:
             return self.plan_api_db_select(query)
+        elif len(query_info['user_functions']) > 0:
+            return self.plan_integration_select_with_functions(query)
         else:
             # fallback to integration
             return self.plan_integration_select(query)
+
+    def plan_integration_select_with_functions(self, query):
+        # UDF can't be aggregate function: it means we have to do aggregation after function execution
+        # - remove targets from query
+        # - add subselect with targets
+
+        # replace functions in conditions
+
+        query2 = query.copy()
+
+        skipped_conditions = []
+        def replace_functions(node, **kwargs):
+            if not isinstance(node, BinaryOperation):
+                return
+
+            arg1, arg2 = node.args
+            if not isinstance(arg1, Function):
+                arg1 = arg2
+            if not isinstance(arg1, Function):
+                return
+
+            # user defined
+            if arg1.namespace is not None:
+                # clear
+                skipped_conditions.append(node)
+                node.args = [Constant(0), Constant(0)]
+                node.op = '='
+
+        query_traversal(query2.where, replace_functions)
+
+        query2.targets = [Star()]
+
+        # don't do aggregate
+        query2.having = None
+
+        if query.group_by is not None:
+            # if aggregation exists, do order and limit in subquery
+            query2.group_by = None
+            query2.order_by = None
+            query2.limit = None
+        else:
+            query.order_by = None
+            query.limit = None
+
+        # if all conditions were executed - clear it
+        if len(skipped_conditions) == 0:
+            query.where = None
+
+        prev_step = self.plan_integration_select(query2)
+
+        return self.plan_sub_select(query, prev_step)
 
     def plan_api_db_select(self, query):
         # split to select from api database
@@ -308,6 +374,7 @@ class QueryPlanner:
         if (
             len(query_info['mdb_entities']) == 0
             and len(query_info['integrations']) == 1
+            and len(query_info['user_functions']) == 0
             and 'files' not in query_info['integrations']
             and 'views' not in query_info['integrations']
         ):
