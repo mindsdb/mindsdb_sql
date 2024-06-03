@@ -719,3 +719,38 @@ class TestPlanIntegrationSelect:
         )
 
         assert plan.steps == expected_plan.steps
+
+    def test_select_with_user_functions(self):
+        query = parse_sql('''
+            select my.fnc(a, 1) from int1.tab1
+            where x1 > my.fnc2(b)
+            order by x 
+            limit 2
+        ''', dialect='mindsdb')
+
+        sub_query = parse_sql("select my.fnc(a, 1) from tab1 where x1 > my.fnc2(b)")
+        sub_query.from_table = None
+
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(
+                    integration='int1',
+                    query=parse_sql('select * from tab1 where 0=0 order by x limit 2'),
+                ),
+                SubSelectStep(
+                    dataframe=Result(0),
+                    query=sub_query,
+                    table_name='tab1'
+
+                ),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=[{'name': 'int1', 'class_type': 'sql', 'type': 'data'}],
+            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}]
+        )
+
+        assert plan.steps == expected_plan.steps

@@ -56,6 +56,7 @@ class TestUpdateFromSelect:
             from                         
              (
                select result, prod_id from table1
+               USING  aaa = "bbb"
              ) as df
             where          
                 table2.prod_id = df.prod_id             
@@ -68,7 +69,8 @@ class TestUpdateFromSelect:
             },
             from_select=Select(
                 targets=[Identifier('result'), Identifier('prod_id')],
-                from_table=Identifier('table1')
+                from_table=Identifier('table1'),
+                using={'aaa': 'bbb'}
             ),
             from_select_alias=Identifier('df'),
             where=BinaryOperation(op='=', args=[

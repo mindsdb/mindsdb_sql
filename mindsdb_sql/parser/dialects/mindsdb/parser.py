@@ -70,7 +70,6 @@ class MindsDBParser(Parser):
        'drop_dataset',
        'union',
        'select',
-       'select_using',
        'insert',
        'update',
        'delete',
@@ -1090,7 +1089,7 @@ class MindsDBParser(Parser):
         return OrderBy(field=p.identifier, direction='default')
 
     @_('select USING kw_parameter_list')
-    def select_using(self, p):
+    def select(self, p):
         p.select.using = p.kw_parameter_list
         return p.select
 
@@ -1329,20 +1328,22 @@ class MindsDBParser(Parser):
             p.expr.parentheses = True
         return p.expr
 
-    @_('function_name LPAREN expr FROM expr RPAREN')
+    @_('identifier LPAREN expr FROM expr RPAREN')
     def function(self, p):
-        return Function(op=p[0], args=[p.expr0], from_arg=p.expr1)
+        return Function(op=p[0].parts[0], args=[p.expr0], from_arg=p.expr1)
 
     @_('DATABASE LPAREN RPAREN')
     def function(self, p):
         return Function(op=p.DATABASE, args=[])
 
-    @_('function_name LPAREN DISTINCT expr_list RPAREN')
+    @_('identifier LPAREN DISTINCT expr_list RPAREN')
     def function(self, p):
-        return Function(op=p[0], distinct=True, args=p.expr_list)
+        return Function(op=p[0].parts[0], distinct=True, args=p.expr_list)
 
-    @_('function_name LPAREN expr_list_or_nothing RPAREN',
-       'function_name LPAREN star RPAREN')
+    @_(
+       'function_name LPAREN expr_list_or_nothing RPAREN',
+       'identifier LPAREN expr_list_or_nothing RPAREN',
+       'identifier LPAREN star RPAREN')
     def function(self, p):
         if hasattr(p, 'star'):
             args = [p.star]
@@ -1350,7 +1351,14 @@ class MindsDBParser(Parser):
             args = p.expr_list_or_nothing
         if not args:
             args = []
-        return Function(op=p[0], args=args)
+        namespace = None
+        if hasattr(p, 'identifier'):
+            if len(p.identifier.parts) > 1:
+                namespace = p.identifier.parts[0]
+            name = p.identifier.parts[-1]
+        else:
+            name = p.function_name
+        return Function(op=name, args=args, namespace=namespace)
 
     @_('INTERVAL string')
     def expr(self, p):
