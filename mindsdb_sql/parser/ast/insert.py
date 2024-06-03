@@ -11,6 +11,7 @@ class Insert(ASTNode):
                  columns=None,
                  values=None,
                  from_select=None,
+                 is_plain=False,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.table = table
@@ -26,6 +27,9 @@ class Insert(ASTNode):
         # TODO require one of [values, from_select] is set
         self.values = values
         self.from_select = from_select
+
+        # True if values in query are constant (without subselects and operations)
+        self.is_plain = is_plain
 
     def to_column(self, col):
         if isinstance(col, str):
