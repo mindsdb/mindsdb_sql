@@ -70,7 +70,6 @@ class MindsDBParser(Parser):
        'drop_dataset',
        'union',
        'select',
-       'select_using',
        'insert',
        'update',
        'delete',
@@ -1090,7 +1089,7 @@ class MindsDBParser(Parser):
         return OrderBy(field=p.identifier, direction='default')
 
     @_('select USING kw_parameter_list')
-    def select_using(self, p):
+    def select(self, p):
         p.select.using = p.kw_parameter_list
         return p.select
 

@@ -184,5 +184,26 @@ class TestRender:
         sql2 = '''SELECT * FROM tb1 WHERE x IN ('2011-01-01 00:00:00', '2011-01-02 00:00:00')'''
         assert sql.replace('\n', '').replace('\t', '').replace('  ', ' ') == sql2
 
+    def test_exec_params(self):
+
+        values = [
+            [1, '2'],
+            [3, 'b'],
+        ]
+
+        query = Insert(
+            table=Identifier('tbl1'),
+            columns=[
+                Identifier('a'),
+                Identifier('b'),
+            ],
+            values=values,
+            is_plain=True
+        )
+
+        sql, params = SqlalchemyRender('mysql').get_exec_params(query, with_failback=False)
+
+        assert sql == '''INSERT INTO tbl1 (a, b) VALUES (%s, %s)'''
+        assert params == values
 
 
