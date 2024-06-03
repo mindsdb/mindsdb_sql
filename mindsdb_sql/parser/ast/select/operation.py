@@ -66,10 +66,11 @@ class UnaryOperation(Operation):
 
 
 class Function(Operation):
-    def __init__(self, *args, distinct=False, from_arg=None, **kwargs):
+    def __init__(self, *args, distinct=False, from_arg=None, namespace=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.distinct = distinct
         self.from_arg = from_arg
+        self.namespace = namespace
 
     def to_tree(self, *args, level=0, **kwargs):
         ind = indent(level)
@@ -92,7 +93,8 @@ class Function(Operation):
         distinct_str = 'DISTINCT ' if self.distinct else ''
 
         from_str = f' FROM {self.from_arg.to_string()}' if self.from_arg else ''
-        return f'{self.op}({distinct_str}{args_str}{from_str})'
+        namespace = self.namespace + '.' if self.namespace else ''
+        return f'{namespace}{self.op}({distinct_str}{args_str}{from_str})'
 
 
 class WindowFunction(ASTNode):
