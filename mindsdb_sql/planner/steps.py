@@ -166,18 +166,24 @@ class GetTableColumns(PlanStep):
 
 class MapReduceStep(PlanStep):
     """Applies a step for each value in a list, and then reduces results to a single dataframe"""
-    def __init__(self, values, step, reduce, *args, **kwargs):
+    def __init__(self, values, step, reduce='union', partition=None, *args, **kwargs):
+        """
+        :param values: input step data
+        :param step: step to be applied
+        :param reduce: type of reduce to be applied
+        :param partition: type of partition to be applied
+         - <number> - split data by chunks with equal size
+         - None - every record is variables to fill
+        """
         super().__init__(*args, **kwargs)
         self.values = values
         self.step = step
         self.reduce = reduce
-
-        if isinstance(values, Result):
-            self.references.append(values)
+        self.partition = partition
 
 
 class MultipleSteps(PlanStep):
-    def __init__(self, steps, reduce, *args, **kwargs):
+    def __init__(self, steps, reduce=None, *args, **kwargs):
         """Runs multiple steps and reduces results to a single dataframe"""
         super().__init__(*args, **kwargs)
         self.steps = steps

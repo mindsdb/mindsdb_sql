@@ -6,7 +6,8 @@ from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, BetweenOperation, Join, Star, BinaryOperation, Constant,
                                     NativeQuery, Parameter)
-from mindsdb_sql.planner.steps import (FetchDataframeStep, JoinStep, ApplyPredictorStep, SubSelectStep, QueryStep)
+from mindsdb_sql.planner.steps import (FetchDataframeStep, JoinStep, ApplyPredictorStep, SubSelectStep, QueryStep,
+                                       MapReduceStep)
 from mindsdb_sql.planner.utils import (query_traversal, filters_to_bin_op)
 from mindsdb_sql.planner.plan_join_ts import PlanJoinTSPredictorQuery
 
@@ -87,6 +88,8 @@ class PlanJoinTablesQuery:
 
         self.step_stack = None
         self.query_context = {}
+
+        self.partition = None
 
     def plan(self, query):
         self.tables_idx = {}
@@ -332,11 +335,13 @@ class PlanJoinTablesQuery:
                 new_join.right = Identifier('tab2')
                 new_join.implicit = False
 
-                step = self.planner.plan.add_step(JoinStep(left=step_left.result, right=step_right.result, query=new_join))
+                step = self.add_plan_step(JoinStep(left=step_left.result, right=step_right.result, query=new_join))
 
                 self.step_stack.append(step)
 
         query_in.where = query.where
+
+        self.close_partition()
         return self.step_stack.pop()
 
     def process_subselect(self, item):
@@ -359,7 +364,7 @@ class PlanJoinTablesQuery:
             add_absent_cols = True
 
         step2 = SubSelectStep(query2, step.result, table_name=table_name, add_absent_cols=add_absent_cols)
-        step2 = self.planner.plan.add_step(step2)
+        step2 = self.add_plan_step(step2)
         self.step_stack.append(step2)
 
     def process_table(self, item, query_in):
@@ -401,7 +406,7 @@ class PlanJoinTablesQuery:
 
         # step = self.planner.get_integration_select_step(query2)
         step = FetchDataframeStep(integration=item.integration, query=query2)
-        self.planner.plan.add_step(step)
+        self.add_plan_step(step)
         self.step_stack.append(step)
 
     def join_condition_to_columns_map(self, model_table):
@@ -470,7 +475,7 @@ class PlanJoinTablesQuery:
 
         # params for model
         model_params = None
-
+        partition_size = None
         if query_in.using is not None:
             model_params = {}
             for param, value in query_in.using.items():
@@ -478,16 +483,74 @@ class PlanJoinTablesQuery:
                     alias = param.split('.')[0]
                     if (alias,) in item.aliases:
                         new_param = '.'.join(param.split('.')[1:])
-                        model_params[new_param] = value
+                        model_params[new_param.lower()] = value
                 else:
-                    model_params[param] = value
+                    model_params[param.lower()] = value
 
-        predictor_step = self.planner.plan.add_step(ApplyPredictorStep(
+            partition_size = model_params.pop('partition_size', None)
+
+        predictor_step = ApplyPredictorStep(
             namespace=item.integration,
             dataframe=data_step.result,
             predictor=item.table,
             params=model_params,
             row_dict=row_dict,
             columns_map=columns_map,
-        ))
-        self.step_stack.append(predictor_step)
+        )
+
+        self.step_stack.append(
+            self.add_plan_step(predictor_step, partition_size=partition_size)
+        )
+
+    def add_plan_step(self, step, partition_size=None):
+        """
+        Adds step to plan
+
+        If partition_size is defined: create partition
+        If partition is active
+            If step can be partitioned:
+                Add step to partition not in plan
+            Otherwise:
+                Add partition to plan
+                Add step to plan
+        """
+        if self.partition:
+            if isinstance(step, (JoinStep, ApplyPredictorStep)):
+                # add to partition
+
+                self.add_step_to_partition(step)
+                return step
+
+        elif partition_size is not None:
+            # create partition
+
+            self.partition = MapReduceStep(
+                values=step.dataframe,
+                reduce='union',
+                step=[],
+                partition=partition_size
+            )
+            self.planner.plan.add_step(self.partition)
+
+            self.add_step_to_partition(step)
+            return step
+
+        else:
+            # next step can't be partitioned.
+            self.close_partition()
+
+        return self.planner.plan.add_step(step)
+
+    def add_step_to_partition(self, step):
+        step.step_num = f'{self.partition.step_num}_{len(self.partition.step)}'
+        self.partition.step.append(step)
+
+    def close_partition(self):
+        # return
+        # if partitions is exist - clear it and replace last stack item with it
+
+        if self.partition:
+            if len(self.step_stack) > 0:
+                self.step_stack[-1] = self.partition
+
+            self.partition = None

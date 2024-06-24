@@ -8,7 +8,7 @@ from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
 from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep,
-                                       QueryStep, SubSelectStep, ApplyPredictorRowStep)
+                                       QueryStep, SubSelectStep, ApplyPredictorRowStep, MapReduceStep)
 from mindsdb_sql.parser.utils import JoinType
 from mindsdb_sql import parse_sql
 
@@ -812,5 +812,68 @@ class TestPredictorParams:
 
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb',
                           predictor_metadata=[{'name': 'pred', 'integration_name': 'proj', 'to_predict': ['ttt']}])
+
+        assert plan.steps == expected_plan.steps
+
+    def test_partition(self):
+
+        sql = '''
+            select p1.* from int.tab1 a
+            join proj.pred1 p1            
+            join proj.pred2 p2
+            using partition_size=1000           
+        '''
+
+        query = parse_sql(sql)
+
+        expected_plan = QueryPlan(
+            steps=[
+                FetchDataframeStep(integration='int',
+                                   query=parse_sql('select * from tab1 as a')),
+                MapReduceStep(
+                    values=Result(0),
+                    step=[
+                        ApplyPredictorStep(
+                            step_num='1_0',
+                            namespace='proj', dataframe=Result(0), params={},
+                            predictor=Identifier('pred1', alias=Identifier('p1')),
+                        ),
+                        JoinStep(
+                            step_num='1_1',
+                            left=Result(0),
+                            right=Result('1_0'),
+                            query=Join(
+                                left=Identifier('tab1'),
+                                right=Identifier('tab2'),
+                                join_type=JoinType.JOIN,
+                            ),
+                        ),
+                        ApplyPredictorStep(
+                            step_num='1_2',
+                            namespace='proj', dataframe=Result('1_1'), params={},
+                            predictor=Identifier('pred2', alias=Identifier('p2')),
+                        ),
+                        JoinStep(
+                            step_num='1_3',
+                            left=Result('1_1'),
+                            right=Result('1_2'),
+                            query=Join(
+                                left=Identifier('tab1'),
+                                right=Identifier('tab2'),
+                                join_type=JoinType.JOIN,
+                            ),
+                        ),
+                    ],
+                    partition=1000,
+                ),
+                QueryStep(parse_sql("select p1.*"), from_table=Result(1)),
+            ],
+        )
+
+        plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb',
+                          predictor_metadata=[
+                              {'name': 'pred1', 'integration_name': 'proj', 'to_predict': ['ttt']},
+                              {'name': 'pred2', 'integration_name': 'proj', 'to_predict': ['ttt']}
+                          ])
 
         assert plan.steps == expected_plan.steps
