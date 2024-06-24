@@ -32,7 +32,6 @@ class TestPlanPredictorsSelect:
                                                                           ])
                                                                       ),
                                                          step_num=0,
-                                                         references=None,
                                                          ),
                                   ])
 

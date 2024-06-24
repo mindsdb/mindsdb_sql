@@ -37,7 +37,6 @@ class TestPlanIntegrationSelect:
                                                                           ])
                                                                       ),
                                                          step_num=0,
-                                                         references=None,
                                                          ),
                                   ])
 
@@ -361,7 +360,6 @@ class TestPlanIntegrationSelect:
                                                                           ])
                                                                       ),
                                                          step_num=0,
-                                                         references=None,
                                                          ),
                                   ])
 

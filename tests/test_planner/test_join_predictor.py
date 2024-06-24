@@ -445,7 +445,7 @@ class TestPredictorWithUsing:
         expected_plan = QueryPlan(
             steps=[
                 FetchDataframeStep(integration='int', raw_query='select * from tab1'),
-                SubSelectStep(step_num=1, references=[], query=Select(targets=[Star()]),
+                SubSelectStep(step_num=1, query=Select(targets=[Star()]),
                               dataframe=Result(0), table_name='t'),
                 ApplyPredictorStep(namespace='mindsdb', dataframe=Result(1),
                                    predictor=Identifier('pred'), params={'a': 1}),
