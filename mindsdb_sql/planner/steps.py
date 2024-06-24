@@ -3,10 +3,8 @@ from mindsdb_sql.planner.step_result import Result
 
 
 class PlanStep:
-    def __init__(self, step_num=None, references=None):
+    def __init__(self, step_num=None):
         self.step_num = step_num
-        self.references = references or []
-        self.result_data = None
 
     @property
     def result(self):
@@ -45,8 +43,6 @@ class ProjectStep(PlanStep):
         self.dataframe = dataframe
         self.ignore_doubles = ignore_doubles
 
-        if isinstance(dataframe, Result):
-            self.references.append(dataframe)
 
 # TODO remove
 class FilterStep(PlanStep):
@@ -56,8 +52,6 @@ class FilterStep(PlanStep):
         self.dataframe = dataframe
         self.query = query
 
-        if isinstance(dataframe, Result):
-            self.references.append(dataframe)
 
 # TODO remove
 class GroupByStep(PlanStep):
@@ -69,9 +63,6 @@ class GroupByStep(PlanStep):
         self.columns = columns
         self.targets = targets
 
-        if isinstance(dataframe, Result):
-            self.references.append(dataframe)
-
 
 class JoinStep(PlanStep):
     """Joins two dataframes, producing a new dataframe"""
@@ -80,12 +71,6 @@ class JoinStep(PlanStep):
         self.left = left
         self.right = right
         self.query = query
-
-        if isinstance(left, Result):
-            self.references.append(left)
-
-        if isinstance(right, Result):
-            self.references.append(right)
 
 
 class UnionStep(PlanStep):
@@ -96,11 +81,6 @@ class UnionStep(PlanStep):
         self.right = right
         self.unique = unique
 
-        if isinstance(left, Result):
-            self.references.append(left)
-
-        if isinstance(right, Result):
-            self.references.append(right)
 
 # TODO remove
 class OrderByStep(PlanStep):
@@ -111,9 +91,6 @@ class OrderByStep(PlanStep):
         self.dataframe = dataframe
         self.order_by = order_by
 
-        if isinstance(dataframe, Result):
-            self.references.append(dataframe)
-
 
 class LimitOffsetStep(PlanStep):
     """Applies limit and offset to a dataframe"""
@@ -122,9 +99,6 @@ class LimitOffsetStep(PlanStep):
         self.dataframe = dataframe
         self.limit = limit
         self.offset = offset
-
-        if isinstance(dataframe, Result):
-            self.references.append(dataframe)
 
 
 class FetchDataframeStep(PlanStep):
@@ -152,9 +126,6 @@ class ApplyPredictorStep(PlanStep):
         # rename columns in input data, struct: {a str: b Identifier}
         #  renames b to a
         self.columns_map = columns_map
-
-        if isinstance(dataframe, Result):
-            self.references.append(dataframe)
 
 
 class ApplyTimeseriesPredictorStep(ApplyPredictorStep):
