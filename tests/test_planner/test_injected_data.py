@@ -4,7 +4,7 @@ from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import (FilterStep, DataStep, ProjectStep, JoinStep, ApplyPredictorStep,
+from mindsdb_sql.planner.steps import (DataStep, JoinStep, ApplyPredictorStep,
                                        SubSelectStep, QueryStep)
 from mindsdb_sql.parser.utils import JoinType
 
