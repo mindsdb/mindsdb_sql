@@ -7,8 +7,7 @@ from mindsdb_sql.parser.ast import *
 from mindsdb_sql.planner import plan_query
 from mindsdb_sql.planner.query_plan import QueryPlan
 from mindsdb_sql.planner.step_result import Result
-from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, FilterStep, JoinStep, GroupByStep,
-                                       LimitOffsetStep, OrderByStep, ApplyPredictorStep, SubSelectStep, QueryStep)
+from mindsdb_sql.planner.steps import (FetchDataframeStep, ProjectStep, JoinStep, ApplyPredictorStep, SubSelectStep, QueryStep)
 from mindsdb_sql.parser.utils import JoinType
 from mindsdb_sql import parse_sql
 
@@ -434,7 +433,7 @@ class TestPlanJoinTables:
         expected_plan = QueryPlan(
             steps=[
                 FetchDataframeStep(integration='int1', raw_query='select raw query'),
-                SubSelectStep(step_num=1, references=[], query=Select(targets=[Star()]), dataframe=Result(0), table_name='t1'),
+                SubSelectStep(step_num=1, query=Select(targets=[Star()]), dataframe=Result(0), table_name='t1'),
                 ApplyPredictorStep(namespace='proj', dataframe=Result(1),
                                    predictor=Identifier('pred', alias=Identifier('m'))),
                 JoinStep(left=Result(1),
