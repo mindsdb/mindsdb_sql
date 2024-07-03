@@ -43,7 +43,7 @@ class MindsDBParser(Parser):
         ('left', AND),
         ('right', UNOT),
         ('left', EQUALS, NEQUALS),
-        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, BETWEEN, IS, IS_NOT, NOT_LIKE, LIKE),
+        ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, NOT_IN, BETWEEN, IS, IS_NOT, NOT_LIKE, LIKE),
         ('left', JSON_GET),
         ('left', PLUS, MINUS),
         ('left', STAR, DIVIDE),
@@ -1407,11 +1407,6 @@ class MindsDBParser(Parser):
     def star(self, p):
         return Star()
 
-    @_('expr NOT IN expr')
-    def expr(self, p):
-        op = p[1] + ' ' + p[2]
-        return BinaryOperation(op=op, args=(p.expr0, p.expr1))
-
     @_('expr PLUS expr',
        'expr MINUS expr',
        'expr STAR expr',
@@ -1435,7 +1430,8 @@ class MindsDBParser(Parser):
        'expr CONCAT expr',
        'expr JSON_GET constant',
        'expr JSON_GET_STR constant',
-       'expr IN expr')
+       'expr NOT_IN expr',
+       'expr IN expr',)
     def expr(self, p):
         if hasattr(p, 'LAST'):
             arg1 = Last()
