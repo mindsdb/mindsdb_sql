@@ -164,7 +164,7 @@ class MindsDBParser(Parser):
 
         return CreateAgent(
             name=p.identifier,
-            model=params.pop('model'),
+            model=params.pop('model', None),
             params=params,
             if_not_exists=p.if_not_exists_or_empty
         )
