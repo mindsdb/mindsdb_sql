@@ -814,7 +814,7 @@ class TestSelectStructure:
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
 
-    def test_where_precedence(self, dialect):
+    def test_is_not_precedence(self, dialect):
         query = "select * from t1 where a is not null and b = c"
         expected_ast = Select(
             targets=[Star()],
@@ -1036,3 +1036,23 @@ class TestMindsdb:
 
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
+
+    def test_not_in_precedence(self):
+        query = "select * from t1 where a = 1 and b not in (1, 2)"
+        expected_ast = Select(
+            targets=[Star()],
+            from_table=Identifier('t1'),
+            where=BinaryOperation(op='and', args=[
+                BinaryOperation(op='=', args=[
+                    Identifier('a'),
+                    Constant(1)
+                ]),
+                BinaryOperation(op='not in', args=[
+                    Identifier('b'),
+                    Tuple([Constant(1), Constant(2)])
+                ]),
+            ])
+        )
+        ast = parse_sql(query)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
