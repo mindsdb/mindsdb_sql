@@ -828,7 +828,7 @@ class MindsDBParser(Parser):
             targets=getattr(p, 'result_columns', None),
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
-            if_not_exists=hasattr(p, 'IF_NOT_EXISTS')
+            if_not_exists=False
         )
 
     @_('create_anomaly_detection_model USING kw_parameter_list')
@@ -1364,6 +1364,15 @@ class MindsDBParser(Parser):
     def expr(self, p):
         return Interval(p.string)
 
+    @_('EXISTS LPAREN select RPAREN')
+    def function(self, p):
+        return Exists(p.select)
+
+    @_('NOT_EXISTS LPAREN select RPAREN')
+    def function(self, p):
+        return NotExists(p.select)
+
+
     # arguments are optional in functions, so that things like `select database()` are possible
     @_('expr BETWEEN expr AND expr')
     def expr(self, p):
@@ -1764,20 +1773,20 @@ class MindsDBParser(Parser):
         return False
 
     @_(
-        'IF_NOT_EXISTS',
+        'IF NOT_EXISTS',
         'empty'
     )
     def if_not_exists_or_empty(self, p):
-        if hasattr(p, 'IF_NOT_EXISTS'):
+        if hasattr(p, 'NOT_EXISTS'):
             return True
         return False
 
     @_(
-        'IF_EXISTS',
+        'IF EXISTS',
         'empty'
     )
     def if_exists_or_empty(self, p):
-        if hasattr(p, 'IF_EXISTS'):
+        if hasattr(p, 'EXISTS'):
             return True
         return False
 
