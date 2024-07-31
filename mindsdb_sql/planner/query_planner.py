@@ -142,15 +142,6 @@ class QueryPlanner:
                 if isinstance(table, Join):
                     # skip for join
                     return
-                if table.alias is not None:
-                    prefix = table.alias.parts
-                else:
-                    prefix = table.parts
-
-                if len(node.parts) > 1:
-                    if node.parts[:len(prefix)] != prefix:
-                        raise PlanningException(f'Tried to query column {node.to_string()} from table'
-                                                f' {table.to_string()}, but a different table name has been specified.')
 
                 # keep column name for target
                 if is_target:
