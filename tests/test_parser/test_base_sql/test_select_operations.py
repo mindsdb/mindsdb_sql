@@ -1,9 +1,6 @@
 import pytest
 
 from mindsdb_sql import parse_sql
-from mindsdb_sql.parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, NullConstant
-from mindsdb_sql.parser.ast import Function, BetweenOperation
-from mindsdb_sql.parser.ast import Tuple
 from mindsdb_sql.parser.ast import *
 
 @pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])

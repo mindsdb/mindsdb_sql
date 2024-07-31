@@ -1341,6 +1341,10 @@ class MindsDBParser(Parser):
     def function(self, p):
         return Function(op=p[0].parts[0], args=[p.expr0], from_arg=p.expr1)
 
+    @_('identifier LPAREN expr FROM expr FOR expr RPAREN')
+    def function(self, p):
+        return Function(op=p[0].parts[0], args=[p.expr0, p.expr1, p.expr2])
+
     @_('DATABASE LPAREN RPAREN')
     def function(self, p):
         return Function(op=p.DATABASE, args=[])

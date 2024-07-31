@@ -1078,3 +1078,19 @@ class TestMindsdb:
         )
         ast = parse_sql(sql)
         assert str(ast) == str(expected_ast)
+
+    def test_substring(self):
+        expected_ast = Select(
+            targets=[Function(
+                op='substring',
+                args=[Identifier('phone'), Constant(1), Constant(2)]
+            )],
+        )
+
+        for sql in (
+                'SELECT substring(phone from 1 for 2)',
+                'SELECT substring(phone, 1, 2)'
+            ):
+
+            ast = parse_sql(sql)
+            assert str(ast) == str(expected_ast)
