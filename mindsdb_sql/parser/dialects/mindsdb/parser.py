@@ -1182,9 +1182,18 @@ class MindsDBParser(Parser):
         return query
 
     @_('LPAREN query RPAREN')
+    @_('LPAREN query RPAREN AS id')
+    @_('LPAREN query RPAREN AS id LPAREN result_columns RPAREN')
     def from_table(self, p):
         query = p.query
         query.parentheses = True
+        if hasattr(p, 'id'):
+            query.alias = Identifier(parts=[p.id])
+        if hasattr(p, 'result_columns'):
+            for i, col in enumerate(p.result_columns):
+                if i >= len(query.targets):
+                    break
+                query.targets[i].alias = col
         return query
 
     # keywords for table
