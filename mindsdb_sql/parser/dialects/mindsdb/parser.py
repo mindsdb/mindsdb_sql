@@ -1409,6 +1409,8 @@ class MindsDBParser(Parser):
 
     @_('expr PLUS expr',
        'expr MINUS expr',
+       'expr MATCH expr',
+       'expr NOT_MATCH expr',
        'expr STAR expr',
        'expr DIVIDE expr',
        'expr MODULO expr',

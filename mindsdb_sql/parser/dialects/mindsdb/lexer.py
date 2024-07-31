@@ -69,7 +69,7 @@ class MindsDBLexer(Lexer):
         LBRACE, RBRACE, LBRACKET, RBRACKET, COLON, SEMICOLON,
 
         # Operators
-        PLUS, MINUS, DIVIDE, MODULO,
+        PLUS, MINUS, MATCH, NOT_MATCH, DIVIDE, MODULO,
         EQUALS, NEQUALS, GREATER, GEQ, LESS, LEQ,
         AND, OR, NOT, IS, IS_NOT,
         IN, NOT_IN, LIKE, NOT_LIKE, CONCAT, BETWEEN, WINDOW, OVER, PARTITION_BY,
@@ -269,6 +269,8 @@ class MindsDBLexer(Lexer):
     JSON_GET_STR = r'->>'
     PLUS = r'\+'
     MINUS = r'-'
+    MATCH = r'~'
+    NOT_MATCH = r'!~'
     DIVIDE = r'/'
     MODULO = r'%'
     EQUALS = r'='
