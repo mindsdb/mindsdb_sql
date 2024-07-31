@@ -382,14 +382,13 @@ class QueryPlanner:
             if self.integrations.get(int_name, {}).get('class_type') != 'api':
 
                 # if no predictor inside = run as is
-                return self.plan_integration_nested_select(select)
+                return self.plan_integration_nested_select(select, int_name)
 
         return self.plan_mdb_nested_select(select)
 
-    def plan_integration_nested_select(self, select):
+    def plan_integration_nested_select(self, select, integration_name):
         fetch_df_select = copy.deepcopy(select)
         deepest_select = get_deepest_select(fetch_df_select)
-        integration_name, table = self.resolve_database_table(deepest_select.from_table)
         self.prepare_integration_select(integration_name, deepest_select)
         return self.plan.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 
