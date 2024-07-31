@@ -73,6 +73,7 @@ def parse_sql2(sql, dialect='mindsdb'):
         or ' || ' in sql  # replaced to concat(
         or 'current_user()' in sql  # replaced to CURRENT_USER
         or 'user()' in sql  # replaced to USER
+        or 'not exists' in sql  # replaced to not(exits(
     ):
 
         # sqlalchemy could add own aliases for constant

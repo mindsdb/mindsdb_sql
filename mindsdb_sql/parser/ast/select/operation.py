@@ -185,3 +185,15 @@ class Interval(Operation):
     def assert_arguments(self):
         if len(self.args) != 1:
             raise ParsingException(f'Expected one argument for operation "{self.op}"')
+
+
+class Exists(Operation):
+    def __init__(self, query):
+        self.query = query
+        super().__init__(op='exists', args=[query])
+
+
+class NotExists(Operation):
+    def __init__(self, query):
+        self.query = query
+        super().__init__(op='not exists', args=[query])

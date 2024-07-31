@@ -44,7 +44,7 @@ class MindsDBLexer(Lexer):
         GLOBAL, PROCEDURE, FUNCTION, INDEX, WARNINGS,
         ENGINES, CHARSET, COLLATION, PLUGINS, CHARACTER,
         PERSIST, PERSIST_ONLY,
-        IF_EXISTS, IF_NOT_EXISTS, IF, COLUMNS, FIELDS, COLLATE, SEARCH_PATH,
+        EXISTS, NOT_EXISTS, IF, COLUMNS, FIELDS, COLLATE, SEARCH_PATH,
         VARIABLE, SYSTEM_VARIABLE,
 
         # SELECT Keywords
@@ -174,8 +174,8 @@ class MindsDBLexer(Lexer):
     PLUGINS = r'\bPLUGINS\b'
     PERSIST = r'\bPERSIST\b'
     PERSIST_ONLY = r'\bPERSIST_ONLY\b'
-    IF_EXISTS = r'\bIF[\s]+EXISTS\b'
-    IF_NOT_EXISTS = r'\bIF[\s]+NOT[\s]+EXISTS\b'
+    EXISTS = r'\bEXISTS\b'
+    NOT_EXISTS = r'\bNOT[\s]+EXISTS\b'
     IF = r'\bIF\b'
     COLUMNS = r'\bCOLUMNS\b'
     FIELDS = r'\bFIELDS\b'

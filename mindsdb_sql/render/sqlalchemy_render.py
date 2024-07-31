@@ -269,6 +269,12 @@ class SqlalchemyRender:
             col = sa.column(t.to_string(), is_literal=True)
         elif isinstance(t, ast.Latest):
             col = sa.column(t.to_string(), is_literal=True)
+        elif isinstance(t, ast.Exists):
+            sub_stmt = self.prepare_select(t.query)
+            col = sub_stmt.exists()
+        elif isinstance(t, ast.NotExists):
+            sub_stmt = self.prepare_select(t.query)
+            col = ~sub_stmt.exists()
         else:
             # some other complex object?
             raise NotImplementedError(f'Column {t}')
