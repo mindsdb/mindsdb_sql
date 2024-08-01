@@ -142,15 +142,6 @@ class QueryPlanner:
                 if isinstance(table, Join):
                     # skip for join
                     return
-                if table.alias is not None:
-                    prefix = table.alias.parts
-                else:
-                    prefix = table.parts
-
-                if len(node.parts) > 1:
-                    if node.parts[:len(prefix)] != prefix:
-                        raise PlanningException(f'Tried to query column {node.to_string()} from table'
-                                                f' {table.to_string()}, but a different table name has been specified.')
 
                 # keep column name for target
                 if is_target:
@@ -382,14 +373,13 @@ class QueryPlanner:
             if self.integrations.get(int_name, {}).get('class_type') != 'api':
 
                 # if no predictor inside = run as is
-                return self.plan_integration_nested_select(select)
+                return self.plan_integration_nested_select(select, int_name)
 
         return self.plan_mdb_nested_select(select)
 
-    def plan_integration_nested_select(self, select):
+    def plan_integration_nested_select(self, select, integration_name):
         fetch_df_select = copy.deepcopy(select)
         deepest_select = get_deepest_select(fetch_df_select)
-        integration_name, table = self.resolve_database_table(deepest_select.from_table)
         self.prepare_integration_select(integration_name, deepest_select)
         return self.plan.add_step(FetchDataframeStep(integration=integration_name, query=fetch_df_select))
 

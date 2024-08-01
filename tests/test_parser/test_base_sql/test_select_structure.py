@@ -1056,3 +1056,41 @@ class TestMindsdb:
         ast = parse_sql(query)
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_select_from_subquery_with_columns(self):
+        sql = f"""
+            SELECT * FROM 
+              (SELECT col1, col2 b
+               FROM t1) 
+              AS sub (c1, c2)
+            """
+        expected_ast = Select(
+            targets=[Star()],
+            from_table=Select(
+                targets=[
+                    Identifier(parts=['col1'], alias=Identifier('c1')),
+                    Identifier(parts=['col2'], alias=Identifier('c2'))
+                ],
+                from_table=Identifier(parts=['t1']),
+                alias=Identifier('sub'),
+                parentheses=True
+            )
+        )
+        ast = parse_sql(sql)
+        assert str(ast) == str(expected_ast)
+
+    def test_substring(self):
+        expected_ast = Select(
+            targets=[Function(
+                op='substring',
+                args=[Identifier('phone'), Constant(1), Constant(2)]
+            )],
+        )
+
+        for sql in (
+                'SELECT substring(phone from 1 for 2)',
+                'SELECT substring(phone, 1, 2)'
+            ):
+
+            ast = parse_sql(sql)
+            assert str(ast) == str(expected_ast)

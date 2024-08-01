@@ -828,7 +828,7 @@ class MindsDBParser(Parser):
             targets=getattr(p, 'result_columns', None),
             integration_name=getattr(p, 'identifier1', None),
             query_str=query_str,
-            if_not_exists=hasattr(p, 'IF_NOT_EXISTS')
+            if_not_exists=False
         )
 
     @_('create_anomaly_detection_model USING kw_parameter_list')
@@ -1182,9 +1182,18 @@ class MindsDBParser(Parser):
         return query
 
     @_('LPAREN query RPAREN')
+    @_('LPAREN query RPAREN AS id')
+    @_('LPAREN query RPAREN AS id LPAREN result_columns RPAREN')
     def from_table(self, p):
         query = p.query
         query.parentheses = True
+        if hasattr(p, 'id'):
+            query.alias = Identifier(parts=[p.id])
+        if hasattr(p, 'result_columns'):
+            for i, col in enumerate(p.result_columns):
+                if i >= len(query.targets):
+                    break
+                query.targets[i].alias = col
         return query
 
     # keywords for table
@@ -1332,6 +1341,10 @@ class MindsDBParser(Parser):
     def function(self, p):
         return Function(op=p[0].parts[0], args=[p.expr0], from_arg=p.expr1)
 
+    @_('identifier LPAREN expr FROM expr FOR expr RPAREN')
+    def function(self, p):
+        return Function(op=p[0].parts[0], args=[p.expr0, p.expr1, p.expr2])
+
     @_('DATABASE LPAREN RPAREN')
     def function(self, p):
         return Function(op=p.DATABASE, args=[])
@@ -1363,6 +1376,15 @@ class MindsDBParser(Parser):
     @_('INTERVAL string')
     def expr(self, p):
         return Interval(p.string)
+
+    @_('EXISTS LPAREN select RPAREN')
+    def function(self, p):
+        return Exists(p.select)
+
+    @_('NOT_EXISTS LPAREN select RPAREN')
+    def function(self, p):
+        return NotExists(p.select)
+
 
     # arguments are optional in functions, so that things like `select database()` are possible
     @_('expr BETWEEN expr AND expr')
@@ -1409,6 +1431,8 @@ class MindsDBParser(Parser):
 
     @_('expr PLUS expr',
        'expr MINUS expr',
+       'expr MATCH expr',
+       'expr NOT_MATCH expr',
        'expr STAR expr',
        'expr DIVIDE expr',
        'expr MODULO expr',
@@ -1764,20 +1788,20 @@ class MindsDBParser(Parser):
         return False
 
     @_(
-        'IF_NOT_EXISTS',
+        'IF NOT_EXISTS',
         'empty'
     )
     def if_not_exists_or_empty(self, p):
-        if hasattr(p, 'IF_NOT_EXISTS'):
+        if hasattr(p, 'NOT_EXISTS'):
             return True
         return False
 
     @_(
-        'IF_EXISTS',
+        'IF EXISTS',
         'empty'
     )
     def if_exists_or_empty(self, p):
-        if hasattr(p, 'IF_EXISTS'):
+        if hasattr(p, 'EXISTS'):
             return True
         return False
 

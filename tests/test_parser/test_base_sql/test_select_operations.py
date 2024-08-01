@@ -1,9 +1,6 @@
 import pytest
 
 from mindsdb_sql import parse_sql
-from mindsdb_sql.parser.ast import Identifier, Constant, Select, BinaryOperation, UnaryOperation, NullConstant
-from mindsdb_sql.parser.ast import Function, BetweenOperation
-from mindsdb_sql.parser.ast import Tuple
 from mindsdb_sql.parser.ast import *
 
 @pytest.mark.parametrize('dialect', ['sqlite', 'mysql', 'mindsdb'])
@@ -599,3 +596,42 @@ class TestOperationsMindsdb:
         assert str(ast).lower() == sql.lower()
         assert str(ast) == str(expected_ast)
         assert ast.to_tree() == expected_ast.to_tree()
+
+    def test_exits(self):
+
+        for exist in [True, False]:
+            prefix = ''
+            cls = Exists
+            if not exist:
+                prefix = 'not'
+                cls = NotExists
+
+            sql = f'''
+               select * from db.orders
+                where 
+                  orderdate < '1993-05-01'
+                  and {prefix} exists (
+                    select * from db.item
+                    where l_orderkey = o_orderkey
+                  )
+                group by orderpriority
+            '''
+            ast = parse_sql(sql)
+
+            expected_ast = Select(
+                targets=[Star()],
+                from_table=Identifier('db.orders'),
+                where=BinaryOperation(op='and', args=[
+                    BinaryOperation(op='<', args=[Identifier('orderdate'), Constant('1993-05-01')]),
+                    cls(Select(
+                        targets=[Star()],
+                        from_table=Identifier('db.item'),
+                        where=BinaryOperation(op='=', args=[
+                            Identifier('l_orderkey'), Identifier('o_orderkey')
+                        ])
+                    ))
+                ]),
+                group_by=[Identifier('orderpriority')],
+            )
+
+            assert str(ast) == str(expected_ast)
