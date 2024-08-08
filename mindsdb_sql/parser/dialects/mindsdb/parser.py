@@ -1374,8 +1374,17 @@ class MindsDBParser(Parser):
         return Function(op=name, args=args, namespace=namespace)
 
     @_('INTERVAL string')
+    @_('INTERVAL string id')
+    @_('INTERVAL integer id')
     def expr(self, p):
-        return Interval(p.string)
+        if hasattr(p, 'id'):
+            if hasattr(p, 'integer'):
+                info = f'{p.integer} {p.id}'
+            else:
+                info = f'{p.string} {p.id}'
+        else:
+            info = p.string
+        return Interval(info)
 
     @_('EXISTS LPAREN select RPAREN')
     def function(self, p):
