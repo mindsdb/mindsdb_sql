@@ -230,32 +230,33 @@ class TestMindsdb:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+
     def test_interval(self):
-        sql = """
-           select interval '1 day'+1 from aaa
-           where 'a' > interval "3 day 1 min"
-        """
+        for value in ('1 day', "'1' day", "'1 day'"):
+            sql = f"""
+               select interval {value} + 1 from aaa
+               where 'a' > interval "3 day 1 min"
+            """
 
-        expected_ast = Select(
-            targets=[
-                BinaryOperation(op='+', args=[
-                    Interval('1 day'),
-                    Constant(1)
-                ])
-            ],
-            from_table=Identifier('aaa'),
-            where=BinaryOperation(
-                op='>',
-                args=[
-                    Constant('a'),
-                    Interval('3 day 1 min'),
-                ]
+            expected_ast = Select(
+                targets=[
+                    BinaryOperation(op='+', args=[
+                        Interval('1 day'),
+                        Constant(1)
+                    ])
+                ],
+                from_table=Identifier('aaa'),
+                where=BinaryOperation(
+                    op='>',
+                    args=[
+                        Constant('a'),
+                        Interval('3 day 1 min'),
+                    ]
+                )
             )
-        )
 
-        ast = parse_sql(sql)
+            ast = parse_sql(sql)
 
-        assert str(ast).lower() == str(expected_ast).lower()
-        assert ast.to_tree() == expected_ast.to_tree()
-
+            assert str(ast).lower() == str(expected_ast).lower()
+            assert ast.to_tree() == expected_ast.to_tree()
 
