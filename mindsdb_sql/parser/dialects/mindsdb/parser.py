@@ -1421,6 +1421,15 @@ class MindsDBParser(Parser):
     def expr(self, p):
         return TypeCast(arg=p.expr, type_name=str(p.id))
 
+    @_('DATE string')
+    def expr(self, p):
+        return TypeCast(arg=Constant(p.string), type_name=p.DATE)
+
+    @_('expr TYPECAST id')
+    @_('expr TYPECAST DATE')
+    def expr(self, p):
+        return TypeCast(arg=p.expr, type_name=p[2])
+
     @_('enumeration')
     def expr_list(self, p):
         return p.enumeration
@@ -1652,6 +1661,7 @@ class MindsDBParser(Parser):
     @_('ID',
        'BEGIN',
        'CAST',
+       'DATE',
        'CHANNEL',
        'CHARSET',
        'CODE',
