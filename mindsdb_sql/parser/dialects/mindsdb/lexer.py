@@ -71,12 +71,12 @@ class MindsDBLexer(Lexer):
         # Operators
         PLUS, MINUS, MATCH, NOT_MATCH, DIVIDE, MODULO,
         EQUALS, NEQUALS, GREATER, GEQ, LESS, LEQ,
-        AND, OR, NOT, IS, IS_NOT,
+        AND, OR, NOT, IS, IS_NOT, TYPECAST,
         IN, NOT_IN, LIKE, NOT_LIKE, CONCAT, BETWEEN, WINDOW, OVER, PARTITION_BY,
         JSON_GET, JSON_GET_STR, INTERVAL,
 
         # Data types
-        CAST, ID, INTEGER, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE,
+        CAST, ID, INTEGER, DATE, FLOAT, QUOTE_STRING, DQUOTE_STRING, NULL, TRUE, FALSE,
 
     }
 
@@ -148,6 +148,7 @@ class MindsDBLexer(Lexer):
     CONVERT = r'\bCONVERT\b'
     DESCRIBE = r'\bDESCRIBE\b'
     BEGIN = r'\bBEGIN\b'
+    DATE = r'\bDATE\b'
 
     # SHOW
     SHOW = r'\bSHOW\b'
@@ -251,6 +252,7 @@ class MindsDBLexer(Lexer):
     VALUES = r'\bVALUES\b'
 
     # Special
+    TYPECAST = r'\:\:'
     DOT = r'\.'
     COMMA = r','
     LPAREN = r'\('
