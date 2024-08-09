@@ -1094,3 +1094,35 @@ class TestMindsdb:
 
             ast = parse_sql(sql)
             assert str(ast) == str(expected_ast)
+
+    def test_alternative_casting(self):
+
+        # int
+        expected_ast = Select(targets=[
+            TypeCast(type_name='CHAR', arg=Constant('1998')),
+            TypeCast(type_name='CHAR', arg=Identifier('col1'), alias=Identifier('col2'))
+        ])
+
+        sql = f"SELECT '1998'::CHAR, col1::CHAR col2"
+        ast = parse_sql(sql)
+        assert str(ast) == str(expected_ast)
+
+        # date
+        expected_ast = Select(targets=[
+            TypeCast(type_name='DATE', arg=Constant('1998-12-01')),
+            TypeCast(type_name='DATE', arg=Identifier('col1'), alias=Identifier('col2'))
+        ])
+
+        sql = f"SELECT '1998-12-01'::DATE, col1::DATE col2"
+        ast = parse_sql(sql)
+        assert str(ast) == str(expected_ast)
+
+        #
+        expected_ast = Select(targets=[
+            TypeCast(type_name='DATE', arg=Constant('1998-12-01')),
+        ])
+
+        sql = f"SELECT DATE '1998-12-01'"
+        ast = parse_sql(sql)
+        assert str(ast) == str(expected_ast)
+

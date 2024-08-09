@@ -1374,8 +1374,17 @@ class MindsDBParser(Parser):
         return Function(op=name, args=args, namespace=namespace)
 
     @_('INTERVAL string')
+    @_('INTERVAL string id')
+    @_('INTERVAL integer id')
     def expr(self, p):
-        return Interval(p.string)
+        if hasattr(p, 'id'):
+            if hasattr(p, 'integer'):
+                info = f'{p.integer} {p.id}'
+            else:
+                info = f'{p.string} {p.id}'
+        else:
+            info = p.string
+        return Interval(info)
 
     @_('EXISTS LPAREN select RPAREN')
     def function(self, p):
@@ -1411,6 +1420,15 @@ class MindsDBParser(Parser):
        'CONVERT LPAREN expr USING id RPAREN')
     def expr(self, p):
         return TypeCast(arg=p.expr, type_name=str(p.id))
+
+    @_('DATE string')
+    def expr(self, p):
+        return TypeCast(arg=Constant(p.string), type_name=p.DATE)
+
+    @_('expr TYPECAST id')
+    @_('expr TYPECAST DATE')
+    def expr(self, p):
+        return TypeCast(arg=p.expr, type_name=p[2])
 
     @_('enumeration')
     def expr_list(self, p):
@@ -1643,6 +1661,7 @@ class MindsDBParser(Parser):
     @_('ID',
        'BEGIN',
        'CAST',
+       'DATE',
        'CHANNEL',
        'CHARSET',
        'CODE',
