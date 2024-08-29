@@ -539,13 +539,18 @@ class SqlalchemyRender:
                 col.is_primary_key = True
                 col.type = 'INT'
 
+            kwargs = {
+                'primary_key': col.is_primary_key,
+                'server_default': default,
+            }
+            if col.nullable is not None:
+                kwargs['nullable'] = col.nullable
+
             columns.append(
                 sa.Column(
                     col.name,
                     self.get_type(col.type),
-                    primary_key=col.is_primary_key,
-                    server_default=default,
-                    nullable=col.nullable
+                    **kwargs
                 )
             )
 
