@@ -614,16 +614,16 @@ class MindsDBParser(Parser):
                       from_select=p.select)
 
     # INSERT
-    @_('INSERT INTO identifier LPAREN result_columns RPAREN select',
+    @_('INSERT INTO identifier LPAREN column_list RPAREN select',
        'INSERT INTO identifier select')
     def insert(self, p):
-        columns = getattr(p, 'result_columns', None)
+        columns = getattr(p, 'column_list', None)
         return Insert(table=p.identifier, columns=columns, from_select=p.select)
 
-    @_('INSERT INTO identifier LPAREN result_columns RPAREN VALUES expr_list_set',
+    @_('INSERT INTO identifier LPAREN column_list RPAREN VALUES expr_list_set',
        'INSERT INTO identifier VALUES expr_list_set')
     def insert(self, p):
-        columns = getattr(p, 'result_columns', None)
+        columns = getattr(p, 'column_list', None)
         return Insert(table=p.identifier, columns=columns, values=p.expr_list_set)
 
     @_('expr_list_set COMMA expr_list_set')
@@ -1183,17 +1183,17 @@ class MindsDBParser(Parser):
 
     @_('LPAREN query RPAREN')
     @_('LPAREN query RPAREN AS id')
-    @_('LPAREN query RPAREN AS id LPAREN result_columns RPAREN')
+    @_('LPAREN query RPAREN AS id LPAREN column_list RPAREN')
     def from_table(self, p):
         query = p.query
         query.parentheses = True
         if hasattr(p, 'id'):
             query.alias = Identifier(parts=[p.id])
-        if hasattr(p, 'result_columns'):
-            for i, col in enumerate(p.result_columns):
+        if hasattr(p, 'column_list'):
+            for i, col in enumerate(p.column_list):
                 if i >= len(query.targets):
                     break
-                query.targets[i].alias = col
+                query.targets[i].alias = Identifier(parts=[col])
         return query
 
     # keywords for table
@@ -1276,6 +1276,13 @@ class MindsDBParser(Parser):
        'window_function')
     def result_column(self, p):
         return p[0]
+
+    @_('column_list COMMA id',
+       'id')
+    def column_list(self, p):
+        column_list = getattr(p, 'column_list', [])
+        column_list.append(p.id)
+        return column_list
 
     # case
     @_('CASE case_conditions ELSE expr END')
