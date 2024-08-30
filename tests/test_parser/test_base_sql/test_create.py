@@ -81,9 +81,77 @@ class TestCreateMindsdb:
                     City varchar
                  )
                 '''
-                print(sql)
                 ast = parse_sql(sql)
 
                 assert str(ast).lower() == str(expected_ast).lower()
                 assert ast.to_tree() == expected_ast.to_tree()
+
+        # test with primary keys / defaults
+        # using serial
+
+        sql = f'''
+         CREATE TABLE mydb.Persons(
+            PersonID serial,
+            active BOOL NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP            
+         )
+        '''
+        ast = parse_sql(sql)
+
+        expected_ast = CreateTable(
+            name=Identifier('mydb.Persons'),
+            columns=[
+                TableColumn(name='PersonID', type='serial'),
+                TableColumn(name='active', type='BOOL', nullable=False),
+                TableColumn(name='created_at', type='TIMESTAMP', default='CURRENT_TIMESTAMP'),
+            ]
+        )
+
+        assert str(ast).lower() == str(expected_ast).lower()
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        # using primary key column
+
+        sql = f'''
+         CREATE TABLE mydb.Persons(
+            PersonID INT PRIMARY KEY,
+            name TEXT NULL   
+         )
+        '''
+        ast = parse_sql(sql)
+
+        expected_ast = CreateTable(
+            name=Identifier('mydb.Persons'),
+            columns=[
+                TableColumn(name='PersonID', type='INT', is_primary_key=True),
+                TableColumn(name='name', type='TEXT', nullable=True),
+            ]
+        )
+
+        assert str(ast).lower() == str(expected_ast).lower()
+        assert ast.to_tree() == expected_ast.to_tree()
+
+        # multiple primary keys
+
+        sql = f'''
+         CREATE TABLE mydb.Persons(
+            location_id INT,
+            num INT,
+            name TEXT,
+            PRIMARY KEY (location_id, num)  
+         )
+        '''
+        ast = parse_sql(sql)
+
+        expected_ast = CreateTable(
+            name=Identifier('mydb.Persons'),
+            columns=[
+                TableColumn(name='location_id', type='INT', is_primary_key=True),
+                TableColumn(name='num', type='INT', is_primary_key=True),
+                TableColumn(name='name', type='TEXT'),
+            ]
+        )
+
+        assert str(ast).lower() == str(expected_ast).lower()
+        assert ast.to_tree() == expected_ast.to_tree()
 

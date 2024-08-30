@@ -9,12 +9,14 @@ except ImportError:
 
 
 class TableColumn():
-    def __init__(self, name, type='integer', length=None):
+    def __init__(self, name, type='integer', length=None, default=None,
+                 is_primary_key=False, nullable=None):
         self.name = name
         self.type = type
-        self.is_primary_key = False
-        self.default = None
+        self.is_primary_key = is_primary_key
+        self.default = default
         self.length = length
+        self.nullable = nullable
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -96,7 +98,12 @@ class CreateTable(ASTNode):
                     type = str(col.type)
                 if col.length is not None:
                     type = f'{type}({col.length})'
-                columns.append( f'{col.name} {type}')
+                col_str = f'{col.name} {type}'
+                if col.nullable is True:
+                    col_str += ' NULL'
+                elif col.nullable is False:
+                    col_str += ' NOT NULL'
+                columns.append(col_str)
 
             columns_str = '({})'.format(', '.join(columns))
 
