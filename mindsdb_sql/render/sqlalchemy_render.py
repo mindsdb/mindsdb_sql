@@ -538,7 +538,8 @@ class SqlalchemyRender:
             if col.default is not None:
                 if isinstance(col.default, str):
                     default = sa.text(col.default)
-            if col.type.lower() == 'serial':
+
+            if isinstance(col.type, str) and col.type.lower() == 'serial':
                 col.is_primary_key = True
                 col.type = 'INT'
 
