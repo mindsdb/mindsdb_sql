@@ -31,7 +31,10 @@ class INTERVAL(ColumnElement):
 
 @compiles(INTERVAL)
 def _compile_interval(element, compiler, **kw):
-    return f"INTERVAL '{element.info}'"
+    items = element.info.split(' ', maxsplit=1)
+    # quote first element
+    items[0] = f"'{items[0]}'"
+    return "INTERVAL " + " ".join(items)
 
 
 class SqlalchemyRender:

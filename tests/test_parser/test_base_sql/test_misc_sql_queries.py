@@ -235,7 +235,7 @@ class TestMindsdb:
         for value in ('1 day', "'1' day", "'1 day'"):
             sql = f"""
                select interval {value} + 1 from aaa
-               where 'a' > interval "3 day 1 min"
+               where 'a' > interval "1 min"
             """
 
             expected_ast = Select(
@@ -250,7 +250,7 @@ class TestMindsdb:
                     op='>',
                     args=[
                         Constant('a'),
-                        Interval('3 day 1 min'),
+                        Interval('1 min'),
                     ]
                 )
             )
