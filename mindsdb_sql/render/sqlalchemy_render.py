@@ -31,7 +31,10 @@ class INTERVAL(ColumnElement):
 
 @compiles(INTERVAL)
 def _compile_interval(element, compiler, **kw):
-    return f"INTERVAL '{element.info}'"
+    items = element.info.split(' ', maxsplit=1)
+    # quote first element
+    items[0] = f"'{items[0]}'"
+    return "INTERVAL " + " ".join(items)
 
 
 class SqlalchemyRender:
@@ -67,6 +70,7 @@ class SqlalchemyRender:
         self.types_map = {}
         for type_name in sa_type_names:
             self.types_map[type_name.upper()] = getattr(sa.types, type_name)
+        self.types_map['BOOL'] = self.types_map['BOOLEAN']
 
     def to_column(self, parts):
         # because sqlalchemy doesn't allow columns consist from parts therefore we do it manually
@@ -532,15 +536,24 @@ class SqlalchemyRender:
         for col in ast_query.columns:
             default = None
             if col.default is not None:
-                if isinstance(col.default, ast.Function):
-                    default = self.to_function(col.default)
+                if isinstance(col.default, str):
+                    default = sa.text(col.default)
+            if col.type.lower() == 'serial':
+                col.is_primary_key = True
+                col.type = 'INT'
+
+            kwargs = {
+                'primary_key': col.is_primary_key,
+                'server_default': default,
+            }
+            if col.nullable is not None:
+                kwargs['nullable'] = col.nullable
 
             columns.append(
                 sa.Column(
                     col.name,
                     self.get_type(col.type),
-                    primary_key=col.is_primary_key,
-                    default=default,
+                    **kwargs
                 )
             )
 

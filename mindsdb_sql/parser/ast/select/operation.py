@@ -177,7 +177,7 @@ class Interval(Operation):
         super().__init__(op='interval', args=[info, ])
 
     def get_string(self, *args, **kwargs):
-        return f'INTERVAL {repr(self.args[0])}'
+        return f'INTERVAL {self.args[0]}'
 
     def to_tree(self, *args, level=0, **kwargs):
         return self.get_string( *args, **kwargs)

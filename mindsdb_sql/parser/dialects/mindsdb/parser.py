@@ -614,16 +614,16 @@ class MindsDBParser(Parser):
                       from_select=p.select)
 
     # INSERT
-    @_('INSERT INTO identifier LPAREN result_columns RPAREN select',
+    @_('INSERT INTO identifier LPAREN column_list RPAREN select',
        'INSERT INTO identifier select')
     def insert(self, p):
-        columns = getattr(p, 'result_columns', None)
+        columns = getattr(p, 'column_list', None)
         return Insert(table=p.identifier, columns=columns, from_select=p.select)
 
-    @_('INSERT INTO identifier LPAREN result_columns RPAREN VALUES expr_list_set',
+    @_('INSERT INTO identifier LPAREN column_list RPAREN VALUES expr_list_set',
        'INSERT INTO identifier VALUES expr_list_set')
     def insert(self, p):
-        columns = getattr(p, 'result_columns', None)
+        columns = getattr(p, 'column_list', None)
         return Insert(table=p.identifier, columns=columns, values=p.expr_list_set)
 
     @_('expr_list_set COMMA expr_list_set')
@@ -706,13 +706,42 @@ class MindsDBParser(Parser):
 
     # create table
     @_('id id',
-       'id id LPAREN INTEGER RPAREN')
+       'id id DEFAULT id',
+       'id id PRIMARY_KEY',
+       'id id LPAREN INTEGER RPAREN',
+       'id id LPAREN INTEGER RPAREN DEFAULT id',
+       'PRIMARY_KEY LPAREN column_list RPAREN',
+       )
     def table_column(self, p):
+        default = None
+        if hasattr(p, 'DEFAULT'):
+            # get last element
+            default = p[len(p) - 1]
+
+        is_primary_key = False
+        if hasattr(p, 'column_list'):
+            # is list of primary keys
+            return p.column_list
+
+        elif hasattr(p, 'PRIMARY_KEY'):
+            is_primary_key = True
+
         return TableColumn(
             name=p[0],
             type=p[1],
-            length=getattr(p, 'INTEGER', None)
+            length=getattr(p, 'INTEGER', None),
+            default=default,
+            is_primary_key=is_primary_key
         )
+
+    @_('table_column NULL',
+       'table_column NOT NULL')
+    def table_column(self, p):
+        nullable = True
+        if hasattr(p, 'NOT'):
+            nullable = False
+        p.table_column.nullable = nullable
+        return p.table_column
 
     @_('table_column',
        'table_column_list COMMA table_column')
@@ -723,9 +752,20 @@ class MindsDBParser(Parser):
 
     @_('CREATE replace_or_empty TABLE if_not_exists_or_empty identifier LPAREN table_column_list RPAREN')
     def create_table(self, p):
+        table_columns = {}
+        primary_keys = []
+        for item in p.table_column_list:
+            if isinstance(item, TableColumn):
+                table_columns[item.name] = item
+            else:
+                primary_keys = item
+        for col_name in primary_keys:
+            if col_name in table_columns:
+                table_columns[col_name].is_primary_key = True
+
         return CreateTable(
             name=p.identifier,
-            columns=p.table_column_list,
+            columns=list(table_columns.values()),
             is_replace=getattr(p, 'replace_or_empty', False),
             if_not_exists=getattr(p, 'if_not_exists_or_empty', False)
         )
@@ -1183,17 +1223,17 @@ class MindsDBParser(Parser):
 
     @_('LPAREN query RPAREN')
     @_('LPAREN query RPAREN AS id')
-    @_('LPAREN query RPAREN AS id LPAREN result_columns RPAREN')
+    @_('LPAREN query RPAREN AS id LPAREN column_list RPAREN')
     def from_table(self, p):
         query = p.query
         query.parentheses = True
         if hasattr(p, 'id'):
             query.alias = Identifier(parts=[p.id])
-        if hasattr(p, 'result_columns'):
-            for i, col in enumerate(p.result_columns):
+        if hasattr(p, 'column_list'):
+            for i, col in enumerate(p.column_list):
                 if i >= len(query.targets):
                     break
-                query.targets[i].alias = col
+                query.targets[i].alias = Identifier(parts=[col])
         return query
 
     # keywords for table
@@ -1276,6 +1316,13 @@ class MindsDBParser(Parser):
        'window_function')
     def result_column(self, p):
         return p[0]
+
+    @_('column_list COMMA id',
+       'id')
+    def column_list(self, p):
+        column_list = getattr(p, 'column_list', [])
+        column_list.append(p.id)
+        return column_list
 
     # case
     @_('CASE case_conditions ELSE expr END')
@@ -1735,6 +1782,7 @@ class MindsDBParser(Parser):
        'VIEWS',
        'WARNINGS',
        'MODEL',
+       'DEFAULT',
        'MODELS',
        'AGENT',
        'SCHEMAS',
