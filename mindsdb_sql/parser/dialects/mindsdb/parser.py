@@ -1116,17 +1116,21 @@ class MindsDBParser(Parser):
         p.ordering_term.nulls = p.NULLS_LAST
         return p.ordering_term
 
-    @_('identifier DESC')
+    @_('ordering_term DESC')
     def ordering_term(self, p):
-        return OrderBy(field=p.identifier, direction='DESC')
+        item = p.ordering_term
+        item.direction = 'DESC'
+        return item
 
-    @_('identifier ASC')
+    @_('ordering_term ASC')
     def ordering_term(self, p):
-        return OrderBy(field=p.identifier, direction='ASC')
+        item = p.ordering_term
+        item.direction = 'ASC'
+        return item
 
-    @_('identifier')
+    @_('expr')
     def ordering_term(self, p):
-        return OrderBy(field=p.identifier, direction='default')
+        return OrderBy(field=p.expr, direction='default')
 
     @_('select USING kw_parameter_list')
     def select(self, p):
