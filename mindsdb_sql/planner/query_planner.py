@@ -201,7 +201,7 @@ class QueryPlanner:
 
         def find_objects(node, is_table, **kwargs):
             if isinstance(node, Function):
-                if node.namespace is not None:
+                if node.namespace is not None or node.op.lower() in ('llm',):
                     user_functions.append(node)
 
             if is_table:
