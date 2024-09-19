@@ -207,13 +207,13 @@ class MindsDBParser(Parser):
 
     # -- triggers --
     @_('CREATE TRIGGER identifier ON identifier LPAREN raw_query RPAREN')
-    @_('CREATE TRIGGER identifier ON identifier COLUMNS ordering_terms LPAREN raw_query RPAREN')
+    @_('CREATE TRIGGER identifier ON identifier COLUMNS column_list LPAREN raw_query RPAREN')
     def create_trigger(self, p):
         query_str = tokens_to_string(p.raw_query)
 
         columns = None
-        if hasattr(p, 'ordering_terms'):
-            columns = [i.field for i in p.ordering_terms]
+        if hasattr(p, 'column_list'):
+            columns = [Identifier(i) for i in p.column_list]
 
         return CreateTrigger(
             name=p.identifier0,
@@ -1116,17 +1116,21 @@ class MindsDBParser(Parser):
         p.ordering_term.nulls = p.NULLS_LAST
         return p.ordering_term
 
-    @_('identifier DESC')
+    @_('ordering_term DESC')
     def ordering_term(self, p):
-        return OrderBy(field=p.identifier, direction='DESC')
+        item = p.ordering_term
+        item.direction = 'DESC'
+        return item
 
-    @_('identifier ASC')
+    @_('ordering_term ASC')
     def ordering_term(self, p):
-        return OrderBy(field=p.identifier, direction='ASC')
+        item = p.ordering_term
+        item.direction = 'ASC'
+        return item
 
-    @_('identifier')
+    @_('expr')
     def ordering_term(self, p):
-        return OrderBy(field=p.identifier, direction='default')
+        return OrderBy(field=p.expr, direction='default')
 
     @_('select USING kw_parameter_list')
     def select(self, p):
@@ -1672,6 +1676,7 @@ class MindsDBParser(Parser):
 
     @_('identifier DOT identifier',
        'identifier DOT integer',
+       'identifier DOT dquote_string',
        'identifier DOT star')
     def identifier(self, p):
         node = p[0]
@@ -1679,6 +1684,8 @@ class MindsDBParser(Parser):
             node.parts.append(p[2])
         elif isinstance(p[2], int):
             node.parts.append(str(p[2]))
+        elif isinstance(p[2], str):
+            node.parts.append(p[2])
         else:
             node.parts += p[2].parts
         return node

@@ -614,7 +614,7 @@ class TestOperationsMindsdb:
                     select * from db.item
                     where l_orderkey = o_orderkey
                   )
-                group by orderpriority
+                group by max(orderpriority)
             '''
             ast = parse_sql(sql)
 
@@ -631,7 +631,7 @@ class TestOperationsMindsdb:
                         ])
                     ))
                 ]),
-                group_by=[Identifier('orderpriority')],
+                group_by=[Function(op='max', args=[Identifier('orderpriority')])],
             )
 
             assert str(ast) == str(expected_ast)
