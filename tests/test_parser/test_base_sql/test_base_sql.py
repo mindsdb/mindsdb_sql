@@ -60,5 +60,16 @@ b"
         assert str(ast).lower() == str(expected_ast).lower()
         assert ast.to_tree() == expected_ast.to_tree()
 
+    def test_quotes_escaping(self):
+        sql = "select 'women''s soccer'"
 
+        expected_ast = Select(
+            targets=[
+                Constant(value="women's soccer")
+            ]
+        )
+        ast = parse_sql(sql)
+
+        assert str(ast).lower() == str(expected_ast).lower()
+        assert ast.to_tree() == expected_ast.to_tree()
 

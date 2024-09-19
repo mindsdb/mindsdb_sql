@@ -317,9 +317,9 @@ class MindsDBLexer(Lexer):
     def INTEGER(self, t):
         return t
 
-    @_(r"'(?:\\.|[^'])*'")
+    @_(r"'(?:\\.|[^'])*(?:''(?:\\.|[^'])*)*'")
     def QUOTE_STRING(self, t):
-        t.value = t.value.replace('\\"', '"').replace("\\'", "'")
+        t.value = t.value.replace('\\"', '"').replace("\\'", "'").replace("''", "'")
         return t
 
     @_(r'"(?:\\.|[^"])*"')
