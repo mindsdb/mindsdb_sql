@@ -1124,3 +1124,13 @@ class TestMindsdb:
         ast = parse_sql(sql)
         assert str(ast) == str(expected_ast)
 
+    def test_table_double_quote(self):
+        expected_ast = Select(
+            targets=[Identifier('account_id')],
+            from_table=Identifier(parts=['order'])
+        )
+
+        sql = 'select account_id from "order"'
+
+        ast = parse_sql(sql)
+        assert str(ast) == str(expected_ast)

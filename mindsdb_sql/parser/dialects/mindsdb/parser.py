@@ -1691,15 +1691,15 @@ class MindsDBParser(Parser):
             node.parts += p[2].parts
         return node
 
-    @_('id')
-    def identifier(self, p):
-        value = p[0]
-        return Identifier.from_path_str(value)
-
     @_('quote_string',
        'dquote_string')
     def string(self, p):
         return p[0]
+
+    @_('id', 'dquote_string')
+    def identifier(self, p):
+        value = p[0]
+        return Identifier.from_path_str(value)
 
     @_('PARAMETER')
     def parameter(self, p):
