@@ -74,6 +74,7 @@ def parse_sql2(sql, dialect='mindsdb'):
         or 'current_user()' in sql  # replaced to CURRENT_USER
         or 'user()' in sql  # replaced to USER
         or 'not exists' in sql  # replaced to not(exits(
+        or "WHEN R.DELETE_RULE = 'CASCADE'" in sql # wrapped in parens by sqlalchemy
     ):
 
         # sqlalchemy could add own aliases for constant

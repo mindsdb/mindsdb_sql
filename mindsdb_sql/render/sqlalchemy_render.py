@@ -293,11 +293,10 @@ class SqlalchemyRender:
             conditions.append(
                 (self.to_expression(condition), self.to_expression(result))
             )
-        else_ = None
         if t.default is not None:
-            else_ = self.to_expression(t.default)
+            conditions.append(self.to_expression(t.default))
 
-        return sa.case(conditions, else_=else_)
+        return sa.case(*conditions)
 
     def to_function(self, t):
         op = getattr(sa.func, t.op)
