@@ -279,11 +279,25 @@ class SqlalchemyRender:
         elif isinstance(t, ast.NotExists):
             sub_stmt = self.prepare_select(t.query)
             col = ~sub_stmt.exists()
+        elif isinstance(t, ast.Case):
+            col = self.prepare_case(t)
         else:
             # some other complex object?
             raise NotImplementedError(f'Column {t}')
 
         return col
+
+    def prepare_case(self, t: ast.Case):
+        conditions = []
+        for condition, result in t.rules:
+            conditions.append(
+                (self.to_expression(condition), self.to_expression(result))
+            )
+        else_ = None
+        if t.default is not None:
+            else_ = self.to_expression(t.default)
+
+        return sa.case(conditions, else_=else_)
 
     def to_function(self, t):
         op = getattr(sa.func, t.op)
