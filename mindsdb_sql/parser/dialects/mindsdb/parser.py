@@ -1329,9 +1329,10 @@ class MindsDBParser(Parser):
         return column_list
 
     # case
-    @_('CASE case_conditions ELSE expr END')
+    @_('CASE case_conditions ELSE expr END',
+       'CASE case_conditions END')
     def case(self, p):
-        return Case(rules=p.case_conditions, default=p.expr)
+        return Case(rules=p.case_conditions, default=getattr(p, 'expr', None))
 
     @_('case_condition',
        'case_conditions case_condition')

@@ -971,7 +971,6 @@ class TestMindsdb:
                     sum(
                       CASE
                         WHEN 1 = 1 THEN 1
-                        ELSE 0
                       END
                     )
                    FROM INFORMATION_SCHEMA.COLLATIONS'''
@@ -1009,7 +1008,6 @@ class TestMindsdb:
                                     Constant(1)
                                 ],
                             ],
-                            default=Constant(0)
                         )
                     ]
                 )
