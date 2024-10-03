@@ -121,21 +121,32 @@ class TestSpecificSelects:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
-
     def test_last(self):
-        sql = """SELECT * FROM t1 t where t.id>last"""
+        sql = """SELECT * FROM t1 t where t.id>last and t.x > coalence(last, 0)"""
 
         ast = parse_sql(sql, dialect='mindsdb')
         expected_ast = Select(
             targets=[Star()],
             from_table=Identifier(parts=['t1'], alias=Identifier('t')),
-            where=BinaryOperation(
-              op='>',
-              args=[
-                  Identifier(parts=['t', 'id']),
-                  Last()
-              ]
-            )
+            where=BinaryOperation(op='and', args=[
+                BinaryOperation(
+                  op='>',
+                  args=[
+                      Identifier(parts=['t', 'id']),
+                      Last()
+                  ]
+                ),
+                BinaryOperation(
+                  op='>',
+                  args=[
+                      Identifier(parts=['t', 'x']),
+                      Function(op='coalence', args=[
+                          Last(),
+                          Constant(0)
+                      ])
+                  ]
+                ),
+            ])
         )
 
         assert ast.to_tree() == expected_ast.to_tree()
