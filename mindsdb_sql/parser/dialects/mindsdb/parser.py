@@ -46,7 +46,7 @@ class MindsDBParser(Parser):
         ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, NOT_IN, BETWEEN, IS, IS_NOT, NOT_LIKE, LIKE),
         ('left', JSON_GET),
         ('left', PLUS, MINUS),
-        ('left', STAR, DIVIDE),
+        ('left', STAR, DIVIDE, TYPECAST),
         ('right', UMINUS),  # Unary minus operator, unary not
 
     )
@@ -1416,6 +1416,14 @@ class MindsDBParser(Parser):
             args = p.expr_list_or_nothing
         if not args:
             args = []
+        for i, arg in enumerate(args):
+            if (
+                    isinstance(arg, Identifier)
+                    and len(arg.parts) == 1
+                    and arg.parts[0].lower() == 'last'
+            ):
+                args[i] = Last()
+
         namespace = None
         if hasattr(p, 'identifier'):
             if len(p.identifier.parts) > 1:
