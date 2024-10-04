@@ -46,7 +46,7 @@ class MindsDBParser(Parser):
         ('nonassoc', LESS, LEQ, GREATER, GEQ, IN, NOT_IN, BETWEEN, IS, IS_NOT, NOT_LIKE, LIKE),
         ('left', JSON_GET),
         ('left', PLUS, MINUS),
-        ('left', STAR, DIVIDE),
+        ('left', STAR, DIVIDE, TYPECAST),
         ('right', UMINUS),  # Unary minus operator, unary not
 
     )
@@ -1329,9 +1329,10 @@ class MindsDBParser(Parser):
         return column_list
 
     # case
-    @_('CASE case_conditions ELSE expr END')
+    @_('CASE case_conditions ELSE expr END',
+       'CASE case_conditions END')
     def case(self, p):
-        return Case(rules=p.case_conditions, default=p.expr)
+        return Case(rules=p.case_conditions, default=getattr(p, 'expr', None))
 
     @_('case_condition',
        'case_conditions case_condition')
@@ -1415,6 +1416,14 @@ class MindsDBParser(Parser):
             args = p.expr_list_or_nothing
         if not args:
             args = []
+        for i, arg in enumerate(args):
+            if (
+                    isinstance(arg, Identifier)
+                    and len(arg.parts) == 1
+                    and arg.parts[0].lower() == 'last'
+            ):
+                args[i] = Last()
+
         namespace = None
         if hasattr(p, 'identifier'):
             if len(p.identifier.parts) > 1:
@@ -1690,15 +1699,15 @@ class MindsDBParser(Parser):
             node.parts += p[2].parts
         return node
 
-    @_('id')
-    def identifier(self, p):
-        value = p[0]
-        return Identifier.from_path_str(value)
-
     @_('quote_string',
        'dquote_string')
     def string(self, p):
         return p[0]
+
+    @_('id', 'dquote_string')
+    def identifier(self, p):
+        value = p[0]
+        return Identifier.from_path_str(value)
 
     @_('PARAMETER')
     def parameter(self, p):

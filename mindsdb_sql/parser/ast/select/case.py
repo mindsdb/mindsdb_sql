@@ -4,7 +4,7 @@ from mindsdb_sql.parser.utils import indent
 
 
 class Case(ASTNode):
-    def __init__(self, rules, default, *args, **kwargs):
+    def __init__(self, rules, default=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # structure:
@@ -32,10 +32,13 @@ class Case(ASTNode):
                 f'{ind1}{condition.to_string()} => {result.to_string()}'
             )
         rules_str = '\n'.join(rules_ar)
+        default_str = ''
+        if self.default is not None:
+            default_str = f'{ind1}default => {self.default.to_string()}\n'
 
         return f'{ind}Case(\n' \
                f'{rules_str}\n' \
-               f'{ind1}default => {self.default.to_string()}\n' \
+               f'{default_str}' \
                f'{ind})'
 
     def get_string(self, *args, alias=True, **kwargs):
@@ -47,4 +50,7 @@ class Case(ASTNode):
             )
         rules_str = ' '.join(rules_ar)
 
-        return f"CASE {rules_str} ELSE {self.default.to_string()} END"
+        default_str = ''
+        if self.default is not None:
+            default_str = f' ELSE {self.default.to_string()}'
+        return f"CASE {rules_str}{default_str} END"

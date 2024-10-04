@@ -971,7 +971,6 @@ class TestMindsdb:
                     sum(
                       CASE
                         WHEN 1 = 1 THEN 1
-                        ELSE 0
                       END
                     )
                    FROM INFORMATION_SCHEMA.COLLATIONS'''
@@ -1009,7 +1008,6 @@ class TestMindsdb:
                                     Constant(1)
                                 ],
                             ],
-                            default=Constant(0)
                         )
                     ]
                 )
@@ -1108,12 +1106,22 @@ class TestMindsdb:
         assert str(ast) == str(expected_ast)
 
         # date
-        expected_ast = Select(targets=[
-            TypeCast(type_name='DATE', arg=Constant('1998-12-01')),
-            TypeCast(type_name='DATE', arg=Identifier('col1'), alias=Identifier('col2'))
-        ])
+        expected_ast = Select(
+            targets=[
+                TypeCast(type_name='DATE', arg=Constant('1998-12-01')),
+                BinaryOperation(op='+', args=[
+                    Identifier('col0'),
+                    TypeCast(type_name='DATE', arg=Identifier('col1'), alias=Identifier('col2')),
+                ])
+            ],
+            from_table=Identifier('t1'),
+            where=BinaryOperation(op='>', args=[
+                Identifier('col0'),
+                TypeCast(type_name='DATE', arg=Identifier('col1')),
+            ])
+        )
 
-        sql = f"SELECT '1998-12-01'::DATE, col1::DATE col2"
+        sql = f"SELECT '1998-12-01'::DATE, col0 + col1::DATE col2 from t1 where col0 > col1::DATE"
         ast = parse_sql(sql)
         assert str(ast) == str(expected_ast)
 
@@ -1126,3 +1134,13 @@ class TestMindsdb:
         ast = parse_sql(sql)
         assert str(ast) == str(expected_ast)
 
+    def test_table_double_quote(self):
+        expected_ast = Select(
+            targets=[Identifier('account_id')],
+            from_table=Identifier(parts=['order'])
+        )
+
+        sql = 'select account_id from "order"'
+
+        ast = parse_sql(sql)
+        assert str(ast) == str(expected_ast)
