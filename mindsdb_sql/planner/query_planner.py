@@ -664,6 +664,9 @@ class QueryPlanner:
         ))
 
     def plan_select(self, query, integration=None):
+        if isinstance(query, Union):
+            return self.plan_union(query, integration=integration)
+
         from_table = query.from_table
 
         if isinstance(from_table, Identifier):
@@ -713,13 +716,13 @@ class QueryPlanner:
             return sup_select
         return prev_step
 
-    def plan_union(self, query):
+    def plan_union(self, query, integration=None):
         if isinstance(query.left, Union):
-            step1 = self.plan_union(query.left)
+            step1 = self.plan_union(query.left, integration=integration)
         else:
             # it is select
-            step1 = self.plan_select(query.left)
-        step2 = self.plan_select(query.right)
+            step1 = self.plan_select(query.left, integration=integration)
+        step2 = self.plan_select(query.right, integration=integration)
 
         return self.plan.add_step(UnionStep(left=step1.result, right=step2.result, unique=query.unique))
 
@@ -730,10 +733,8 @@ class QueryPlanner:
         if query is None:
             query = self.query
 
-        if isinstance(query, Select):
+        if isinstance(query, (Select, Union)):
             self.plan_select(query)
-        elif isinstance(query, Union):
-            self.plan_union(query)
         elif isinstance(query, CreateTable):
             self.plan_create_table(query)
         elif isinstance(query, Insert):
