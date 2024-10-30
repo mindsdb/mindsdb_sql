@@ -638,10 +638,10 @@ class TestSelectStructure:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
-        sql = f"""SELECT CAST(a AS decimal(10, 1))"""
+        sql = f"""SELECT CAST(a AS DECIMAL(10, 1))"""
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Select(targets=[
-            TypeCast(type_name='decimal', arg=Identifier('a'), precision=[10, 1])
+            TypeCast(type_name='DECIMAL', arg=Identifier('a'), precision=[10, 1])
         ])
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
