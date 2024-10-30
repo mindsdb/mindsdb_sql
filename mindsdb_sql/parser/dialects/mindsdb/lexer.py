@@ -55,7 +55,7 @@ class MindsDBLexer(Lexer):
 
         JOIN, INNER, OUTER, CROSS, LEFT, RIGHT, ON,
 
-        UNION, ALL,
+        UNION, ALL, INTERSECT, EXCEPT,
 
         # CASE
         CASE, ELSE, END, THEN, WHEN,
@@ -238,6 +238,8 @@ class MindsDBLexer(Lexer):
     # UNION
 
     UNION = r'\bUNION\b'
+    INTERSECT = r'\bINTERSECT\b'
+    EXCEPT = r'\bEXCEPT\b'
     ALL = r'\bALL\b'
 
     # CASE

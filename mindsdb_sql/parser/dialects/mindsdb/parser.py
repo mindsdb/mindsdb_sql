@@ -998,14 +998,11 @@ class MindsDBParser(Parser):
             engine = p.string
         return {'identifier':p.identifier, 'engine':engine, 'if_not_exists':p.if_not_exists_or_empty}
 
-    # UNION / UNION ALL
+    # Combining
     @_('select UNION select')
-    def select(self, p):
-        return Union(left=p[0], right=p[2], unique=True)
-
     @_('select UNION ALL select')
     def select(self, p):
-        return Union(left=p[0], right=p[3], unique=False)
+        return Union(left=p.select0, right=p.select1, unique=not hasattr(p, 'ALL'))
 
     # tableau
     @_('LPAREN select RPAREN')
