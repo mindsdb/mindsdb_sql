@@ -46,7 +46,7 @@ class TestUnion:
             assert ast.to_tree() == expected_ast.to_tree()
             assert str(ast) == str(expected_ast)
 
-    def xtest_union_alias(self):
+    def test_union_alias(self):
         sql = """SELECT * FROM (
             SELECT col1 FROM tab1
             UNION 
@@ -60,16 +60,17 @@ class TestUnion:
                               from_table=Union(
                                    unique=True,
                                    alias=Identifier('alias'),
-                                   left=Union(
+                                   left=Select(targets=[Identifier('col1')],
+                                                from_table=Identifier(parts=['tab1']),),
+                                   right=Union(
                                        unique=True,
                                        left=Select(
                                                    targets=[Identifier('col1')],
-                                                   from_table=Identifier(parts=['tab1']),),
+                                                   from_table=Identifier(parts=['tab2']),),
                                        right=Select(targets=[Identifier('col1')],
-                                                    from_table=Identifier(parts=['tab2']),),
+                                                    from_table=Identifier(parts=['tab3']),),
                                    ),
-                                   right=Select(targets=[Identifier('col1')],
-                                                from_table=Identifier(parts=['tab3']),),
+
                                 )
                               )
         assert ast.to_tree() == expected_ast.to_tree()
