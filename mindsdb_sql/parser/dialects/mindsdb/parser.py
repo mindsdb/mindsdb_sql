@@ -1004,6 +1004,16 @@ class MindsDBParser(Parser):
     def select(self, p):
         return Union(left=p.select0, right=p.select1, unique=not hasattr(p, 'ALL'))
 
+    @_('select INTERSECT select')
+    @_('select INTERSECT ALL select')
+    def select(self, p):
+        return Intersect(left=p.select0, right=p.select1, unique=not hasattr(p, 'ALL'))
+
+    @_('select EXCEPT select')
+    @_('select EXCEPT ALL select')
+    def select(self, p):
+        return Except(left=p.select0, right=p.select1, unique=not hasattr(p, 'ALL'))
+
     # tableau
     @_('LPAREN select RPAREN')
     def select(self, p):
