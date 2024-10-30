@@ -68,7 +68,6 @@ class MindsDBParser(Parser):
        'drop_predictor',
        'drop_datasource',
        'drop_dataset',
-       'union',
        'select',
        'insert',
        'update',
@@ -1000,14 +999,12 @@ class MindsDBParser(Parser):
         return {'identifier':p.identifier, 'engine':engine, 'if_not_exists':p.if_not_exists_or_empty}
 
     # UNION / UNION ALL
-    @_('select UNION select',
-       'union UNION select')
-    def union(self, p):
+    @_('select UNION select')
+    def select(self, p):
         return Union(left=p[0], right=p[2], unique=True)
 
-    @_('select UNION ALL select',
-       'union UNION ALL select',)
-    def union(self, p):
+    @_('select UNION ALL select')
+    def select(self, p):
         return Union(left=p[0], right=p[3], unique=False)
 
     # tableau

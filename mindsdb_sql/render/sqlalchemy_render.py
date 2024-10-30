@@ -396,6 +396,8 @@ class SqlalchemyRender:
         return table
 
     def prepare_select(self, node):
+        if isinstance(node, ast.Union):
+            return self.prepare_union(node)
 
         cols = []
         for t in node.targets:
@@ -454,17 +456,10 @@ class SqlalchemyRender:
                             full=is_full
                         )
             elif isinstance(from_table, ast.Union):
-                tables = self.extract_union_list(from_table)
-
                 alias = None
                 if from_table.alias:
                     alias = self.get_alias(from_table.alias)
-
-                table1 = tables[1]
-                tables_x = tables[1:]
-
-                table = table1.union(*tables_x).subquery(alias)
-
+                table = self.prepare_union(from_table).subquery(alias)
                 query = query.select_from(table)
 
             elif isinstance(from_table, ast.Select):
@@ -528,6 +523,14 @@ class SqlalchemyRender:
                 raise NotImplementedError(f'Select mode: {node.mode}')
 
         return query
+
+    def prepare_union(self, from_table):
+        tables = self.extract_union_list(from_table)
+
+        table1 = tables[0]
+        tables_x = tables[1:]
+
+        return table1.union(*tables_x)
 
     def extract_union_list(self, node):
         if not (isinstance(node.left, (ast.Select, ast.Union)) and isinstance(node.right, ast.Select)):
