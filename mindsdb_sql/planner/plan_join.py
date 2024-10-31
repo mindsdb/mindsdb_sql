@@ -145,7 +145,8 @@ class PlanJoinTablesQuery:
         return TableInfo(integration, table, aliases, conditions=[], sub_select=sub_select)
 
     def get_table_for_column(self, column: Identifier):
-
+        if not isinstance(column, Identifier):
+            return
         # to lowercase
         parts = tuple(map(str.lower, column.parts[:-1]))
         if parts in self.tables_idx:
@@ -381,7 +382,8 @@ class PlanJoinTablesQuery:
                 order_by = []
                 # all order column be from this table
                 for col in query_in.order_by:
-                    if self.get_table_for_column(col.field).table != item.table:
+                    table_info = self.get_table_for_column(col.field)
+                    if table_info is None or table_info.table != item.table:
                         order_by = False
                         break
                     col = copy.deepcopy(col)
