@@ -581,8 +581,13 @@ class SQLParser(Parser):
         pass
 
     @_('CAST LPAREN expr AS id LPAREN integer RPAREN RPAREN')
+    @_('CAST LPAREN expr AS id LPAREN integer COMMA integer RPAREN RPAREN')
     def expr(self, p):
-        return TypeCast(arg=p.expr, type_name=str(p.id), length=p.integer)
+        if hasattr(p, 'integer'):
+            precision=[p.integer]
+        else:
+            precision=[p.integer0, p.integer1]
+        return TypeCast(arg=p.expr, type_name=str(p.id), precision=precision)
 
     @_('CAST LPAREN expr AS id RPAREN')
     def expr(self, p):

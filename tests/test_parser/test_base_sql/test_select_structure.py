@@ -633,7 +633,15 @@ class TestSelectStructure:
         sql = f"""SELECT CAST(a AS CHAR(10))"""
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Select(targets=[
-            TypeCast(type_name='CHAR', arg=Identifier('a'), length=10)
+            TypeCast(type_name='CHAR', arg=Identifier('a'), precision=[10])
+        ])
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = f"""SELECT CAST(a AS DECIMAL(10, 1))"""
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[
+            TypeCast(type_name='DECIMAL', arg=Identifier('a'), precision=[10, 1])
         ])
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
