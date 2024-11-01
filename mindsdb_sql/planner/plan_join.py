@@ -480,20 +480,17 @@ class PlanJoinTablesQuery:
             if isinstance(arg2, Constant):
                 conditions.append(node)
             elif table2 is not None:
-                node.args = [arg1, arg2]
-                node = copy.deepcopy(node)
-                data_conditions.append(node)
+                data_conditions.append([arg1, arg2])
 
         query_traversal(fetch_table.join_condition, _check_conditions)
 
         binary_ops.discard('and')
         if len(binary_ops) > 0:
             # other operations exists, skip
-            return
+            return []
 
-        for condition in data_conditions:
+        for arg1, arg2 in data_conditions:
             # is fetched?
-            arg1, arg2 = condition.args
             table2 = self.get_table_for_column(arg2)
             fetch_step = self.tables_fetch_step.get(table2.index)
 
@@ -501,15 +498,21 @@ class PlanJoinTablesQuery:
                 continue
 
             # extract distinct values
-            # remove alias
-            arg2.parts = arg2.parts[-1:]
+            # remove aliases
+            arg1 = Identifier(parts=[arg1.parts[-1]])
+            arg2 = Identifier(parts=[arg2.parts[-1]])
+
             query2 = Select(targets=[arg2], distinct=True)
             subselect_step = SubSelectStep(query2, fetch_step.result)
             subselect_step = self.add_plan_step(subselect_step)
 
-            condition.args[1] = Parameter(subselect_step.result)
-            condition.op = 'in'
-            conditions.append(condition)
+            conditions.append(BinaryOperation(
+                op='in',
+                args=[
+                    arg1,
+                    Parameter(subselect_step.result)
+                ]
+            ))
 
         return conditions
 
