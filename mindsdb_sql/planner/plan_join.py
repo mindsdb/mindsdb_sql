@@ -109,6 +109,7 @@ class PlanJoinTablesQuery:
             query2 = copy.deepcopy(query)
             query2.from_table = None
             query2.using = None
+            query2.cte = None
             sup_select = QueryStep(query2, from_table=join_step.result)
             self.planner.plan.add_step(sup_select)
             return sup_select
@@ -368,7 +369,8 @@ class PlanJoinTablesQuery:
         self.step_stack.append(step2)
 
     def process_table(self, item, query_in):
-        table = Identifier(parts=[item.integration] + item.table.parts)
+        table = copy.deepcopy(item.table)
+        table.parts.insert(0, item.integration)
         query2 = Select(from_table=table, targets=[Star()])
         # parts = tuple(map(str.lower, table_name.parts))
         conditions = item.conditions
