@@ -368,7 +368,8 @@ class PlanJoinTablesQuery:
         self.step_stack.append(step2)
 
     def process_table(self, item, query_in):
-        query2 = Select(from_table=item.table, targets=[Star()])
+        table = Identifier(parts=[item.integration] + item.table.parts)
+        query2 = Select(from_table=table, targets=[Star()])
         # parts = tuple(map(str.lower, table_name.parts))
         conditions = item.conditions
         if 'or' in self.query_context['binary_ops']:
@@ -404,8 +405,7 @@ class PlanJoinTablesQuery:
             else:
                 query2.where = cond
 
-        # step = self.planner.get_integration_select_step(query2)
-        step = FetchDataframeStep(integration=item.integration, query=query2)
+        step = self.planner.get_integration_select_step(query2)
         self.add_plan_step(step)
         self.step_stack.append(step)
 
