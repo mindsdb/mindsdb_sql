@@ -342,8 +342,8 @@ class TestPlanJoinTables:
 
         expected_plan = QueryPlan(
             steps=[
-              FetchDataframeStep(integration='int1', query=parse_sql('select * from tbl1 where a=1')),
-              FetchDataframeStep(integration='int2', query=parse_sql('select * from tbl2 where b=2')),
+              FetchDataframeStep(integration='int1', query=parse_sql('select * from tbl1 as t1 where a=1')),
+              FetchDataframeStep(integration='int2', query=parse_sql('select * from tbl2 as t2 where b=2')),
               JoinStep(left=Result(0),
                        right=Result(1),
                        query=Join(left=Identifier('tab1'),
@@ -389,7 +389,7 @@ class TestPlanJoinTables:
 
         expected_plan = QueryPlan(
             steps=[
-                FetchDataframeStep(integration='int1', query=parse_sql('select * from tbl1')),
+                FetchDataframeStep(integration='int1', query=parse_sql('select * from tbl1 as t1')),
                 FetchDataframeStep(integration='int2', query=parse_sql('select * from tbl3')),
                 ApplyPredictorStep(namespace='proj', dataframe=Result(1),
                                    predictor=Identifier('pred', alias=Identifier('m'))),
