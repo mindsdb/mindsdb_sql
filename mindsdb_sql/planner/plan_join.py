@@ -481,6 +481,7 @@ class PlanJoinTablesQuery:
                 conditions.append(node)
             elif table2 is not None:
                 node.args = [arg1, arg2]
+                node = copy.deepcopy(node)
                 data_conditions.append(node)
 
         query_traversal(fetch_table.join_condition, _check_conditions)
@@ -501,12 +502,13 @@ class PlanJoinTablesQuery:
 
             # extract distinct values
             # remove alias
-            arg2 = Identifier(parts=[arg2.parts[-1]])
+            arg2.parts = arg2.parts[-1:]
             query2 = Select(targets=[arg2], distinct=True)
             subselect_step = SubSelectStep(query2, fetch_step.result)
             subselect_step = self.add_plan_step(subselect_step)
 
             condition.args[1] = Parameter(subselect_step.result)
+            condition.op = 'in'
             conditions.append(condition)
 
         return conditions
