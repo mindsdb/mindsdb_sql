@@ -22,8 +22,6 @@ class TestPlanJoinPredictor:
         """
         query = parse_sql(sql)
 
-        query_step = parse_sql("select tab1.column1, pred.predicted")
-        query_step.from_table = Parameter(Result(2))
         expected_plan = QueryPlan(
             steps=[
                 FetchDataframeStep(integration='int',
@@ -665,15 +663,16 @@ class TestPredictorParams:
 
         sql = '''
                 select t2.x, m.id, (select a from int.tab0 where x=0) from int.tab1 t1
-                join int.tab2 t2 on t1.x = t2.x 
+                join int.tab2 t2 on t1.x = t2.a 
                 join mindsdb.pred m
                 where m.a=(select a from int.tab3 where x=3) 
                   and t2.x=(select a from int.tab4 where x=4)
                   and t1.b=1 and t2.b=2 and t1.a = t2.a
         '''
 
-        q_table2 = parse_sql('select * from tab2 as t2 where x=0 and b=2 ')
-        q_table2.where.args[0].args[1] = Parameter(Result(2))
+        q_table2 = parse_sql('select * from tab2 as t2 where x=0 and b=2 AND a IN 1')
+        q_table2.where.args[0].args[0].args[1] = Parameter(Result(2))
+        q_table2.where.args[1].args[1] = Parameter(Result(4))
 
         subquery = parse_sql("""
             select t2.x, m.id, x 
@@ -700,22 +699,23 @@ class TestPredictorParams:
                 # tables
                 FetchDataframeStep(integration='int',
                                    query=parse_sql('select * from tab1 as t1 where b=1')),
+                SubSelectStep(dataframe=Result(3), query=Select(targets=[Identifier('x')], distinct=True)),
                 FetchDataframeStep(integration='int', query=q_table2),
-                JoinStep(left=Result(3), right=Result(4),
+                JoinStep(left=Result(3), right=Result(5),
                          query=Join(left=Identifier('tab1'),
                                     right=Identifier('tab2'),
                                     join_type=JoinType.JOIN,
-                                    condition=BinaryOperation(op='=', args=[Identifier('t1.x'), Identifier('t2.x')])
+                                    condition=BinaryOperation(op='=', args=[Identifier('t1.x'), Identifier('t2.a')])
                         )
                 ),
                 # model
-                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(5),
+                ApplyPredictorStep(namespace='mindsdb', dataframe=Result(6),
                                    predictor=Identifier('pred', alias=Identifier('m')), row_dict={'a': Result(1)}),
-                JoinStep(left=Result(5), right=Result(6),
+                JoinStep(left=Result(6), right=Result(7),
                          query=Join(left=Identifier('tab1'),
                                     right=Identifier('tab2'),
                                     join_type=JoinType.JOIN)),
-                QueryStep(subquery, from_table=Result(7)),
+                QueryStep(subquery, from_table=Result(8)),
             ],
         )
         plan = plan_query(query, integrations=['int'], predictor_namespace='mindsdb', predictor_metadata={'pred': {}})
