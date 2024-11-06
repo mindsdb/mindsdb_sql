@@ -21,7 +21,7 @@ class TableInfo:
     sub_select: ast.ASTNode = None
     predictor_info: dict = None
     join_condition = None
-
+    index: int = None
 
 class PlanJoin:
 
@@ -85,11 +85,14 @@ class PlanJoinTablesQuery:
 
         # index to lookup tables
         self.tables_idx = None
+        self.tables = []
+        self.tables_fetch_step = {}
 
         self.step_stack = None
         self.query_context = {}
 
         self.partition = None
+
 
     def plan(self, query):
         self.tables_idx = {}
@@ -145,7 +148,8 @@ class PlanJoinTablesQuery:
         return TableInfo(integration, table, aliases, conditions=[], sub_select=sub_select)
 
     def get_table_for_column(self, column: Identifier):
-
+        if not isinstance(column, Identifier):
+            return
         # to lowercase
         parts = tuple(map(str.lower, column.parts[:-1]))
         if parts in self.tables_idx:
@@ -159,6 +163,9 @@ class PlanJoinTablesQuery:
             table_info = self.resolve_table(node)
             for alias in table_info.aliases:
                 self.tables_idx[alias] = table_info
+
+            table_info.index = len(self.tables)
+            self.tables.append(table_info)
 
             table_info.predictor_info = self.planner.get_predictor(node)
 
@@ -375,13 +382,16 @@ class PlanJoinTablesQuery:
             # not use conditions
             conditions = []
 
+        conditions += self.get_filters_from_join_conditions(item)
+
         if self.query_context['use_limit']:
             order_by = None
             if query_in.order_by is not None:
                 order_by = []
                 # all order column be from this table
                 for col in query_in.order_by:
-                    if self.get_table_for_column(col.field).table != item.table:
+                    table_info = self.get_table_for_column(col.field)
+                    if table_info is None or table_info.table != item.table:
                         order_by = False
                         break
                     col = copy.deepcopy(col)
@@ -406,6 +416,8 @@ class PlanJoinTablesQuery:
 
         # step = self.planner.get_integration_select_step(query2)
         step = FetchDataframeStep(integration=item.integration, query=query2)
+        self.tables_fetch_step[item.index] = step
+
         self.add_plan_step(step)
         self.step_stack.append(step)
 
@@ -439,6 +451,70 @@ class PlanJoinTablesQuery:
 
         query_traversal(model_table.join_condition, _check_conditions)
         return columns_map
+
+    def get_filters_from_join_conditions(self, fetch_table):
+
+        binary_ops = set()
+        conditions = []
+        data_conditions = []
+
+        def _check_conditions(node, **kwargs):
+            if not isinstance(node, BinaryOperation):
+                return
+
+            if node.op != '=':
+                binary_ops.add(node.op.lower())
+                return
+
+            arg1, arg2 = node.args
+            table1 = self.get_table_for_column(arg1) if isinstance(arg1, Identifier) else None
+            table2 = self.get_table_for_column(arg2) if isinstance(arg2, Identifier) else None
+
+            if table1 is not fetch_table:
+                if table2 is not fetch_table:
+                    return
+                # set our table first
+                table1, table2 = table2, table1
+                arg1, arg2 = arg2, arg1
+
+            if isinstance(arg2, Constant):
+                conditions.append(node)
+            elif table2 is not None:
+                data_conditions.append([arg1, arg2])
+
+        query_traversal(fetch_table.join_condition, _check_conditions)
+
+        binary_ops.discard('and')
+        if len(binary_ops) > 0:
+            # other operations exists, skip
+            return []
+
+        for arg1, arg2 in data_conditions:
+            # is fetched?
+            table2 = self.get_table_for_column(arg2)
+            fetch_step = self.tables_fetch_step.get(table2.index)
+
+            if fetch_step is None:
+                continue
+
+            # extract distinct values
+            # remove aliases
+            arg1 = Identifier(parts=[arg1.parts[-1]])
+            arg2 = Identifier(parts=[arg2.parts[-1]])
+
+            query2 = Select(targets=[arg2], distinct=True)
+            subselect_step = SubSelectStep(query2, fetch_step.result)
+            subselect_step = self.add_plan_step(subselect_step)
+
+            conditions.append(BinaryOperation(
+                op='in',
+                args=[
+                    arg1,
+                    Parameter(subselect_step.result)
+                ]
+            ))
+
+        return conditions
 
     def process_predictor(self, item, query_in):
         if len(self.step_stack) == 0:
