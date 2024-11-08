@@ -112,6 +112,7 @@ class PlanJoinTablesQuery:
             query2 = copy.deepcopy(query)
             query2.from_table = None
             query2.using = None
+            query2.cte = None
             sup_select = QueryStep(query2, from_table=join_step.result)
             self.planner.plan.add_step(sup_select)
             return sup_select
@@ -375,7 +376,9 @@ class PlanJoinTablesQuery:
         self.step_stack.append(step2)
 
     def process_table(self, item, query_in):
-        query2 = Select(from_table=item.table, targets=[Star()])
+        table = copy.deepcopy(item.table)
+        table.parts.insert(0, item.integration)
+        query2 = Select(from_table=table, targets=[Star()])
         # parts = tuple(map(str.lower, table_name.parts))
         conditions = item.conditions
         if 'or' in self.query_context['binary_ops']:
@@ -414,8 +417,7 @@ class PlanJoinTablesQuery:
             else:
                 query2.where = cond
 
-        # step = self.planner.get_integration_select_step(query2)
-        step = FetchDataframeStep(integration=item.integration, query=query2)
+        step = self.planner.get_integration_select_step(query2)
         self.tables_fetch_step[item.index] = step
 
         self.add_plan_step(step)

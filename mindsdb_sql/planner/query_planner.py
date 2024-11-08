@@ -86,6 +86,8 @@ class QueryPlanner:
 
         self.statement = None
 
+        self.cte_results = {}
+
     def is_predictor(self, identifier):
         if not isinstance(identifier, Identifier):
             return False
@@ -157,6 +159,12 @@ class QueryPlanner:
             integration_name = select.from_table.integration.parts[-1]
         else:
             integration_name, table = self.resolve_database_table(select.from_table)
+
+            # is it CTE?
+            table_name = table.parts[-1]
+            if integration_name == self.default_namespace and table_name in self.cte_results:
+                select.from_table = None
+                return SubSelectStep(select, self.cte_results[table_name], table_name=table_name)
 
         fetch_df_select = copy.deepcopy(select)
         self.prepare_integration_select(integration_name, fetch_df_select)
@@ -663,9 +671,18 @@ class QueryPlanner:
             where=query.where
         ))
 
+    def plan_cte(self, query):
+        for cte in query.cte:
+            step = self.plan_select(cte.query)
+            name = cte.name.parts[-1]
+            self.cte_results[name] = step.result
+
     def plan_select(self, query, integration=None):
         if isinstance(query, Union):
             return self.plan_union(query, integration=integration)
+
+        if query.cte is not None:
+            self.plan_cte(query)
 
         from_table = query.from_table
 

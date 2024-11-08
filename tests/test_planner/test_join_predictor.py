@@ -142,14 +142,6 @@ class TestPlanJoinPredictor:
     #         plan_query(query, integrations=['postgres_90'], predictor_namespace='mindsdb', predictor_metadata={'hrp3': {}})
 
     def test_join_predictor_plan_complex_query(self):
-        query = Select(targets=[Identifier('tab.asset'), Identifier('tab.time'), Identifier('pred.predicted')],
-                       from_table=Join(left=Identifier('int.tab'),
-                                       right=Identifier('mindsdb.pred'),
-                                       join_type=JoinType.INNER_JOIN,
-                                       implicit=True),
-                       group_by=[Identifier('tab.asset')],
-                       having=BinaryOperation('=', args=[Identifier('tab.asset'), Constant('bitcoin')])
-                       )
 
         sql = """
             select t.asset, t.time, m.predicted

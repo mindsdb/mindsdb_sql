@@ -490,3 +490,34 @@ class TestPlanJoinTables:
         plan = plan_query(query, integrations=['int'], default_namespace='int')
 
         assert plan.steps == expected_plan.steps
+
+    def test_cte(self):
+        query = parse_sql('''
+            with t1 as (
+               select * from int1.tbl1
+            )
+            select t1.id, t2.* from t1
+            join int2.tbl2 t2 on t1.id>t2.id
+        ''')
+
+        subquery = copy.deepcopy(query)
+        subquery.from_table = None
+
+        plan = plan_query(query, integrations=['int1', 'int2'], default_namespace='mindsdb')
+
+        expected_plan = QueryPlan(
+            steps=[
+              FetchDataframeStep(integration='int1', query=parse_sql('select * from tbl1')),
+              SubSelectStep(dataframe=Result(0), query=Select(targets=[Star()]), table_name='t1'),
+              FetchDataframeStep(integration='int2', query=parse_sql('select * from tbl2 as t2')),
+              JoinStep(left=Result(1),
+                       right=Result(2),
+                       query=Join(left=Identifier('tab1'),
+                                    right=Identifier('tab2'),
+                                    condition=BinaryOperation(op='>', args=[Identifier('t1.id'), Identifier('t2.id')]),
+                                    join_type=JoinType.JOIN)),
+              QueryStep(parse_sql('SELECT t1.`id`, t2.*'), from_table=Result(3)),
+            ]
+        )
+
+        assert plan.steps == expected_plan.steps
