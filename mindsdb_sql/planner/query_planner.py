@@ -3,7 +3,7 @@ import copy
 from mindsdb_sql.exceptions import PlanningException
 from mindsdb_sql.parser import ast
 from mindsdb_sql.parser.ast import (Select, Identifier, Join, Star, BinaryOperation, Constant, Union, CreateTable,
-                                    Function, Insert,
+                                    Function, Insert, Except, Intersect,
                                     Update, NativeQuery, Parameter, Delete)
 from mindsdb_sql.planner import utils
 from mindsdb_sql.planner.query_plan import QueryPlan
@@ -678,7 +678,7 @@ class QueryPlanner:
             self.cte_results[name] = step.result
 
     def plan_select(self, query, integration=None):
-        if isinstance(query, Union):
+        if isinstance(query, (Union, Except, Intersect)):
             return self.plan_union(query, integration=integration)
 
         if query.cte is not None:
@@ -734,14 +734,15 @@ class QueryPlanner:
         return prev_step
 
     def plan_union(self, query, integration=None):
-        if isinstance(query.left, Union):
-            step1 = self.plan_union(query.left, integration=integration)
-        else:
-            # it is select
-            step1 = self.plan_select(query.left, integration=integration)
+        step1 = self.plan_select(query.left, integration=integration)
         step2 = self.plan_select(query.right, integration=integration)
+        operation = 'union'
+        if isinstance(query, Except):
+            operation = 'except'
+        elif isinstance(query, Intersect):
+            operation = 'intersect'
 
-        return self.plan.add_step(UnionStep(left=step1.result, right=step2.result, unique=query.unique))
+        return self.plan.add_step(UnionStep(left=step1.result, right=step2.result, unique=query.unique, operation=operation))
 
     # method for compatibility
     def from_query(self, query=None):
@@ -750,7 +751,7 @@ class QueryPlanner:
         if query is None:
             query = self.query
 
-        if isinstance(query, (Select, Union)):
+        if isinstance(query, (Select, Union, Except, Intersect)):
             self.plan_select(query)
         elif isinstance(query, CreateTable):
             self.plan_create_table(query)

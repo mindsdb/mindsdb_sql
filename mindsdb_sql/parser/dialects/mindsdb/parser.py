@@ -70,6 +70,7 @@ class MindsDBParser(Parser):
        'drop_dataset',
        'select',
        'insert',
+       'union',
        'update',
        'delete',
        'evaluate',
@@ -614,10 +615,13 @@ class MindsDBParser(Parser):
 
     # INSERT
     @_('INSERT INTO identifier LPAREN column_list RPAREN select',
-       'INSERT INTO identifier select')
+       'INSERT INTO identifier LPAREN column_list RPAREN union',
+       'INSERT INTO identifier select',
+       'INSERT INTO identifier union')
     def insert(self, p):
         columns = getattr(p, 'column_list', None)
-        return Insert(table=p.identifier, columns=columns, from_select=p.select)
+        query = p.select if hasattr(p, 'select') else p.union
+        return Insert(table=p.identifier, columns=columns, from_select=query)
 
     @_('INSERT INTO identifier LPAREN column_list RPAREN VALUES expr_list_set',
        'INSERT INTO identifier VALUES expr_list_set')
@@ -999,20 +1003,28 @@ class MindsDBParser(Parser):
         return {'identifier':p.identifier, 'engine':engine, 'if_not_exists':p.if_not_exists_or_empty}
 
     # Combining
-    @_('select UNION select')
-    @_('select UNION ALL select')
-    def select(self, p):
-        return Union(left=p.select0, right=p.select1, unique=not hasattr(p, 'ALL'))
+    @_('select UNION select',
+       'union UNION select',
+       'select UNION ALL select',
+       'union UNION ALL select')
+    def union(self, p):
+        unique = not hasattr(p, 'ALL')
+        return Union(left=p[0], right=p[2] if unique else p[3], unique=unique)
 
-    @_('select INTERSECT select')
-    @_('select INTERSECT ALL select')
-    def select(self, p):
-        return Intersect(left=p.select0, right=p.select1, unique=not hasattr(p, 'ALL'))
-
-    @_('select EXCEPT select')
-    @_('select EXCEPT ALL select')
-    def select(self, p):
-        return Except(left=p.select0, right=p.select1, unique=not hasattr(p, 'ALL'))
+    @_('select INTERSECT select',
+       'union INTERSECT select',
+       'select INTERSECT ALL select',
+       'union INTERSECT ALL select')
+    def union(self, p):
+        unique = not hasattr(p, 'ALL')
+        return Intersect(left=p[0], right=p[2] if unique else p[3], unique=unique)
+    @_('select EXCEPT select',
+       'union EXCEPT select',
+       'select EXCEPT ALL select',
+       'union EXCEPT ALL select')
+    def union(self, p):
+        unique = not hasattr(p, 'ALL')
+        return Except(left=p[0], right=p[2] if unique else p[3], unique=unique)
 
     # tableau
     @_('LPAREN select RPAREN')

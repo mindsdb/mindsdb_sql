@@ -60,17 +60,16 @@ class TestUnion:
                               from_table=Union(
                                    unique=True,
                                    alias=Identifier('alias'),
-                                   left=Select(targets=[Identifier('col1')],
-                                                from_table=Identifier(parts=['tab1']),),
-                                   right=Union(
+                                   left=Union(
                                        unique=True,
                                        left=Select(
                                                    targets=[Identifier('col1')],
-                                                   from_table=Identifier(parts=['tab2']),),
+                                                   from_table=Identifier(parts=['tab1']),),
                                        right=Select(targets=[Identifier('col1')],
-                                                    from_table=Identifier(parts=['tab3']),),
+                                                    from_table=Identifier(parts=['tab2']),),
                                    ),
-
+                                   right=Select(targets=[Identifier('col1')],
+                                                from_table=Identifier(parts=['tab3']),),
                                 )
                               )
         assert ast.to_tree() == expected_ast.to_tree()
