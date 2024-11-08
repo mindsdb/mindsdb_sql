@@ -3,19 +3,20 @@ from mindsdb_sql.parser.utils import indent
 
 
 class TypeCast(ASTNode):
-    def __init__(self, type_name, arg, length=None, *args, **kwargs):
+    def __init__(self, type_name, arg, precision=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.type_name = type_name
         self.arg = arg
-        self.length = length
+        self.precision = precision
 
     def to_tree(self, *args, level=0, **kwargs):
-        out_str = indent(level) + f'TypeCast(type_name={repr(self.type_name)}, length={self.length}, arg=\n{indent(level+1)}{self.arg.to_tree()})'
+        out_str = indent(level) + f'TypeCast(type_name={repr(self.type_name)}, precision={self.precision}, arg=\n{indent(level+1)}{self.arg.to_tree()})'
         return out_str
 
     def get_string(self, *args, **kwargs):
         type_name = self.type_name
-        if self.length is not None:
-            type_name += f'({self.length})'
+        if self.precision is not None:
+            precision = map(str, self.precision)
+            type_name += f'({",".join(precision)})'
         return f'CAST({str(self.arg)} AS {type_name})'

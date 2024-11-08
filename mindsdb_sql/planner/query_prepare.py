@@ -348,6 +348,8 @@ class PreparedStatementPlanner():
 
             elif column.name is not None:
                 # is Identifier
+                if isinstance(column.name, ast.Star):
+                    continue
                 col_name = column.name.upper()
                 if column.table is not None:
                     table = column.table

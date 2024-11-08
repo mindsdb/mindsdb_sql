@@ -16,7 +16,7 @@ class TestPlanJoinTables:
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
                        from_table=Join(left=Identifier('int.tab1'),
                                        right=Identifier('int2.tab2'),
-                                       condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
+                                       condition=BinaryOperation(op='>', args=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
                                        join_type=JoinType.INNER_JOIN
                                        )
                 )
@@ -35,7 +35,7 @@ class TestPlanJoinTables:
                                       JoinStep(left=Result(0), right=Result(1),
                                                query=Join(left=Identifier('tab1'),
                                                           right=Identifier('tab2'),
-                                                          condition=BinaryOperation(op='=',
+                                                          condition=BinaryOperation(op='>',
                                                                                     args=[Identifier('tab1.column1'),
                                                                                           Identifier('tab2.column1')]),
                                                           join_type=JoinType.INNER_JOIN
@@ -45,13 +45,13 @@ class TestPlanJoinTables:
         )
 
         assert plan.steps == expected_plan.steps
-        
+
 
     def test_join_tables_where_plan(self):
         query = parse_sql('''
           SELECT tab1.column1, tab2.column1, tab2.column2 
           FROM int.tab1 
-          INNER JOIN int2.tab2 ON tab1.column1 = tab2.column1 
+          INNER JOIN int2.tab2 ON tab1.column1 > tab2.column1 
           WHERE ((tab1.column1 = 1) 
             AND (tab2.column1 = 0))
             AND (tab1.column3 = tab2.column3)
@@ -71,7 +71,7 @@ class TestPlanJoinTables:
                                       JoinStep(left=Result(0), right=Result(1),
                                                query=Join(left=Identifier('tab1'),
                                                           right=Identifier('tab2'),
-                                                          condition=BinaryOperation(op='=',
+                                                          condition=BinaryOperation(op='>',
                                                                                     args=[Identifier('tab1.column1'),
                                                                                           Identifier('tab2.column1')]),
                                                           join_type=JoinType.INNER_JOIN
@@ -90,7 +90,7 @@ class TestPlanJoinTables:
             Function('sum', args=[Identifier('tab2.column2')], alias=Identifier('total'))],
             from_table=Join(left=Identifier('int.tab1'),
                             right=Identifier('int2.tab2'),
-                            condition=BinaryOperation(op='=',
+                            condition=BinaryOperation(op='>',
                                                       args=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
                             join_type=JoinType.INNER_JOIN
                             ),
@@ -117,7 +117,7 @@ class TestPlanJoinTables:
                                       JoinStep(left=Result(0), right=Result(1),
                                                query=Join(left=Identifier('tab1'),
                                                           right=Identifier('tab2'),
-                                                          condition=BinaryOperation(op='=',
+                                                          condition=BinaryOperation(op='>',
                                                                                     args=[Identifier('tab1.column1'),
                                                                                           Identifier('tab2.column1')]),
                                                           join_type=JoinType.INNER_JOIN
@@ -126,13 +126,13 @@ class TestPlanJoinTables:
                                   ],
                                   )
         assert plan.steps == expected_plan.steps
-        
+
 
     def test_join_tables_plan_limit_offset(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
                        from_table=Join(left=Identifier('int.tab1'),
                                        right=Identifier('int2.tab2'),
-                                       condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
+                                       condition=BinaryOperation(op='>', args=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
                                        join_type=JoinType.INNER_JOIN
                                        ),
                        limit=Constant(10),
@@ -161,7 +161,7 @@ class TestPlanJoinTables:
                                       JoinStep(left=Result(0), right=Result(1),
                                                query=Join(left=Identifier('tab1'),
                                                           right=Identifier('tab2'),
-                                                          condition=BinaryOperation(op='=',
+                                                          condition=BinaryOperation(op='>',
                                                                                     args=[Identifier('tab1.column1'),
                                                                                           Identifier('tab2.column1')]),
                                                           join_type=JoinType.INNER_JOIN
@@ -171,13 +171,13 @@ class TestPlanJoinTables:
                                   )
 
         assert plan.steps == expected_plan.steps
-        
+
 
     def test_join_tables_plan_order_by(self):
         query = Select(targets=[Identifier('tab1.column1'), Identifier('tab2.column1'), Identifier('tab2.column2')],
                        from_table=Join(left=Identifier('int.tab1'),
                                        right=Identifier('int2.tab2'),
-                                       condition=BinaryOperation(op='=', args=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
+                                       condition=BinaryOperation(op='>', args=[Identifier('tab1.column1'), Identifier('tab2.column1')]),
                                        join_type=JoinType.INNER_JOIN
                                        ),
                        limit=Constant(10),
@@ -203,7 +203,7 @@ class TestPlanJoinTables:
                                       JoinStep(left=Result(0), right=Result(1),
                                                query=Join(left=Identifier('tab1'),
                                                           right=Identifier('tab2'),
-                                                          condition=BinaryOperation(op='=',
+                                                          condition=BinaryOperation(op='>',
                                                                                     args=[Identifier('tab1.column1'),
                                                                                           Identifier('tab2.column1')]),
                                                           join_type=JoinType.INNER_JOIN
@@ -213,7 +213,7 @@ class TestPlanJoinTables:
                                   )
 
         assert plan.steps == expected_plan.steps
-        
+
 
     # This quiery should be sent to integration without raising exception
     # def test_join_tables_where_ambigous_column_error(self):
@@ -278,7 +278,7 @@ class TestPlanJoinTables:
 
         for i in range(len(plan.steps)):
             assert plan.steps[i] == expected_plan.steps[i]
-        
+
 
     def _disabled_test_join_tables_error_on_unspecified_table_in_condition(self):
         # disabled: identifier can be environment of system variable
@@ -328,7 +328,7 @@ class TestPlanJoinTables:
     def test_complex_join_tables(self):
         query = parse_sql('''
             select * from int1.tbl1 t1 
-            right join int2.tbl2 t2 on t1.id=t2.id
+            right join int2.tbl2 t2 on t1.id>t2.id
             join pred m
             left join tbl3 on tbl3.id=t1.id
             where t1.a=1 and t2.b=2 and 1=1
@@ -336,6 +336,9 @@ class TestPlanJoinTables:
 
         subquery = copy.deepcopy(query)
         subquery.from_table = None
+
+        q_table3 = parse_sql('select * from tbl3 where id in 0')
+        q_table3.where.args[1] = Parameter(Result(5))
 
         plan = plan_query(query, integrations=['int1', 'int2', 'proj'],  default_namespace='proj',
                           predictor_metadata=[{'name': 'pred', 'integration_name': 'proj'}])
@@ -349,7 +352,7 @@ class TestPlanJoinTables:
                        query=Join(left=Identifier('tab1'),
                                   right=Identifier('tab2'),
                                   condition=BinaryOperation(
-                                      op='=',
+                                      op='>',
                                       args=[Identifier('t1.id'),
                                             Identifier('t2.id')]),
                                   join_type=JoinType.RIGHT_JOIN)),
@@ -359,9 +362,10 @@ class TestPlanJoinTables:
                        query=Join(left=Identifier('tab1'),
                                     right=Identifier('tab2'),
                                     join_type=JoinType.JOIN)),
-              FetchDataframeStep(integration='proj', query=parse_sql('select * from tbl3')),
+              SubSelectStep(dataframe=Result(0), query=Select(targets=[Identifier('id')], distinct=True)),
+              FetchDataframeStep(integration='proj', query=q_table3),
               JoinStep(left=Result(4),
-                         right=Result(5),
+                         right=Result(6),
                          query=Join(left=Identifier('tab1'),
                                     right=Identifier('tab2'),
                                     condition=BinaryOperation(
@@ -369,7 +373,7 @@ class TestPlanJoinTables:
                                         args=[Identifier('tbl3.id'),
                                               Identifier('t1.id')]),
                                     join_type=JoinType.LEFT_JOIN)),
-              QueryStep(subquery, from_table=Result(6)),
+              QueryStep(subquery, from_table=Result(7)),
             ]
         )
 
@@ -484,5 +488,36 @@ class TestPlanJoinTables:
                                   ],
                                   )
         plan = plan_query(query, integrations=['int'], default_namespace='int')
+
+        assert plan.steps == expected_plan.steps
+
+    def test_cte(self):
+        query = parse_sql('''
+            with t1 as (
+               select * from int1.tbl1
+            )
+            select t1.id, t2.* from t1
+            join int2.tbl2 t2 on t1.id>t2.id
+        ''')
+
+        subquery = copy.deepcopy(query)
+        subquery.from_table = None
+
+        plan = plan_query(query, integrations=['int1', 'int2'], default_namespace='mindsdb')
+
+        expected_plan = QueryPlan(
+            steps=[
+              FetchDataframeStep(integration='int1', query=parse_sql('select * from tbl1')),
+              SubSelectStep(dataframe=Result(0), query=Select(targets=[Star()]), table_name='t1'),
+              FetchDataframeStep(integration='int2', query=parse_sql('select * from tbl2 as t2')),
+              JoinStep(left=Result(1),
+                       right=Result(2),
+                       query=Join(left=Identifier('tab1'),
+                                    right=Identifier('tab2'),
+                                    condition=BinaryOperation(op='>', args=[Identifier('t1.id'), Identifier('t2.id')]),
+                                    join_type=JoinType.JOIN)),
+              QueryStep(parse_sql('SELECT t1.`id`, t2.*'), from_table=Result(3)),
+            ]
+        )
 
         assert plan.steps == expected_plan.steps
