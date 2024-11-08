@@ -1028,8 +1028,9 @@ class MindsDBParser(Parser):
 
     # tableau
     @_('LPAREN select RPAREN')
+    @_('LPAREN union RPAREN')
     def select(self, p):
-        return p.select
+        return p[1]
 
     # WITH
     @_('ctes select')
