@@ -1050,13 +1050,14 @@ class MindsDBParser(Parser):
         ]
         return ctes
 
-    @_('WITH identifier cte_columns_or_nothing AS LPAREN select RPAREN')
+    @_('WITH identifier cte_columns_or_nothing AS LPAREN select RPAREN',
+       'WITH identifier cte_columns_or_nothing AS LPAREN union RPAREN')
     def ctes(self, p):
         return [
             CommonTableExpression(
                 name=p.identifier,
                 columns=p.cte_columns_or_nothing,
-                query=p.select)
+                query=p[5])
         ]
 
     @_('empty')
