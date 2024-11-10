@@ -297,7 +297,11 @@ class SqlalchemyRender:
         if t.default is not None:
             default = self.to_expression(t.default)
 
-        return sa.case(*conditions, else_=default)
+        value = None
+        if t.arg is not None:
+            value = self.to_expression(t.arg)
+
+        return sa.case(*conditions, else_=default, value=value)
 
     def to_function(self, t):
         op = getattr(sa.func, t.op)
