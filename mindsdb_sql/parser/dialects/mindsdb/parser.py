@@ -1364,13 +1364,18 @@ class MindsDBParser(Parser):
         return [p.expr0, p.expr1]
 
     # Window function
-    @_('function OVER LPAREN window RPAREN')
+    @_('expr OVER LPAREN window RPAREN',
+       'expr OVER LPAREN window id BETWEEN id id AND id id RPAREN')
     def window_function(self, p):
 
+        modifier = None
+        if hasattr(p, 'BETWEEN'):
+            modifier = f'{p.id0} BETWEEN {p.id1} {p.id2} AND {p.id3} {p.id4}'
         return WindowFunction(
-            function=p.function,
+            function=p.expr,
             order_by=p.window.get('order_by'),
             partition=p.window.get('partition'),
+            modifier=modifier,
         )
 
     @_('window PARTITION_BY expr_list')
