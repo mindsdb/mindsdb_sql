@@ -70,6 +70,7 @@ class MindsDBParser(Parser):
        'drop_dataset',
        'select',
        'insert',
+       'union',
        'update',
        'delete',
        'evaluate',
@@ -614,10 +615,13 @@ class MindsDBParser(Parser):
 
     # INSERT
     @_('INSERT INTO identifier LPAREN column_list RPAREN select',
-       'INSERT INTO identifier select')
+       'INSERT INTO identifier LPAREN column_list RPAREN union',
+       'INSERT INTO identifier select',
+       'INSERT INTO identifier union')
     def insert(self, p):
         columns = getattr(p, 'column_list', None)
-        return Insert(table=p.identifier, columns=columns, from_select=p.select)
+        query = p.select if hasattr(p, 'select') else p.union
+        return Insert(table=p.identifier, columns=columns, from_select=query)
 
     @_('INSERT INTO identifier LPAREN column_list RPAREN VALUES expr_list_set',
        'INSERT INTO identifier VALUES expr_list_set')
@@ -998,19 +1002,35 @@ class MindsDBParser(Parser):
             engine = p.string
         return {'identifier':p.identifier, 'engine':engine, 'if_not_exists':p.if_not_exists_or_empty}
 
-    # UNION / UNION ALL
-    @_('select UNION select')
-    def select(self, p):
-        return Union(left=p[0], right=p[2], unique=True)
+    # Combining
+    @_('select UNION select',
+       'union UNION select',
+       'select UNION ALL select',
+       'union UNION ALL select')
+    def union(self, p):
+        unique = not hasattr(p, 'ALL')
+        return Union(left=p[0], right=p[2] if unique else p[3], unique=unique)
 
-    @_('select UNION ALL select')
-    def select(self, p):
-        return Union(left=p[0], right=p[3], unique=False)
+    @_('select INTERSECT select',
+       'union INTERSECT select',
+       'select INTERSECT ALL select',
+       'union INTERSECT ALL select')
+    def union(self, p):
+        unique = not hasattr(p, 'ALL')
+        return Intersect(left=p[0], right=p[2] if unique else p[3], unique=unique)
+    @_('select EXCEPT select',
+       'union EXCEPT select',
+       'select EXCEPT ALL select',
+       'union EXCEPT ALL select')
+    def union(self, p):
+        unique = not hasattr(p, 'ALL')
+        return Except(left=p[0], right=p[2] if unique else p[3], unique=unique)
 
     # tableau
     @_('LPAREN select RPAREN')
+    @_('LPAREN union RPAREN')
     def select(self, p):
-        return p.select
+        return p[1]
 
     # WITH
     @_('ctes select')
@@ -1030,13 +1050,14 @@ class MindsDBParser(Parser):
         ]
         return ctes
 
-    @_('WITH identifier cte_columns_or_nothing AS LPAREN select RPAREN')
+    @_('WITH identifier cte_columns_or_nothing AS LPAREN select RPAREN',
+       'WITH identifier cte_columns_or_nothing AS LPAREN union RPAREN')
     def ctes(self, p):
         return [
             CommonTableExpression(
                 name=p.identifier,
                 columns=p.cte_columns_or_nothing,
-                query=p.select)
+                query=p[5])
         ]
 
     @_('empty')
@@ -1331,6 +1352,15 @@ class MindsDBParser(Parser):
     def case(self, p):
         return Case(rules=p.case_conditions, default=getattr(p, 'expr', None))
 
+    @_('CASE expr case_conditions ELSE expr END',
+       'CASE expr case_conditions END')
+    def case(self, p):
+        if hasattr(p, 'expr'):
+            arg, default = p.expr, None
+        else:
+            arg, default = p.expr0, p.expr1
+        return Case(rules=p.case_conditions, default=default, arg=arg)
+
     @_('case_condition',
        'case_conditions case_condition')
     def case_conditions(self, p):
@@ -1343,13 +1373,18 @@ class MindsDBParser(Parser):
         return [p.expr0, p.expr1]
 
     # Window function
-    @_('function OVER LPAREN window RPAREN')
+    @_('expr OVER LPAREN window RPAREN',
+       'expr OVER LPAREN window id BETWEEN id id AND id id RPAREN')
     def window_function(self, p):
 
+        modifier = None
+        if hasattr(p, 'BETWEEN'):
+            modifier = f'{p.id0} BETWEEN {p.id1} {p.id2} AND {p.id3} {p.id4}'
         return WindowFunction(
-            function=p.function,
+            function=p.expr,
             order_by=p.window.get('order_by'),
             partition=p.window.get('partition'),
+            modifier=modifier,
         )
 
     @_('window PARTITION_BY expr_list')

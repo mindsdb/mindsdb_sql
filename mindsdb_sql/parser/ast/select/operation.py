@@ -98,12 +98,13 @@ class Function(Operation):
 
 
 class WindowFunction(ASTNode):
-    def __init__(self, function, partition=None, order_by=None, alias=None):
+    def __init__(self, function, partition=None, order_by=None, alias=None, modifier=None):
         super().__init__()
         self.function = function
         self.partition = partition
         self.order_by = order_by
         self.alias = alias
+        self.modifier = modifier
 
     def to_tree(self, *args, level=0, **kwargs):
         fnc_str = self.function.to_tree(level=level+2)
@@ -143,7 +144,8 @@ class WindowFunction(ASTNode):
             alias_str = self.alias.to_string()
         else:
             alias_str = ''
-        return f'{fnc_str} over({partition_str} {order_str}) {alias_str}'
+        modifier_str = self.modifier if self.modifier else ''
+        return f'{fnc_str} over({partition_str} {order_str}{modifier_str}) {alias_str}'
 
 
 class Object(ASTNode):
