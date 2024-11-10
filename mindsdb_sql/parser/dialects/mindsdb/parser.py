@@ -1352,6 +1352,15 @@ class MindsDBParser(Parser):
     def case(self, p):
         return Case(rules=p.case_conditions, default=getattr(p, 'expr', None))
 
+    @_('CASE expr case_conditions ELSE expr END',
+       'CASE expr case_conditions END')
+    def case(self, p):
+        if hasattr(p, 'expr'):
+            arg, default = p.expr, None
+        else:
+            arg, default = p.expr0, p.expr1
+        return Case(rules=p.case_conditions, default=default, arg=arg)
+
     @_('case_condition',
        'case_conditions case_condition')
     def case_conditions(self, p):
