@@ -1026,6 +1026,40 @@ class TestMindsdb:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_case_simple_form(self):
+        sql = f'''SELECT
+                    CASE R.DELETE_RULE
+                        WHEN 'CASCADE' THEN 0
+                        WHEN 'SET NULL' THEN 2
+                        ELSE 3
+                    END AS DELETE_RULE
+                   FROM COLLATIONS'''
+        ast = parse_sql(sql)
+
+        expected_ast = Select(
+            targets=[
+                Case(
+                    arg=Identifier('R.DELETE_RULE'),
+                    rules=[
+                        [
+                            Constant('CASCADE'),
+                            Constant(0)
+                        ],
+                        [
+                            Constant('SET NULL'),
+                            Constant(2)
+                        ]
+                    ],
+                    default=Constant(3),
+                    alias=Identifier('DELETE_RULE')
+                )
+            ],
+            from_table=Identifier('COLLATIONS')
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
     def test_select_left(self):
         sql = f'select left(a, 1) from tab1'
         ast = parse_sql(sql)
