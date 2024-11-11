@@ -290,7 +290,7 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier('column1')],
+                                                             targets=[Identifier('column1', alias=Identifier('column1'))],
                                                              from_table=Select(
                                                                  targets=[Identifier('column1', alias=Identifier('column1'))],
                                                                  from_table=Identifier('tab'),
@@ -378,7 +378,7 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier('column1')],
+                                                             targets=[Identifier('column1', alias=Identifier('column1')),],
                                                              from_table=Select(
                                                                  targets=[Identifier('column1', alias=Identifier('column1'))],
                                                                  from_table=Identifier('tab'),
@@ -588,20 +588,26 @@ class TestPlanIntegrationSelect:
             with tab2 as (
               select * from int1.tabl2
             )
-            select x from tab2
-            join int1.tab1 on 0=0
-            where x1 in (select id from int1.tab1)
-            limit 1
+            select a from (
+                select x from tab2
+                union 
+                select y from int1.tab1 
+                where x1 in (select id from int1.tab1)
+                limit 1
+            )
         '''
 
         sql_integration = '''
             with tab2 as (
               select * from tabl2
             )
-            select x from tab2
-            join tab1 on 0=0
-            where x1 in (select id as id from tab1)
-            limit 1
+            select a as a from (
+                select x as x from tab2
+                union 
+                select y as y from tab1 
+                where x1 in (select id as id from tab1)
+                limit 1
+            )
         '''
         query = parse_sql(sql_parsed, dialect='mindsdb')
 

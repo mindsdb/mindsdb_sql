@@ -231,7 +231,7 @@ class QueryPlanner:
         query_traversal(query, find_objects)
 
         # cte names are not mdb objects
-        if query.cte:
+        if isinstance(query, Select) and query.cte:
             cte_names = [
                 cte.name.parts[-1]
                 for cte in query.cte
@@ -271,21 +271,21 @@ class QueryPlanner:
         return find_selects
 
     def plan_select_identifier(self, query):
-        query_info = self.get_query_info(query)
-
-        if len(query_info['integrations']) == 0 and len(query_info['predictors']) >= 1:
-            # select from predictor
-            return self.plan_select_from_predictor(query)
-        elif (
-            len(query_info['integrations']) == 1
-            and len(query_info['mdb_entities']) == 0
-            and len(query_info['user_functions']) == 0
-        ):
-
-            int_name = list(query_info['integrations'])[0]
-            if self.integrations.get(int_name, {}).get('class_type') != 'api':
-                # one integration without predictors, send all query to integration
-                return self.plan_integration_select(query)
+        # query_info = self.get_query_info(query)
+        #
+        # if len(query_info['integrations']) == 0 and len(query_info['predictors']) >= 1:
+        #     # select from predictor
+        #     return self.plan_select_from_predictor(query)
+        # elif (
+        #     len(query_info['integrations']) == 1
+        #     and len(query_info['mdb_entities']) == 0
+        #     and len(query_info['user_functions']) == 0
+        # ):
+        #
+        #     int_name = list(query_info['integrations'])[0]
+        #     if self.integrations.get(int_name, {}).get('class_type') != 'api':
+        #         # one integration without predictors, send all query to integration
+        #         return self.plan_integration_select(query)
 
         # find subselects
         main_integration, _ = self.resolve_database_table(query.from_table)
@@ -380,21 +380,21 @@ class QueryPlanner:
 
     def plan_nested_select(self, select):
 
-        query_info = self.get_query_info(select)
-        # get all predictors
-
-        if (
-            len(query_info['mdb_entities']) == 0
-            and len(query_info['integrations']) == 1
-            and len(query_info['user_functions']) == 0
-            and 'files' not in query_info['integrations']
-            and 'views' not in query_info['integrations']
-        ):
-            int_name = list(query_info['integrations'])[0]
-            if self.integrations.get(int_name, {}).get('class_type') != 'api':
-
-                # if no predictor inside = run as is
-                return self.plan_integration_nested_select(select, int_name)
+        # query_info = self.get_query_info(select)
+        # # get all predictors
+        #
+        # if (
+        #     len(query_info['mdb_entities']) == 0
+        #     and len(query_info['integrations']) == 1
+        #     and len(query_info['user_functions']) == 0
+        #     and 'files' not in query_info['integrations']
+        #     and 'views' not in query_info['integrations']
+        # ):
+        #     int_name = list(query_info['integrations'])[0]
+        #     if self.integrations.get(int_name, {}).get('class_type') != 'api':
+        #
+        #         # if no predictor inside = run as is
+        #         return self.plan_integration_nested_select(select, int_name)
 
         return self.plan_mdb_nested_select(select)
 
@@ -685,22 +685,38 @@ class QueryPlanner:
         ))
 
     def plan_cte(self, query):
-        query_info = self.get_query_info(query)
-
-        if (
-            len(query_info['integrations']) == 1
-            and len(query_info['mdb_entities']) == 0
-            and len(query_info['user_functions']) == 0
-        ):
-            # single integration, will be planned later
-            return
 
         for cte in query.cte:
             step = self.plan_select(cte.query)
             name = cte.name.parts[-1]
             self.cte_results[name] = step.result
 
+    def check_single_integration(self, query):
+        query_info = self.get_query_info(query)
+
+        # can we send all query to integration?
+
+        # one integration and not mindsdb objects in query
+        if (
+                len(query_info['mdb_entities']) == 0
+                and len(query_info['integrations']) == 1
+                and 'files' not in query_info['integrations']
+                and 'views' not in query_info['integrations']
+                and len(query_info['user_functions']) == 0
+        ):
+
+            int_name = list(query_info['integrations'])[0]
+            # if is sql database
+            if self.integrations.get(int_name, {}).get('class_type') != 'api':
+
+                # send to this integration
+                self.prepare_integration_select(int_name, query)
+
+                last_step = self.plan.add_step(FetchDataframeStep(integration=int_name, query=query))
+                return last_step
+
     def plan_select(self, query, integration=None):
+
         if isinstance(query, (Union, Except, Intersect)):
             return self.plan_union(query, integration=integration)
 
@@ -775,6 +791,8 @@ class QueryPlanner:
             query = self.query
 
         if isinstance(query, (Select, Union, Except, Intersect)):
+            if self.check_single_integration(query):
+                return self.plan
             self.plan_select(query)
         elif isinstance(query, CreateTable):
             self.plan_create_table(query)
