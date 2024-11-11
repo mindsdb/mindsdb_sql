@@ -387,7 +387,7 @@ class SqlalchemyRender:
             if node.alias:
                 table = aliased(table, name=self.get_alias(node.alias))
 
-        elif isinstance(node, ast.Select):
+        elif isinstance(node, (ast.Select, ast.Union, ast.Intersect, ast.Except)):
             sub_stmt = self.prepare_select(node)
             alias = None
             if node.alias:
