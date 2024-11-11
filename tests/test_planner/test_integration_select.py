@@ -290,7 +290,7 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier('column1')],
+                                                             targets=[Identifier('column1', alias=Identifier('column1'))],
                                                              from_table=Select(
                                                                  targets=[Identifier('column1', alias=Identifier('column1'))],
                                                                  from_table=Identifier('tab'),
@@ -378,7 +378,7 @@ class TestPlanIntegrationSelect:
                                   steps=[
                                       FetchDataframeStep(integration='int',
                                                          query=Select(
-                                                             targets=[Identifier('column1')],
+                                                             targets=[Identifier('column1', alias=Identifier('column1')),],
                                                              from_table=Select(
                                                                  targets=[Identifier('column1', alias=Identifier('column1'))],
                                                                  from_table=Identifier('tab'),
@@ -554,7 +554,7 @@ class TestPlanIntegrationSelect:
         plan = plan_query(
             query,
             integrations=[{'name': 'int1', 'class_type': 'api', 'type': 'data'}],
-            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}]
+            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}],
         )
 
         assert plan.steps == expected_plan.steps
@@ -579,6 +579,53 @@ class TestPlanIntegrationSelect:
             query,
             integrations=[{'name': 'int1', 'class_type': 'sql', 'type': 'data'}],
             predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}]
+        )
+
+        assert plan.steps == expected_plan.steps
+
+    def test_select_from_single_integration(self):
+        sql_parsed = '''
+            with tab2 as (
+              select * from int1.tabl2
+            )
+            select a from (
+                select x from tab2
+                union 
+                select y from int1.tab1 
+                where x1 in (select id from int1.tab1)
+                limit 1
+            )
+        '''
+
+        sql_integration = '''
+            with tab2 as (
+              select * from tabl2
+            )
+            select a as a from (
+                select x as x from tab2
+                union 
+                select y as y from tab1 
+                where x1 in (select id as id from tab1)
+                limit 1
+            )
+        '''
+        query = parse_sql(sql_parsed, dialect='mindsdb')
+
+        expected_plan = QueryPlan(
+            predictor_namespace='mindsdb',
+            steps=[
+                FetchDataframeStep(
+                    integration='int1',
+                    query=parse_sql(sql_integration),
+                ),
+            ],
+        )
+
+        plan = plan_query(
+            query,
+            integrations=[{'name': 'int1', 'class_type': 'sql', 'type': 'data'}],
+            predictor_metadata=[{'name': 'pred', 'integration_name': 'mindsdb'}],
+            default_namespace='mindsdb',
         )
 
         assert plan.steps == expected_plan.steps

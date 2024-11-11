@@ -293,10 +293,15 @@ class SqlalchemyRender:
             conditions.append(
                 (self.to_expression(condition), self.to_expression(result))
             )
+        default = None
         if t.default is not None:
-            conditions.append(self.to_expression(t.default))
+            default = self.to_expression(t.default)
 
-        return sa.case(*conditions)
+        value = None
+        if t.arg is not None:
+            value = self.to_expression(t.arg)
+
+        return sa.case(*conditions, else_=default, value=value)
 
     def to_function(self, t):
         op = getattr(sa.func, t.op)
@@ -382,7 +387,7 @@ class SqlalchemyRender:
             if node.alias:
                 table = aliased(table, name=self.get_alias(node.alias))
 
-        elif isinstance(node, ast.Select):
+        elif isinstance(node, (ast.Select, ast.Union, ast.Intersect, ast.Except)):
             sub_stmt = self.prepare_select(node)
             alias = None
             if node.alias:
@@ -396,7 +401,7 @@ class SqlalchemyRender:
         return table
 
     def prepare_select(self, node):
-        if isinstance(node, ast.Union):
+        if isinstance(node, (ast.Union, ast.Except, ast.Intersect)):
             return self.prepare_union(node)
 
         cols = []
@@ -525,26 +530,17 @@ class SqlalchemyRender:
         return query
 
     def prepare_union(self, from_table):
-        tables = self.extract_union_list(from_table)
+        step1 = self.prepare_select(from_table.left)
+        step2 = self.prepare_select(from_table.right)
 
-        table1 = tables[0]
-        tables_x = tables[1:]
-
-        return table1.union(*tables_x)
-
-    def extract_union_list(self, node):
-        if not (isinstance(node.left, (ast.Select, ast.Union)) and isinstance(node.right, ast.Select)):
-            raise NotImplementedError(
-                f'Unknown UNION {node.left.__class__.__name__}, {node.right.__class__.__name__}')
-
-        tables = []
-        if isinstance(node.left, ast.Union):
-            tables.extend(self.extract_union_list(node.left))
+        if isinstance(from_table, ast.Except):
+            func = sa.except_ if from_table.unique else sa.except_all
+        elif isinstance(from_table, ast.Intersect):
+            func = sa.intersect if from_table.unique else sa.intersect_all
         else:
-            tables.append(self.prepare_select(node.left))
-        tables.append(self.prepare_select(node.right))
-        return tables
+            func = sa.union if from_table.unique else sa.union_all
 
+        return func(step1, step2)
 
     def prepare_create_table(self, ast_query):
         columns = []
@@ -693,7 +689,7 @@ class SqlalchemyRender:
 
     def get_query(self, ast_query, with_params=False):
         params = None
-        if isinstance(ast_query, ast.Select):
+        if isinstance(ast_query, (ast.Select, ast.Union, ast.Except, ast.Intersect)):
             stmt = self.prepare_select(ast_query)
         elif isinstance(ast_query, ast.Insert):
             stmt, params = self.prepare_insert(ast_query, with_params=with_params)

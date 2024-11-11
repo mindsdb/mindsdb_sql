@@ -75,11 +75,12 @@ class JoinStep(PlanStep):
 
 class UnionStep(PlanStep):
     """Union of two dataframes, producing a new dataframe"""
-    def __init__(self, left, right, unique, *args, **kwargs):
+    def __init__(self, left, right, unique, operation='union', *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.left = left
         self.right = right
         self.unique = unique
+        self.operation = operation
 
 
 # TODO remove

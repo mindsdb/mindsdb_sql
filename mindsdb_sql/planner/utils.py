@@ -145,7 +145,7 @@ def query_traversal(node, callback, is_table=False, is_target=False, parent_quer
                 array.append(node_out)
             node.order_by = array
 
-    elif isinstance(node, ast.Union):
+    elif isinstance(node, (ast.Union, ast.Intersect, ast.Except)):
         node_out = query_traversal(node.left, callback, parent_query=node)
         if node_out is not None:
             node.left = node_out
