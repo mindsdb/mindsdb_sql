@@ -144,7 +144,7 @@ class WindowFunction(ASTNode):
             alias_str = self.alias.to_string()
         else:
             alias_str = ''
-        modifier_str = self.modifier if self.modifier else ''
+        modifier_str = ' ' + self.modifier if self.modifier else ''
         return f'{fnc_str} over({partition_str} {order_str}{modifier_str}) {alias_str}'
 
 
