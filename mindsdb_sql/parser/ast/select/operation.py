@@ -179,7 +179,12 @@ class Interval(Operation):
         super().__init__(op='interval', args=[info, ])
 
     def get_string(self, *args, **kwargs):
-        return f'INTERVAL {self.args[0]}'
+
+        arg = self.args[0]
+        items = arg.split(' ', maxsplit=1)
+        # quote first element
+        items[0] = f"'{items[0]}'"
+        return "INTERVAL " + " ".join(items)
 
     def to_tree(self, *args, level=0, **kwargs):
         return self.get_string( *args, **kwargs)
