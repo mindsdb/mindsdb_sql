@@ -229,6 +229,19 @@ class QueryPlanner:
                     mdb_entities.append(node)
 
         query_traversal(query, find_objects)
+
+        # cte names are not mdb objects
+        if query.cte:
+            cte_names = [
+                cte.name.parts[-1]
+                for cte in query.cte
+            ]
+            mdb_entities = [
+                item
+                for item in mdb_entities
+                if '.'.join(item.parts) not in cte_names
+            ]
+
         return {
             'mdb_entities': mdb_entities,
             'integrations': integrations,
@@ -672,6 +685,16 @@ class QueryPlanner:
         ))
 
     def plan_cte(self, query):
+        query_info = self.get_query_info(query)
+
+        if (
+            len(query_info['integrations']) == 1
+            and len(query_info['mdb_entities']) == 0
+            and len(query_info['user_functions']) == 0
+        ):
+            # single integration, will be planned later
+            return
+
         for cte in query.cte:
             step = self.plan_select(cte.query)
             name = cte.name.parts[-1]

@@ -1352,6 +1352,15 @@ class MindsDBParser(Parser):
     def case(self, p):
         return Case(rules=p.case_conditions, default=getattr(p, 'expr', None))
 
+    @_('CASE expr case_conditions ELSE expr END',
+       'CASE expr case_conditions END')
+    def case(self, p):
+        if hasattr(p, 'expr'):
+            arg, default = p.expr, None
+        else:
+            arg, default = p.expr0, p.expr1
+        return Case(rules=p.case_conditions, default=default, arg=arg)
+
     @_('case_condition',
        'case_conditions case_condition')
     def case_conditions(self, p):
@@ -1364,13 +1373,18 @@ class MindsDBParser(Parser):
         return [p.expr0, p.expr1]
 
     # Window function
-    @_('function OVER LPAREN window RPAREN')
+    @_('expr OVER LPAREN window RPAREN',
+       'expr OVER LPAREN window id BETWEEN id id AND id id RPAREN')
     def window_function(self, p):
 
+        modifier = None
+        if hasattr(p, 'BETWEEN'):
+            modifier = f'{p.id0} BETWEEN {p.id1} {p.id2} AND {p.id3} {p.id4}'
         return WindowFunction(
-            function=p.function,
+            function=p.expr,
             order_by=p.window.get('order_by'),
             partition=p.window.get('partition'),
+            modifier=modifier,
         )
 
     @_('window PARTITION_BY expr_list')
