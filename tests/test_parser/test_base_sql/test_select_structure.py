@@ -1186,3 +1186,23 @@ class TestMindsdb:
 
         ast = parse_sql(sql)
         assert str(ast) == str(expected_ast)
+
+    def test_window_function_mindsdb(self):
+
+        # modifier
+        query = "select SUM(col0) OVER (partition by col1 order by col2 rows between unbounded preceding and current row) from table1 "
+        expected_ast = Select(
+            targets=[
+                WindowFunction(
+                    function=Function(op='sum', args=[Identifier('col0')]),
+                    partition=[Identifier('col1')],
+                    order_by=[OrderBy(field=Identifier('col2'))],
+                    modifier='rows BETWEEN unbounded preceding AND current row'
+                )
+            ],
+            from_table=Identifier('table1')
+        )
+        ast = parse_sql(query)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+
