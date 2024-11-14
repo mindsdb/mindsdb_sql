@@ -1,6 +1,6 @@
 from .select import Select
 from .common_table_expression import CommonTableExpression
-from .union import Union
+from .union import Union, Except, Intersect
 from .constant import Constant, NullConstant, Last
 from .star import Star
 from .identifier import Identifier

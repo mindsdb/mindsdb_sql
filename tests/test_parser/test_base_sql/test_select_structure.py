@@ -633,7 +633,15 @@ class TestSelectStructure:
         sql = f"""SELECT CAST(a AS CHAR(10))"""
         ast = parse_sql(sql, dialect=dialect)
         expected_ast = Select(targets=[
-            TypeCast(type_name='CHAR', arg=Identifier('a'), length=10)
+            TypeCast(type_name='CHAR', arg=Identifier('a'), precision=[10])
+        ])
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
+        sql = f"""SELECT CAST(a AS DECIMAL(10, 1))"""
+        ast = parse_sql(sql, dialect=dialect)
+        expected_ast = Select(targets=[
+            TypeCast(type_name='DECIMAL', arg=Identifier('a'), precision=[10, 1])
         ])
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
@@ -1018,6 +1026,40 @@ class TestMindsdb:
         assert ast.to_tree() == expected_ast.to_tree()
         assert str(ast) == str(expected_ast)
 
+    def test_case_simple_form(self):
+        sql = f'''SELECT
+                    CASE R.DELETE_RULE
+                        WHEN 'CASCADE' THEN 0
+                        WHEN 'SET NULL' THEN 2
+                        ELSE 3
+                    END AS DELETE_RULE
+                   FROM COLLATIONS'''
+        ast = parse_sql(sql)
+
+        expected_ast = Select(
+            targets=[
+                Case(
+                    arg=Identifier('R.DELETE_RULE'),
+                    rules=[
+                        [
+                            Constant('CASCADE'),
+                            Constant(0)
+                        ],
+                        [
+                            Constant('SET NULL'),
+                            Constant(2)
+                        ]
+                    ],
+                    default=Constant(3),
+                    alias=Identifier('DELETE_RULE')
+                )
+            ],
+            from_table=Identifier('COLLATIONS')
+        )
+
+        assert ast.to_tree() == expected_ast.to_tree()
+        assert str(ast) == str(expected_ast)
+
     def test_select_left(self):
         sql = f'select left(a, 1) from tab1'
         ast = parse_sql(sql)
@@ -1144,3 +1186,23 @@ class TestMindsdb:
 
         ast = parse_sql(sql)
         assert str(ast) == str(expected_ast)
+
+    def test_window_function_mindsdb(self):
+
+        # modifier
+        query = "select SUM(col0) OVER (partition by col1 order by col2 rows between unbounded preceding and current row) from table1 "
+        expected_ast = Select(
+            targets=[
+                WindowFunction(
+                    function=Function(op='sum', args=[Identifier('col0')]),
+                    partition=[Identifier('col1')],
+                    order_by=[OrderBy(field=Identifier('col2'))],
+                    modifier='rows BETWEEN unbounded preceding AND current row'
+                )
+            ],
+            from_table=Identifier('table1')
+        )
+        ast = parse_sql(query)
+        assert str(ast) == str(expected_ast)
+        assert ast.to_tree() == expected_ast.to_tree()
+

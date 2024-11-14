@@ -74,3 +74,25 @@ class TestInsert:
 
         assert str(ast).lower() == sql.lower()
         assert ast.to_tree() == expected_ast.to_tree()
+
+class TestInsertMDB:
+
+    def test_insert_from_union(self):
+        from textwrap import dedent
+        sql = dedent("""
+           INSERT INTO tbl_name(a, c) SELECT * from table1
+           UNION
+           SELECT * from table2""")[1:]
+
+        ast = parse_sql(sql)
+        expected_ast = Insert(
+            table=Identifier('tbl_name'),
+            columns=[Identifier('a'), Identifier('c')],
+            from_select=Union(
+                left=Select(targets=[Star()], from_table=Identifier('table1')),
+                right=Select(targets=[Star()], from_table=Identifier('table2'))
+            )
+        )
+
+        assert str(ast).lower() == sql.lower()
+        assert ast.to_tree() == expected_ast.to_tree()
