@@ -1,5 +1,5 @@
 from mindsdb_sql.parser.lexer import SQLLexer
-from mindsdb_sql.parser import SQLParser
+from mindsdb_sql.parser.parser import SQLParser
 
 if __name__ == '__main__':
     lexer = SQLLexer()
